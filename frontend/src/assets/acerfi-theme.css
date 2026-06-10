@@ -1,0 +1,291 @@
+/* ============================================================
+   ACERFI Theme — surcharges AdminLTE 3.2 + Bootstrap 4
+   Les règles globales dark mode sont dans index.css.
+   Ce fichier gère : sidebar, navbar, AdminLTE spécifiques,
+   thème clair, et overrides AdminLTE dark mode.
+   ============================================================ */
+
+:root {
+  --acerfi-dark:  #1F3864;
+  --acerfi-blue:  #2E74B5;
+  --acerfi-light: #D6E4F0;
+}
+
+/* ══════════════════════════════════════════════════════════
+   THÈME CLAIR (light mode — défaut)
+   ══════════════════════════════════════════════════════════ */
+
+/* ── Sidebar ── */
+.main-sidebar,
+.main-sidebar::before {
+  background-color: var(--sidebar-bg) !important;
+  transition: background-color 0.3s ease, width 0.3s ease !important;
+}
+.main-sidebar .brand-link {
+  background-color: var(--sidebar-bg) !important;
+  border-bottom: 1px solid var(--sidebar-border) !important;
+}
+.main-sidebar .brand-link .brand-text {
+  color: var(--brand-text) !important;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link.active {
+  background-color: var(--sidebar-active) !important;
+  color: #fff !important;
+}
+.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link:hover {
+  background-color: var(--sidebar-hover) !important;
+  color: #fff !important;
+}
+.main-sidebar .nav-sidebar .nav-link p       { color: var(--sidebar-text); }
+.main-sidebar .nav-sidebar .nav-link .nav-icon { color: var(--sidebar-text); }
+.main-sidebar .nav-sidebar .nav-link.active .nav-icon,
+.main-sidebar .nav-sidebar .nav-link.active p  { color: #fff !important; }
+.sidebar .nav-sidebar .nav-header {
+  color: var(--sidebar-text); font-size: 11px; letter-spacing: 1px;
+  text-transform: uppercase; padding: .5rem 1rem; opacity: 0.6;
+}
+.user-panel { border-bottom: 1px solid var(--sidebar-border) !important; }
+.user-panel .info a     { color: var(--sidebar-text) !important; font-size: 14px; font-weight: 600; }
+.user-panel .info small { color: var(--sidebar-text); font-size: 11px; opacity: 0.7; }
+.sidebar-avatar {
+  width: 35px; height: 35px; background: var(--acerfi-blue);
+  border-radius: 50%; display: flex; align-items: center;
+  justify-content: center; color: #fff; font-weight: 700; font-size: 15px;
+}
+
+/* ── Navbar ── */
+.main-header.navbar {
+  background-color: var(--navbar-bg) !important;
+  border-bottom: 2px solid var(--acerfi-light) !important;
+  transition: background-color 0.3s ease !important;
+}
+.main-header .navbar-brand { color: var(--acerfi-dark) !important; }
+
+/* ── Content wrapper ── */
+.content-wrapper {
+  background-color: var(--bg-primary) !important;
+  transition: background-color 0.3s ease !important;
+}
+
+/* ── Footer ── */
+.main-footer {
+  border-top: 2px solid var(--acerfi-light);
+  color: var(--text-muted);
+  font-size: 13px;
+  background-color: var(--bg-secondary) !important;
+  transition: background-color 0.3s ease !important;
+}
+
+/* ── Cards ── */
+.card {
+  transition: background-color 0.3s ease, border-color 0.3s ease,
+              box-shadow 0.3s ease !important;
+}
+.card-primary:not(.card-outline) .card-header {
+  background-color: var(--acerfi-blue) !important;
+  border-color: var(--acerfi-blue) !important;
+}
+.card-primary:not(.card-outline) .card-title { color: #fff !important; }
+.card .card-header { border-bottom: 2px solid var(--acerfi-light); }
+
+/* ── Boutons ── */
+.btn-primary {
+  background-color: var(--acerfi-blue) !important;
+  border-color: var(--acerfi-blue) !important;
+  color: #fff !important;
+}
+.btn-primary:hover, .btn-primary:focus {
+  background-color: var(--acerfi-dark) !important;
+  border-color: var(--acerfi-dark) !important;
+}
+.btn-outline-primary {
+  color: var(--acerfi-blue) !important;
+  border-color: var(--acerfi-blue) !important;
+}
+.btn-outline-primary:hover {
+  background-color: var(--acerfi-blue) !important;
+  color: #fff !important;
+}
+
+/* ── Badges ── */
+.badge-primary { background-color: var(--acerfi-blue) !important; }
+.badge-info    { background-color: #5ba3d9 !important; }
+
+/* ── Tables (light mode) ── */
+.table thead th {
+  background-color: var(--bg-table-header);
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--acerfi-blue);
+  font-weight: 700; font-size: 12px;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+
+/* ── Nav tabs (light) ── */
+.nav-tabs .nav-link.active {
+  color: var(--acerfi-dark);
+  border-bottom-color: var(--acerfi-blue);
+  border-bottom-width: 2px;
+}
+.nav-tabs .nav-link       { color: #777; }
+.nav-tabs .nav-link:hover { color: var(--acerfi-blue); }
+
+/* ── Small boxes ── */
+.small-box.bg-primary { background-color: var(--acerfi-blue) !important; }
+.small-box.bg-info    { background-color: #5ba3d9 !important; }
+
+/* ── Breadcrumb (light) ── */
+.breadcrumb-item.active { color: var(--acerfi-blue); }
+.breadcrumb-item a      { color: var(--acerfi-dark); }
+
+/* ── Progress ── */
+.progress-bar.bg-acerfi { background-color: var(--acerfi-blue) !important; }
+
+/* ── Toggle thème ── */
+.theme-toggle-btn {
+  background: none;
+  border: 1.5px solid var(--border-color);
+  border-radius: 50%;
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 13px;
+  color: var(--text-secondary);
+  transition: all 0.2s ease; padding: 0;
+}
+.theme-toggle-btn:hover {
+  background: var(--bg-hover) !important;
+  border-color: var(--accent-blue) !important;
+  color: var(--accent-blue) !important;
+}
+
+/* ── Fix #root ── */
+#root { display: contents; }
+
+/* ══════════════════════════════════════════════════════════
+   THÈME SOMBRE — overrides AdminLTE spécifiques
+   (Les règles générales sont dans index.css)
+   ══════════════════════════════════════════════════════════ */
+
+/* ── Sidebar dark ── */
+body.dark-mode .main-sidebar,
+body.dark-mode .main-sidebar::before {
+  background-color: var(--sidebar-bg) !important;
+}
+body.dark-mode .main-sidebar .brand-link {
+  background-color: var(--sidebar-bg) !important;
+  border-bottom-color: var(--border-color) !important;
+}
+body.dark-mode .sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link {
+  color: var(--sidebar-text) !important;
+}
+body.dark-mode .sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link.active {
+  background-color: var(--sidebar-active) !important;
+  color: #fff !important;
+}
+body.dark-mode .sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link:hover {
+  background-color: var(--sidebar-hover) !important;
+  color: #fff !important;
+}
+body.dark-mode .main-sidebar .nav-sidebar .nav-link p,
+body.dark-mode .main-sidebar .nav-sidebar .nav-link .nav-icon {
+  color: var(--sidebar-text) !important;
+}
+body.dark-mode .sidebar .nav-sidebar .nav-header {
+  color: var(--text-muted) !important;
+}
+
+/* ── Navbar dark ── */
+body.dark-mode .main-header.navbar {
+  background-color: var(--navbar-bg) !important;
+  border-bottom-color: var(--border-color) !important;
+}
+body.dark-mode .main-header.navbar .navbar-nav .nav-link,
+body.dark-mode .main-header.navbar .nav-link {
+  color: var(--text-primary) !important;
+}
+
+/* ── Footer dark ── */
+body.dark-mode .main-footer {
+  background-color: var(--bg-secondary) !important;
+  border-top-color: var(--border-color) !important;
+  color: var(--text-muted) !important;
+}
+
+/* ── Cards dark — override AdminLTE ── */
+body.dark-mode .card {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border-color) !important;
+  box-shadow: 0 1px 4px var(--card-shadow) !important;
+}
+body.dark-mode .card-body {
+  background-color: var(--bg-card) !important;
+}
+body.dark-mode .card-outline.card-primary {
+  border-color: var(--accent-blue) !important;
+}
+body.dark-mode .card-outline.card-primary .card-header {
+  background-color: var(--bg-secondary) !important;
+  border-bottom-color: var(--border-color) !important;
+}
+
+/* ── Tables dark — override AdminLTE entiers ── */
+body.dark-mode .table {
+  color: var(--text-secondary) !important;
+  border-color: var(--border-color) !important;
+}
+body.dark-mode .table thead th {
+  background-color: var(--bg-table-header) !important;
+  color: var(--text-primary) !important;
+  border-bottom: 2px solid var(--border-strong) !important;
+  border-top-color: var(--border-strong) !important;
+  font-size: 11px !important;
+  letter-spacing: 0.8px !important;
+}
+body.dark-mode .table-striped tbody tr:nth-of-type(odd) td {
+  background-color: var(--bg-table-stripe) !important;
+}
+body.dark-mode .table-hover tbody tr:hover td {
+  background-color: var(--bg-hover) !important;
+}
+body.dark-mode .table-bordered {
+  border-color: var(--border-color) !important;
+}
+body.dark-mode .table-warning td {
+  background-color: rgba(253, 126, 20, 0.12) !important;
+}
+body.dark-mode .table-danger td {
+  background-color: rgba(220, 53, 69, 0.12) !important;
+}
+
+/* ── Formulaires dark — override AdminLTE ── */
+body.dark-mode .form-control {
+  background-color: var(--bg-hover) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+body.dark-mode .form-control:focus {
+  background-color: var(--bg-hover) !important;
+  border-color: var(--accent-blue) !important;
+  color: var(--text-primary) !important;
+  box-shadow: 0 0 0 0.2rem rgba(46, 116, 181, 0.25) !important;
+}
+body.dark-mode select.form-control option {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+}
+
+/* ── Progress dark ── */
+body.dark-mode .progress {
+  background-color: var(--bg-hover) !important;
+}
+
+/* ── Table responsive dark ── */
+body.dark-mode .table-responsive {
+  border-color: var(--border-color) !important;
+}
+
+/* ── Content header dark ── */
+body.dark-mode .content-header {
+  background-color: var(--bg-primary) !important;
+}

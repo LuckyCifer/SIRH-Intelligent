@@ -1,0 +1,18 @@
+[
+  {"model": "documents.categoriedocument", "pk": 1,
+   "fields": {"nom": "Contrat de travail",    "code": "CONTRAT",     "description": "", "icone": "fas fa-file-contract",    "couleur": "#2E74B5"}},
+  {"model": "documents.categoriedocument", "pk": 2,
+   "fields": {"nom": "Fiche de paie",         "code": "PAIE",        "description": "", "icone": "fas fa-money-bill-wave",  "couleur": "#28A745"}},
+  {"model": "documents.categoriedocument", "pk": 3,
+   "fields": {"nom": "Diplôme / Certificat",  "code": "DIPLOME",     "description": "", "icone": "fas fa-graduation-cap",   "couleur": "#7B2D8B"}},
+  {"model": "documents.categoriedocument", "pk": 4,
+   "fields": {"nom": "Pièce d'identité",      "code": "IDENTITE",    "description": "", "icone": "fas fa-id-card",          "couleur": "#FD7E14"}},
+  {"model": "documents.categoriedocument", "pk": 5,
+   "fields": {"nom": "Attestation de travail","code": "ATTESTATION", "description": "", "icone": "fas fa-certificate",      "couleur": "#17A2B8"}},
+  {"model": "documents.categoriedocument", "pk": 6,
+   "fields": {"nom": "Rapport d'évaluation",  "code": "EVALUATION",  "description": "", "icone": "fas fa-chart-bar",        "couleur": "#6F42C1"}},
+  {"model": "documents.categoriedocument", "pk": 7,
+   "fields": {"nom": "Document médical",      "code": "MEDICAL",     "description": "", "icone": "fas fa-notes-medical",    "couleur": "#DC3545"}},
+  {"model": "documents.categoriedocument", "pk": 8,
+   "fields": {"nom": "Autre",                 "code": "AUTRE",       "description": "", "icone": "fas fa-file",             "couleur": "#6C757D"}}
+]

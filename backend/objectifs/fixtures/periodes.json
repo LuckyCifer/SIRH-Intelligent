@@ -1,0 +1,67 @@
+[
+  {
+    "model": "objectifs.periodeevaluation",
+    "pk": 1,
+    "fields": {
+      "nom": "T1 2026",
+      "type_periode": "TRIMESTRIEL",
+      "date_debut": "2026-01-01",
+      "date_fin": "2026-03-31",
+      "statut": "CLOTURE",
+      "description": "Premier trimestre 2026",
+      "created_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "objectifs.periodeevaluation",
+    "pk": 2,
+    "fields": {
+      "nom": "T2 2026",
+      "type_periode": "TRIMESTRIEL",
+      "date_debut": "2026-04-01",
+      "date_fin": "2026-06-30",
+      "statut": "EN_COURS",
+      "description": "Deuxième trimestre 2026",
+      "created_at": "2026-04-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "objectifs.periodeevaluation",
+    "pk": 3,
+    "fields": {
+      "nom": "T3 2026",
+      "type_periode": "TRIMESTRIEL",
+      "date_debut": "2026-07-01",
+      "date_fin": "2026-09-30",
+      "statut": "EN_COURS",
+      "description": "Troisième trimestre 2026",
+      "created_at": "2026-07-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "objectifs.periodeevaluation",
+    "pk": 4,
+    "fields": {
+      "nom": "Semestre 1 2026",
+      "type_periode": "SEMESTRIEL",
+      "date_debut": "2026-01-01",
+      "date_fin": "2026-06-30",
+      "statut": "CLOTURE",
+      "description": "Premier semestre 2026",
+      "created_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "objectifs.periodeevaluation",
+    "pk": 5,
+    "fields": {
+      "nom": "Annuel 2026",
+      "type_periode": "ANNUEL",
+      "date_debut": "2026-01-01",
+      "date_fin": "2026-12-31",
+      "statut": "EN_COURS",
+      "description": "Évaluation annuelle 2026",
+      "created_at": "2026-01-01T00:00:00Z"
+    }
+  }
+]

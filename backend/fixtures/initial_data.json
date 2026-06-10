@@ -1,0 +1,217 @@
+[
+  {
+    "model": "accounts.user",
+    "pk": 1,
+    "fields": {
+      "password": "pbkdf2_sha256$1000000$hazR8AYwUSdZR7vqm7349R$KfZxS5cioSlEPOxIUACROXvyX9DkDgeBZ+gvO46W9Dk=",
+      "last_login": null,
+      "is_superuser": true,
+      "username": "admin",
+      "first_name": "Administrateur",
+      "last_name": "GSRIA",
+      "email": "admin@acerfi.cm",
+      "is_staff": true,
+      "is_active": true,
+      "date_joined": "2025-01-01T00:00:00Z",
+      "groups": [],
+      "user_permissions": [],
+      "role": "RH",
+      "filiere": "AUTRE",
+      "telephone": "",
+      "photo": null,
+      "bio": "",
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "accounts.user",
+    "pk": 2,
+    "fields": {
+      "password": "pbkdf2_sha256$1000000$hazR8AYwUSdZR7vqm7349R$KfZxS5cioSlEPOxIUACROXvyX9DkDgeBZ+gvO46W9Dk=",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "encadreur1",
+      "first_name": "Jean-Pierre",
+      "last_name": "MBARGA",
+      "email": "jpmbarga@acerfi.cm",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2025-01-01T00:00:00Z",
+      "groups": [],
+      "user_permissions": [],
+      "role": "MANAGER",
+      "filiere": "AUTRE",
+      "telephone": "699000001",
+      "photo": null,
+      "bio": "Encadreur principal — filières ISA & IT",
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "accounts.user",
+    "pk": 3,
+    "fields": {
+      "password": "pbkdf2_sha256$1000000$hazR8AYwUSdZR7vqm7349R$KfZxS5cioSlEPOxIUACROXvyX9DkDgeBZ+gvO46W9Dk=",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "stagiaire_ia",
+      "first_name": "Armelle",
+      "last_name": "NKOMO",
+      "email": "ankomo@acerfi.cm",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2025-01-06T00:00:00Z",
+      "groups": [],
+      "user_permissions": [],
+      "role": "EMPLOYE",
+      "filiere": "IA",
+      "telephone": "677111001",
+      "photo": null,
+      "bio": "",
+      "created_at": "2025-01-06T00:00:00Z",
+      "updated_at": "2025-01-06T00:00:00Z"
+    }
+  },
+  {
+    "model": "accounts.user",
+    "pk": 4,
+    "fields": {
+      "password": "pbkdf2_sha256$1000000$hazR8AYwUSdZR7vqm7349R$KfZxS5cioSlEPOxIUACROXvyX9DkDgeBZ+gvO46W9Dk=",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "stagiaire_infra",
+      "first_name": "Kevin",
+      "last_name": "ESSOMBA",
+      "email": "kessomba@acerfi.cm",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2025-01-06T00:00:00Z",
+      "groups": [],
+      "user_permissions": [],
+      "role": "EMPLOYE",
+      "filiere": "INFRA_RESEAUX",
+      "telephone": "677111002",
+      "photo": null,
+      "bio": "",
+      "created_at": "2025-01-06T00:00:00Z",
+      "updated_at": "2025-01-06T00:00:00Z"
+    }
+  },
+  {
+    "model": "accounts.user",
+    "pk": 5,
+    "fields": {
+      "password": "pbkdf2_sha256$1000000$hazR8AYwUSdZR7vqm7349R$KfZxS5cioSlEPOxIUACROXvyX9DkDgeBZ+gvO46W9Dk=",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "stagiaire_devweb",
+      "first_name": "Christelle",
+      "last_name": "TALLA",
+      "email": "ctalla@acerfi.cm",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2025-01-06T00:00:00Z",
+      "groups": [],
+      "user_permissions": [],
+      "role": "EMPLOYE",
+      "filiere": "DEV_WEB",
+      "telephone": "677111003",
+      "photo": null,
+      "bio": "",
+      "created_at": "2025-01-06T00:00:00Z",
+      "updated_at": "2025-01-06T00:00:00Z"
+    }
+  },
+  {
+    "model": "stagiaires.stageperiode",
+    "pk": 1,
+    "fields": {
+      "stagiaire": 3,
+      "encadreur": 2,
+      "date_debut": "2025-01-06",
+      "date_fin": "2025-06-30",
+      "statut": "EN_COURS",
+      "description": "Stage en Intelligence Artificielle Appliquée — projet recommandation santé",
+      "created_at": "2025-01-06T08:00:00Z",
+      "updated_at": "2025-01-06T08:00:00Z"
+    }
+  },
+  {
+    "model": "stagiaires.stageperiode",
+    "pk": 2,
+    "fields": {
+      "stagiaire": 4,
+      "encadreur": 2,
+      "date_debut": "2025-01-06",
+      "date_fin": "2025-06-30",
+      "statut": "EN_COURS",
+      "description": "Stage en Infrastructures IT — mise en place DevOps",
+      "created_at": "2025-01-06T08:00:00Z",
+      "updated_at": "2025-01-06T08:00:00Z"
+    }
+  },
+  {
+    "model": "stagiaires.stageperiode",
+    "pk": 3,
+    "fields": {
+      "stagiaire": 5,
+      "encadreur": 2,
+      "date_debut": "2025-02-03",
+      "date_fin": "2025-07-31",
+      "statut": "EN_COURS",
+      "description": "Stage en Design Graphique — identité visuelle et UI",
+      "created_at": "2025-02-03T08:00:00Z",
+      "updated_at": "2025-02-03T08:00:00Z"
+    }
+  },
+  {
+    "model": "stagiaires.projetsoutenance",
+    "pk": 1,
+    "fields": {
+      "stagiaire": 3,
+      "theme": "Développement d'un système de recommandation IA pour la santé communautaire",
+      "description": "Système basé sur le machine learning pour recommander des services de santé adaptés aux populations rurales du Cameroun.",
+      "statut": "EN_COURS",
+      "livrable": null,
+      "date_soutenance": null,
+      "note": null,
+      "commentaire_jury": "",
+      "created_at": "2025-01-10T10:00:00Z",
+      "updated_at": "2025-01-10T10:00:00Z"
+    }
+  },
+  {
+    "model": "stagiaires.projetsoutenance",
+    "pk": 2,
+    "fields": {
+      "stagiaire": 4,
+      "theme": "Mise en place d'une infrastructure DevOps avec CI/CD pour une PME camerounaise",
+      "description": "Architecture complète avec Docker, Jenkins et déploiement automatisé sur AWS.",
+      "statut": "VALIDE",
+      "livrable": null,
+      "date_soutenance": "2025-07-15",
+      "note": null,
+      "commentaire_jury": "",
+      "created_at": "2025-01-10T10:00:00Z",
+      "updated_at": "2025-03-01T10:00:00Z"
+    }
+  },
+  {
+    "model": "stagiaires.projetsoutenance",
+    "pk": 3,
+    "fields": {
+      "stagiaire": 5,
+      "theme": "Création d'une identité visuelle complète pour une startup tech africaine",
+      "description": "Logo, charte graphique, templates marketing et guidelines de la marque.",
+      "statut": "PROPOSE",
+      "livrable": null,
+      "date_soutenance": null,
+      "note": null,
+      "commentaire_jury": "",
+      "created_at": "2025-02-05T10:00:00Z",
+      "updated_at": "2025-02-05T10:00:00Z"
+    }
+  }
+]

@@ -1,0 +1,471 @@
+/* ============================================================
+   GSRIA — Variables CSS thèmes light / dark
+   Bootstrap 4 + AdminLTE 3.2 gèrent le reste du reset
+   ============================================================ */
+
+/* ── Transition globale fluide ── */
+body {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ── Thème clair (défaut) ── */
+body,
+body.light-mode {
+  --bg-primary:       #F5F7FA;
+  --bg-secondary:     #FFFFFF;
+  --bg-card:          #FFFFFF;
+  --bg-hover:         #F0F4F8;
+  --bg-table-header:  #E8EEF4;
+  --bg-table-row:     #FFFFFF;
+  --bg-table-stripe:  #F5F7FA;
+  --text-primary:     #1A1A2E;
+  --text-secondary:   #444444;
+  --text-muted:       #777777;
+  --text-inverse:     #FFFFFF;
+  --border-color:     #DDDDDD;
+  --border-strong:    #BBBBBB;
+  --accent-blue:      #2E74B5;
+  --accent-light:     #3D8FD4;
+  --sidebar-bg:       #1F3864;
+  --sidebar-text:     rgba(255, 255, 255, 0.80);
+  --sidebar-active:   #2E74B5;
+  --sidebar-hover:    rgba(255, 255, 255, 0.10);
+  --sidebar-border:   rgba(255, 255, 255, 0.10);
+  --brand-bg:         #1F3864;
+  --brand-text:       #FFFFFF;
+  --card-shadow:      rgba(0, 0, 0, 0.08);
+  --page-title:       #1F3864;
+  --navbar-bg:        #FFFFFF;
+  --chart-text:       #555555;
+  --chart-grid:       #DDDDDD;
+}
+
+/* ── Thème sombre ── */
+body.dark-mode {
+  --bg-primary:       #0D1B2A;
+  --bg-secondary:     #1A2A3A;
+  --bg-card:          #1E3448;
+  --bg-hover:         #243D52;
+  --bg-table-header:  #162840;
+  --bg-table-row:     #1A2F42;
+  --bg-table-stripe:  #1E3448;
+  --text-primary:     #F0F6FC;
+  --text-secondary:   #C9D8E8;
+  --text-muted:       #8BA8C0;
+  --text-inverse:     #0D1B2A;
+  --border-color:     #2A4A64;
+  --border-strong:    #3D6080;
+  --accent-blue:      #2E74B5;
+  --accent-light:     #3D8FD4;
+  --sidebar-bg:       #0D1B2A;
+  --sidebar-text:     #A8C4D8;
+  --sidebar-active:   #1F3864;
+  --sidebar-hover:    rgba(255, 255, 255, 0.08);
+  --sidebar-border:   #2A4A64;
+  --brand-bg:         #0D1B2A;
+  --brand-text:       #E8F1F8;
+  --card-shadow:      rgba(0, 0, 0, 0.4);
+  --page-title:       #F0F6FC;
+  --navbar-bg:        #1A2A3A;
+  --chart-text:       #C9D8E8;
+  --chart-grid:       #2A4A64;
+}
+
+/* ══════════════════════════════════════════════════════════
+   RÈGLES GLOBALES DARK MODE
+   CSS !important écrase les styles inline JSX sans !important
+   ══════════════════════════════════════════════════════════ */
+
+/* ── Tous les titres ── */
+body.dark-mode h1,
+body.dark-mode h2,
+body.dark-mode h3,
+body.dark-mode h4,
+body.dark-mode h5,
+body.dark-mode h6,
+body.dark-mode .card-title,
+body.dark-mode .section-title,
+body.dark-mode .page-title,
+body.dark-mode .content-header h1,
+body.dark-mode .content-header h2 {
+  color: var(--text-primary) !important;
+}
+
+/* ── Textes courants ── */
+body.dark-mode p,
+body.dark-mode li {
+  color: var(--text-secondary) !important;
+}
+
+/* ── Labels de formulaires ── */
+body.dark-mode label,
+body.dark-mode .form-label,
+body.dark-mode .col-form-label {
+  color: var(--text-secondary) !important;
+}
+
+/* ── Spans généraux (hors badges et icônes) ── */
+body.dark-mode .font-weight-bold {
+  color: var(--text-primary) !important;
+}
+
+/* ── En-têtes de tableaux — contraste fort ── */
+body.dark-mode th,
+body.dark-mode thead th,
+body.dark-mode thead td {
+  color: var(--text-primary) !important;
+  background-color: var(--bg-table-header) !important;
+  border-color: var(--border-strong) !important;
+}
+
+/* ── Cellules de tableaux ── */
+body.dark-mode td {
+  color: var(--text-secondary) !important;
+  background-color: var(--bg-table-row) !important;
+  border-color: var(--border-color) !important;
+}
+
+body.dark-mode tr:nth-child(even) td {
+  background-color: var(--bg-table-stripe) !important;
+}
+
+/* ── Inputs, selects, textareas ── */
+body.dark-mode input:not([type="checkbox"]):not([type="radio"]),
+body.dark-mode select,
+body.dark-mode textarea {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+body.dark-mode input::placeholder,
+body.dark-mode textarea::placeholder {
+  color: var(--text-muted) !important;
+  opacity: 1 !important;
+}
+
+/* ── Cards AdminLTE ── */
+body.dark-mode .card,
+body.dark-mode .card-body {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-secondary) !important;
+}
+
+body.dark-mode .card-header {
+  background-color: var(--bg-secondary) !important;
+  border-bottom: 1px solid var(--border-strong) !important;
+  color: var(--text-primary) !important;
+}
+
+body.dark-mode .card-footer {
+  background-color: var(--bg-secondary) !important;
+  border-top: 1px solid var(--border-color) !important;
+}
+
+/* ── Small Boxes — texte intérieur toujours blanc ── */
+body.dark-mode .small-box .inner h3,
+body.dark-mode .small-box .inner p {
+  color: #FFFFFF !important;
+}
+
+body.dark-mode .small-box .small-box-footer {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* ── Recharts — axes et labels via CSS SVG ── */
+body.dark-mode .recharts-text,
+body.dark-mode .recharts-cartesian-axis-tick-value,
+body.dark-mode .recharts-legend-item-text,
+body.dark-mode .recharts-label {
+  fill: var(--text-secondary) !important;
+}
+
+body.dark-mode .recharts-cartesian-grid-horizontal line,
+body.dark-mode .recharts-cartesian-grid-vertical line {
+  stroke: var(--border-color) !important;
+}
+
+/* ── Nav tabs ── */
+body.dark-mode .nav-tabs {
+  border-bottom-color: var(--border-strong) !important;
+}
+
+body.dark-mode .nav-tabs .nav-link {
+  color: var(--text-secondary) !important;
+}
+
+body.dark-mode .nav-tabs .nav-link.active {
+  color: var(--text-primary) !important;
+  background-color: var(--bg-card) !important;
+  border-color: var(--border-strong) var(--border-strong) var(--bg-card) !important;
+}
+
+body.dark-mode .nav-tabs .nav-link:hover {
+  color: var(--accent-light) !important;
+  background-color: rgba(61, 143, 212, 0.12) !important;
+  border-color: transparent !important;
+}
+
+/* ── Textes Bootstrap muted ── */
+body.dark-mode .text-muted,
+body.dark-mode .text-sm.text-muted {
+  color: var(--text-muted) !important;
+}
+
+body.dark-mode small {
+  color: var(--text-muted) !important;
+}
+
+/* ── Alertes Bootstrap ── */
+body.dark-mode .alert-info {
+  background-color: rgba(46, 116, 181, 0.15) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-secondary) !important;
+}
+
+body.dark-mode .alert-warning {
+  background-color: rgba(253, 126, 20, 0.12) !important;
+  border-color: rgba(253, 126, 20, 0.3) !important;
+  color: #ffc47a !important;
+}
+
+body.dark-mode .alert-success {
+  background-color: rgba(40, 167, 69, 0.12) !important;
+  border-color: rgba(40, 167, 69, 0.3) !important;
+  color: #82e09a !important;
+}
+
+body.dark-mode .alert-danger {
+  background-color: rgba(220, 53, 69, 0.12) !important;
+  border-color: rgba(220, 53, 69, 0.3) !important;
+  color: #f5a0a8 !important;
+}
+
+body.dark-mode .alert-secondary {
+  background-color: rgba(108, 117, 125, 0.15) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-secondary) !important;
+}
+
+/* ── Progress bars ── */
+body.dark-mode .progress {
+  background-color: var(--bg-hover) !important;
+}
+
+/* ── Breadcrumb ── */
+body.dark-mode .breadcrumb {
+  background-color: transparent !important;
+}
+
+body.dark-mode .breadcrumb-item,
+body.dark-mode .breadcrumb-item.active {
+  color: var(--text-muted) !important;
+}
+
+body.dark-mode .breadcrumb-item a {
+  color: var(--accent-blue) !important;
+}
+
+body.dark-mode .breadcrumb-item + .breadcrumb-item::before {
+  color: var(--text-muted) !important;
+}
+
+/* ── Modals ── */
+body.dark-mode .modal-content {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+body.dark-mode .modal-header {
+  border-bottom-color: var(--border-strong) !important;
+}
+
+body.dark-mode .modal-footer {
+  border-top-color: var(--border-strong) !important;
+}
+
+body.dark-mode .modal-backdrop.show {
+  background-color: rgba(0, 0, 0, 0.7) !important;
+}
+
+/* ── Boutons ── */
+body.dark-mode .btn-outline-secondary {
+  color: var(--text-secondary) !important;
+  border-color: var(--border-color) !important;
+}
+
+body.dark-mode .btn-outline-secondary:hover {
+  background-color: var(--bg-hover) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--text-secondary) !important;
+}
+
+/* ── Divers ── */
+body.dark-mode .text-dark   { color: var(--text-primary) !important; }
+body.dark-mode strong       { color: inherit; }
+body.dark-mode .table-responsive { border-color: var(--border-color) !important; }
+body.dark-mode .content-wrapper {
+  background-color: var(--bg-primary) !important;
+}
+
+/* ════════════════════════════════════════════════════════════
+   SIDEBAR — couleurs forcées pour les deux thèmes
+   Utilise --sidebar-bg, jamais --acerfi-dark (protège contre
+   l'overwrite dynamique de EntrepriseThemeLoader).
+   ════════════════════════════════════════════════════════════ */
+
+/* Sidebar scrollable — nécessaire avec 20+ liens */
+.main-sidebar {
+  overflow-y: auto !important;
+  height: 100vh !important;
+}
+
+.main-sidebar .sidebar {
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: calc(100vh - 57px);
+  padding-bottom: 20px;
+  scroll-behavior: smooth;
+}
+
+/* Scrollbar fine et discrète */
+.main-sidebar ::-webkit-scrollbar       { width: 4px; }
+.main-sidebar ::-webkit-scrollbar-track { background: transparent; }
+.main-sidebar ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 2px;
+}
+.main-sidebar ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.45);
+}
+
+/* Ancrage scroll pour l'item actif */
+.nav-sidebar .nav-link.active { scroll-margin-top: 10px; }
+
+.main-sidebar,
+.main-sidebar .sidebar,
+.main-sidebar::before {
+  background-color: var(--sidebar-bg) !important;
+  transition: background-color 0.3s ease, width 0.3s ease !important;
+}
+
+.main-sidebar .brand-link {
+  background-color: var(--brand-bg) !important;
+  border-bottom: 1px solid var(--sidebar-border) !important;
+}
+
+.main-sidebar .brand-link .brand-text {
+  color: var(--brand-text) !important;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+/* Liens de navigation */
+.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link {
+  color: var(--sidebar-text) !important;
+}
+
+.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link:hover {
+  background-color: var(--sidebar-hover) !important;
+  color: #FFFFFF !important;
+}
+
+/* Item actif */
+.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link.active,
+.sidebar-dark-primary .nav-sidebar > .nav-item.menu-open > .nav-link {
+  background-color: var(--sidebar-active) !important;
+  color: #FFFFFF !important;
+}
+
+/* Titres de sections (nav-header) */
+.nav-header,
+.sidebar .nav-header {
+  color: var(--sidebar-text) !important;
+  opacity: 0.6;
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* Icônes */
+.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link > .nav-icon {
+  color: var(--sidebar-text) !important;
+}
+
+.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link.active > .nav-icon,
+.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link:hover > .nav-icon {
+  color: #FFFFFF !important;
+}
+
+/* Texte des <p> dans les liens nav */
+.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link > p {
+  color: var(--sidebar-text) !important;
+}
+
+.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link.active > p,
+.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link:hover > p {
+  color: #FFFFFF !important;
+}
+
+/* Bloc utilisateur (user-panel) */
+.user-panel { border-bottom: 1px solid var(--sidebar-border) !important; }
+
+.user-panel .info a,
+.user-panel .info span,
+.user-panel .info {
+  color: var(--sidebar-text) !important;
+}
+
+.user-panel .info small {
+  color: var(--sidebar-text) !important;
+  opacity: 0.7;
+}
+
+/* ════════════════════════════════════════════════════════════
+   AUTOFILL CHROME / EDGE — override du fond et de la couleur
+   Chrome ignore background-color:!important sur :-webkit-autofill.
+   Seule solution : simuler le fond via box-shadow inset.
+   -webkit-text-fill-color est prioritaire sur color pour l'autofill.
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Light mode autofill ── */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 40px #FFFFFF inset !important;
+  box-shadow:         0 0 0 40px #FFFFFF inset !important;
+  -webkit-text-fill-color: #1A1A2E !important;
+  caret-color: #1A1A2E !important;
+}
+
+/* ── Dark mode autofill ── */
+body.dark-mode input:-webkit-autofill,
+body.dark-mode input:-webkit-autofill:hover,
+body.dark-mode input:-webkit-autofill:focus,
+body.dark-mode input:-webkit-autofill:active,
+body.dark-mode textarea:-webkit-autofill,
+body.dark-mode select:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 40px #243D52 inset !important;
+  box-shadow:         0 0 0 40px #243D52 inset !important;
+  -webkit-text-fill-color: #F0F6FC !important;
+  caret-color: #F0F6FC !important;
+}
+
+/* ── Texte saisi (hors autofill) : garantir le contraste ── */
+body.dark-mode input:not([type="checkbox"]):not([type="radio"]):not(:-webkit-autofill),
+body.dark-mode textarea:not(:-webkit-autofill) {
+  -webkit-text-fill-color: #F0F6FC !important;
+  caret-color: #F0F6FC !important;
+}
+
+/* Light mode — même chose pour cohérence */
+body.light-mode input:not([type="checkbox"]):not([type="radio"]):not(:-webkit-autofill),
+body.light-mode textarea:not(:-webkit-autofill) {
+  -webkit-text-fill-color: #1A1A2E !important;
+  caret-color: #1A1A2E !important;
+}

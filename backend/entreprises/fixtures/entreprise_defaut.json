@@ -1,0 +1,35 @@
+[
+  {
+    "model": "entreprises.entreprise",
+    "pk": 1,
+    "fields": {
+      "nom": "ACERFI SARL",
+      "slug": "acerfi-sarl",
+      "sigle": "ACERFI",
+      "logo": null,
+      "couleur_primaire": "#1F3864",
+      "couleur_secondaire": "#2E74B5",
+      "secteur": "SRV",
+      "taille": "PME",
+      "numero_contribuable": "",
+      "registre_commerce": "",
+      "date_creation": null,
+      "adresse": "Yaoundé, Cameroun",
+      "ville": "Yaoundé",
+      "pays": "Cameroun",
+      "telephone": "",
+      "email": "",
+      "site_web": "",
+      "statut": "ACTIVE",
+      "date_debut_abonnement": null,
+      "date_fin_abonnement": null,
+      "nb_employes_max": 500,
+      "devise": "FCFA",
+      "fuseau_horaire": "Africa/Douala",
+      "heure_debut_travail": "08:00:00",
+      "heure_fin_travail": "17:00:00",
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  }
+]

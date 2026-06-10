@@ -1,0 +1,10 @@
+[
+  {"model": "formations.categorieformation", "pk": 1, "fields": {"nom": "Informatique & Développement", "code": "INFO", "description": "", "icone": "fas fa-laptop-code", "couleur": "#2A9D8F"}},
+  {"model": "formations.categorieformation", "pk": 2, "fields": {"nom": "Management & Leadership", "code": "MGMT", "description": "", "icone": "fas fa-users-cog", "couleur": "#1F3864"}},
+  {"model": "formations.categorieformation", "pk": 3, "fields": {"nom": "Marketing & Communication", "code": "MKTG", "description": "", "icone": "fas fa-bullhorn", "couleur": "#E63946"}},
+  {"model": "formations.categorieformation", "pk": 4, "fields": {"nom": "Finance & Comptabilité", "code": "FIN", "description": "", "icone": "fas fa-chart-line", "couleur": "#E76F51"}},
+  {"model": "formations.categorieformation", "pk": 5, "fields": {"nom": "Bureautique & Productivité", "code": "BURO", "description": "", "icone": "fas fa-desktop", "couleur": "#0077B6"}},
+  {"model": "formations.categorieformation", "pk": 6, "fields": {"nom": "Sécurité & Conformité", "code": "SEC", "description": "", "icone": "fas fa-shield-alt", "couleur": "#DC3545"}},
+  {"model": "formations.categorieformation", "pk": 7, "fields": {"nom": "Langues", "code": "LANG", "description": "", "icone": "fas fa-language", "couleur": "#F4A261"}},
+  {"model": "formations.categorieformation", "pk": 8, "fields": {"nom": "Développement personnel", "code": "DEV_PERS", "description": "", "icone": "fas fa-brain", "couleur": "#7B2D8B"}}
+]

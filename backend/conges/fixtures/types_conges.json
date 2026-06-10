@@ -1,0 +1,8 @@
+[
+  {"model":"conges.typeconge","pk":1,"fields":{"nom":"Congé annuel","code":"CA","jours_par_an":30,"est_paye":true,"necessite_justificatif":false,"couleur":"#28A745","description":"Congé annuel payé réglementaire","actif":true}},
+  {"model":"conges.typeconge","pk":2,"fields":{"nom":"Congé maladie","code":"CM","jours_par_an":15,"est_paye":true,"necessite_justificatif":true,"couleur":"#DC3545","description":"Congé maladie sur présentation certificat médical","actif":true}},
+  {"model":"conges.typeconge","pk":3,"fields":{"nom":"Congé maternité","code":"MATERN","jours_par_an":98,"est_paye":true,"necessite_justificatif":true,"couleur":"#E91E8C","description":"Congé maternité légal","actif":true}},
+  {"model":"conges.typeconge","pk":4,"fields":{"nom":"Congé sans solde","code":"CSS","jours_par_an":30,"est_paye":false,"necessite_justificatif":false,"couleur":"#6C757D","description":"Congé non rémunéré sur demande","actif":true}},
+  {"model":"conges.typeconge","pk":5,"fields":{"nom":"Congé événement familial","code":"CEF","jours_par_an":10,"est_paye":true,"necessite_justificatif":true,"couleur":"#FF9800","description":"Mariage, naissance, décès d'un proche","actif":true}},
+  {"model":"conges.typeconge","pk":6,"fields":{"nom":"Congé formation","code":"CF","jours_par_an":10,"est_paye":true,"necessite_justificatif":true,"couleur":"#7B2D8B","description":"Congé pour formation professionnelle","actif":true}}
+]
