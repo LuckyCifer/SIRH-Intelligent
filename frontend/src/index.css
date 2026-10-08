@@ -14,6 +14,7 @@ body.light-mode {
   --bg-primary:       #F5F7FA;
   --bg-secondary:     #FFFFFF;
   --bg-card:          #FFFFFF;
+  --card-bg:          #FFFFFF;
   --bg-hover:         #F0F4F8;
   --bg-table-header:  #E8EEF4;
   --bg-table-row:     #FFFFFF;
@@ -45,6 +46,7 @@ body.dark-mode {
   --bg-primary:       #0D1B2A;
   --bg-secondary:     #1A2A3A;
   --bg-card:          #1E3448;
+  --card-bg:          #1E3448;
   --bg-hover:         #243D52;
   --bg-table-header:  #162840;
   --bg-table-row:     #1A2F42;
@@ -468,4 +470,18 @@ body.light-mode input:not([type="checkbox"]):not([type="radio"]):not(:-webkit-au
 body.light-mode textarea:not(:-webkit-autofill) {
   -webkit-text-fill-color: #1A1A2E !important;
   caret-color: #1A1A2E !important;
+}
+
+/* ════════════════════════════════════════════════════════════
+   ESPACEMENT ENTRE BOUTONS CONSÉCUTIFS
+   Bootstrap 4 ne gère pas l'espace entre .btn adjacents.
+   .btn-group et .input-group sont exclus (serrés intentionnellement).
+   ════════════════════════════════════════════════════════════ */
+.btn + .btn {
+  margin-left: 0.4rem;
+}
+.btn-group .btn + .btn,
+.btn-group-vertical .btn + .btn,
+.input-group .btn + .btn {
+  margin-left: 0;
 }

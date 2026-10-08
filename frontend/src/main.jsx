@@ -13,6 +13,8 @@ import './assets/acerfi-theme.css'
 // Bootstrap 4 JS (bundle inclut Popper.js)
 import 'bootstrap/dist/js/bootstrap.bundle.min.js'
 
+import './i18n/index.js'
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { ThemeProvider } from './context/ThemeContext'

@@ -1,5 +1,5 @@
 import { useEffect } from "react"
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom"
 import { Toaster } from "react-hot-toast"
 import useAuthStore from "./store/authStore"
 
@@ -14,6 +14,7 @@ import FormulaireRapport   from "./pages/stagiaire/FormulaireRapport"
 import DetailRapport       from "./pages/stagiaire/DetailRapport"
 import MonProjet           from "./pages/stagiaire/MonProjet"
 import MonProfil           from "./pages/stagiaire/MonProfil"
+import MonProfilPage       from "./pages/employe/MonProfilPage"
 import MonContrat          from "./pages/employe/MonContrat"
 
 // ── Manager (anciennement Encadreur) ──
@@ -88,6 +89,8 @@ import GestionPaie            from "./pages/paie/rh/GestionPaie"
 import GenerationMasse        from "./pages/paie/rh/GenerationMasse"
 import DetailBulletin         from "./pages/paie/rh/DetailBulletin"
 import MasseSalariale         from "./pages/paie/rh/MasseSalariale"
+import ImportPaiePage         from "./pages/rh/ImportPaiePage"
+import VirementsMobile        from "./pages/paie/rh/VirementsMobile"
 
 // ── Rapport IA ──
 import RapportIATableauBord   from "./pages/rapport_ia/TableauBordIA"
@@ -98,9 +101,21 @@ import RapportIADetailPage    from "./pages/rapport_ia/DetailRapport"
 import ParametresEntreprise   from "./pages/entreprise/rh/ParametresEntreprise"
 import CentreNotifications    from "./pages/notifications/shared/CentreNotifications"
 
+// ── Gestion Comptes ──
+import GestionComptesPage     from "./pages/rh/GestionComptesPage"
+
 // ── Partagé ──
 import CatalogueFilieres   from "./pages/shared/CatalogueFilieres"
 import Annuaire            from "./pages/shared/Annuaire"
+
+function LegacyRedirect({ to }) {
+  const params = useParams()
+  let target = to
+  for (const [k, v] of Object.entries(params)) {
+    target = target.replace(`:${k}`, v)
+  }
+  return <Navigate to={target} replace />
+}
 
 function RequireAuth({ children, roles }) {
   const { isAuthenticated, user } = useAuthStore()
@@ -162,7 +177,7 @@ export default function App() {
           <RequireAuth roles={EMP}><MonProjet /></RequireAuth>
         } />
         <Route path="/employe/profil" element={
-          <RequireAuth roles={EMP}><MonProfil /></RequireAuth>
+          <RequireAuth roles={EMP}><MonProfilPage /></RequireAuth>
         } />
         <Route path="/employe/contrat" element={
           <RequireAuth roles={EMP}><MonContrat /></RequireAuth>
@@ -205,7 +220,8 @@ export default function App() {
         <Route path="/stagiaire/dashboard"        element={<Navigate to="/employe/dashboard" replace />} />
         <Route path="/stagiaire/rapports"         element={<Navigate to="/employe/rapports"  replace />} />
         <Route path="/stagiaire/rapports/nouveau" element={<Navigate to="/employe/rapports/nouveau" replace />} />
-        <Route path="/stagiaire/rapports/:id"     element={<Navigate to="/employe/rapports/:id" replace />} />
+        <Route path="/stagiaire/rapports/:id"      element={<LegacyRedirect to="/employe/rapports/:id" />} />
+        <Route path="/stagiaire/rapports/:id/edit" element={<LegacyRedirect to="/employe/rapports/:id/edit" />} />
         <Route path="/stagiaire/projet"           element={<Navigate to="/employe/objectifs" replace />} />
         <Route path="/stagiaire/profil"           element={<Navigate to="/employe/profil"    replace />} />
 
@@ -248,10 +264,12 @@ export default function App() {
         } />
 
         {/* Redirects legacy /encadreur/* → /manager/* */}
-        <Route path="/encadreur/dashboard"              element={<Navigate to="/manager/dashboard"          replace />} />
-        <Route path="/encadreur/stagiaires"             element={<Navigate to="/manager/employes"           replace />} />
-        <Route path="/encadreur/rapports-a-valider"     element={<Navigate to="/manager/rapports-a-valider" replace />} />
-        <Route path="/encadreur/profil"                 element={<Navigate to="/manager/profil"             replace />} />
+        <Route path="/encadreur/dashboard"                    element={<Navigate to="/manager/dashboard"          replace />} />
+        <Route path="/encadreur/stagiaires"                   element={<Navigate to="/manager/employes"           replace />} />
+        <Route path="/encadreur/stagiaires/:id"               element={<LegacyRedirect to="/manager/employes/:id" />} />
+        <Route path="/encadreur/rapports-a-valider"           element={<Navigate to="/manager/rapports-a-valider" replace />} />
+        <Route path="/encadreur/rapports/:id/valider"         element={<RequireAuth roles={MGR}><ValidationRapport /></RequireAuth>} />
+        <Route path="/encadreur/profil"                       element={<Navigate to="/manager/profil"             replace />} />
 
         {/* ══ RH ══ */}
         <Route path="/rh/dashboard" element={
@@ -341,6 +359,12 @@ export default function App() {
         <Route path="/rh/paie/masse-salariale" element={
           <RequireAuth roles={RH}><MasseSalariale /></RequireAuth>
         } />
+        <Route path="/rh/paie/import" element={
+          <RequireAuth roles={RH}><ImportPaiePage /></RequireAuth>
+        } />
+        <Route path="/rh/paie/virements" element={
+          <RequireAuth roles={RH}><VirementsMobile /></RequireAuth>
+        } />
 
         {/* ── Rapport IA ── */}
         <Route path="/rh/rapport-ia" element={
@@ -351,6 +375,11 @@ export default function App() {
         } />
         <Route path="/rh/rapport-ia/:id" element={
           <RequireAuth roles={RH}><RapportIADetailPage /></RequireAuth>
+        } />
+
+        {/* ── Gestion Comptes ── */}
+        <Route path="/rh/gestion-comptes" element={
+          <RequireAuth roles={RH}><GestionComptesPage /></RequireAuth>
         } />
 
         {/* ── Paramètres entreprise ── */}

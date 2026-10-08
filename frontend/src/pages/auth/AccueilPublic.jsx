@@ -1,24 +1,40 @@
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useTheme } from '../../context/ThemeContext'
 
-const FEATURES = [
-  { icon: 'fas fa-users',            label: 'Gestion des employés' },
-  { icon: 'fas fa-umbrella-beach',   label: 'Congés & Absences' },
-  { icon: 'fas fa-fingerprint',      label: 'Présences & Pointages' },
-  { icon: 'fas fa-coins',            label: 'Paie automatisée (CNPS + IRPP)' },
-  { icon: 'fas fa-bullseye',         label: 'Objectifs & Évaluations' },
-  { icon: 'fas fa-robot',            label: 'Analyses IA mensuelles (Groq)' },
-  { icon: 'fas fa-user-plus',        label: 'Recrutements & Candidatures' },
-  { icon: 'fas fa-graduation-cap',   label: 'Formations & Compétences' },
-  { icon: 'fas fa-gavel',            label: 'Sanctions disciplinaires' },
-  { icon: 'fas fa-building',         label: 'Multi-entreprises' },
-  { icon: 'fas fa-bell',             label: 'Notifications internes' },
-  { icon: 'fas fa-file-alt',         label: 'Documents RH' },
-]
-
 export default function AccueilPublic() {
+  const { t, i18n } = useTranslation()
   const { theme, toggleTheme } = useTheme()
+  const lang = i18n.language?.startsWith('en') ? 'en' : 'fr'
   const isDark = theme === 'dark'
+
+  const FEATURES = [
+    { icon: 'fas fa-users',            label: t('accueil.feature_employees') },
+    { icon: 'fas fa-umbrella-beach',   label: t('accueil.feature_leaves') },
+    { icon: 'fas fa-fingerprint',      label: t('accueil.feature_presences') },
+    { icon: 'fas fa-coins',            label: t('accueil.feature_payroll') },
+    { icon: 'fas fa-bullseye',         label: t('accueil.feature_objectives') },
+    { icon: 'fas fa-robot',            label: t('accueil.feature_ia') },
+    { icon: 'fas fa-user-plus',        label: t('accueil.feature_recruitment') },
+    { icon: 'fas fa-graduation-cap',   label: t('accueil.feature_training') },
+    { icon: 'fas fa-gavel',            label: t('accueil.feature_sanctions') },
+    { icon: 'fas fa-building',         label: t('accueil.feature_multi_company') },
+    { icon: 'fas fa-bell',             label: t('accueil.feature_notifications') },
+    { icon: 'fas fa-file-alt',         label: t('accueil.feature_documents') },
+  ]
+
+  const STATS = [
+    ['18', t('accueil.modules_count')],
+    ['6',  t('accueil.roles_count')],
+    ['IA', t('accueil.ai_integrated')],
+  ]
+
+  const DEMO_ITEMS = [
+    ['fas fa-users',         t('accueil.demo_employees'), '#4ADE80'],
+    ['fas fa-umbrella-beach',t('accueil.demo_leaves'),    '#FBBF24'],
+    ['fas fa-robot',         t('accueil.demo_score'),     '#60A5FA'],
+    ['fas fa-bell',          t('accueil.demo_notifs'),    '#F472B6'],
+  ]
 
   return (
     <div style={{
@@ -30,8 +46,28 @@ export default function AccueilPublic() {
       fontFamily: "'Segoe UI', system-ui, sans-serif",
       position: 'relative',
     }}>
-      {/* Toggle thème */}
-      <button onClick={toggleTheme} title={isDark ? 'Mode clair' : 'Mode sombre'}
+      {/* Sélecteur de langue */}
+      <div style={{ position: 'fixed', top: 18, right: 68, zIndex: 100, display: 'flex', gap: 0 }}>
+        {['fr', 'en'].map((l, idx) => (
+          <button
+            key={l}
+            onClick={() => i18n.changeLanguage(l)}
+            title={l === 'fr' ? 'Français' : 'English'}
+            style={{
+              padding: '4px 10px', fontSize: 11, fontWeight: lang === l ? 700 : 400,
+              border: '1.5px solid rgba(255,255,255,0.35)',
+              borderRadius: idx === 0 ? '6px 0 0 6px' : '0 6px 6px 0',
+              marginLeft: idx === 1 ? -1 : 0,
+              background: lang === l ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.1)',
+              color: '#fff', cursor: 'pointer', letterSpacing: 0.5,
+            }}
+          >
+            {l.toUpperCase()}
+          </button>
+        ))}
+      </div>
+
+      <button onClick={toggleTheme} title={isDark ? t('accueil.light_mode') : t('accueil.dark_mode')}
         style={{
           position: 'fixed', top: 18, right: 18, zIndex: 100,
           background: 'rgba(255,255,255,0.15)',
@@ -40,17 +76,16 @@ export default function AccueilPublic() {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           cursor: 'pointer', fontSize: 17, color: '#fff',
         }}>
-        {isDark ? '☀️' : '🌙'}
+        <i className={isDark ? 'fas fa-sun' : 'fas fa-moon'} />
       </button>
 
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px' }}>
 
-        {/* ── Hero ── */}
+        {/* Hero */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           flexWrap: 'wrap', gap: 40, padding: '64px 0 48px',
         }}>
-          {/* Gauche */}
           <div style={{ flex: '1 1 420px' }}>
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 10,
@@ -58,19 +93,18 @@ export default function AccueilPublic() {
               padding: '6px 16px', marginBottom: 24, fontSize: 13,
             }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#4ADE80', display: 'inline-block' }} />
-              Propulsé par l'Intelligence Artificielle
+              {t('accueil.ai_powered')}
             </div>
 
             <h1 style={{ fontSize: 'clamp(2.2rem, 5vw, 3.4rem)', fontWeight: 800, lineHeight: 1.1, margin: '0 0 16px' }}>
               SIRH
               <span style={{ display: 'block', fontSize: '0.55em', fontWeight: 400, opacity: 0.85, marginTop: 4 }}>
-                Système d'Information des Ressources Humaines Intelligent
+                {t('accueil.sirh_subtitle')}
               </span>
             </h1>
 
             <p style={{ fontSize: 18, lineHeight: 1.7, opacity: 0.88, maxWidth: 480, marginBottom: 36 }}>
-              Gérez vos ressources humaines avec l'intelligence artificielle.
-              Automatisation de la paie, analyses prédictives et gestion complète du cycle RH.
+              {t('accueil.hero_description')}
             </p>
 
             <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
@@ -83,7 +117,7 @@ export default function AccueilPublic() {
                 transition: 'transform 0.15s',
               }}>
                 <i className="fas fa-sign-in-alt" />
-                Se connecter
+                {t('accueil.login_btn')}
               </Link>
               <a href="#fonctionnalites" style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
@@ -94,12 +128,12 @@ export default function AccueilPublic() {
                 textDecoration: 'none',
               }}>
                 <i className="fas fa-th-list" />
-                Fonctionnalités
+                {t('accueil.features_btn')}
               </a>
             </div>
 
             <div style={{ display: 'flex', gap: 28, marginTop: 40, flexWrap: 'wrap' }}>
-              {[['18', 'Modules RH'], ['6', 'Rôles & accès'], ['IA', 'Groq intégrée']].map(([val, lbl]) => (
+              {STATS.map(([val, lbl]) => (
                 <div key={lbl}>
                   <div style={{ fontSize: 28, fontWeight: 800 }}>{val}</div>
                   <div style={{ fontSize: 12, opacity: 0.7 }}>{lbl}</div>
@@ -108,7 +142,7 @@ export default function AccueilPublic() {
             </div>
           </div>
 
-          {/* Droite — carte aperçu */}
+          {/* Carte aperçu */}
           <div style={{ flex: '0 0 auto' }}>
             <div style={{
               background: isDark ? 'rgba(30,52,72,0.85)' : 'rgba(255,255,255,0.15)',
@@ -127,12 +161,9 @@ export default function AccueilPublic() {
                   <i className="fas fa-building" />
                 </div>
                 <strong style={{ fontSize: 16 }}>ACERFI SARL</strong>
-                <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>Yaoundé, Cameroun</div>
+                <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>{t('accueil.company_location')}</div>
               </div>
-              {[['fas fa-users', '6 employés actifs', '#4ADE80'],
-                ['fas fa-umbrella-beach', '2 congés en attente', '#FBBF24'],
-                ['fas fa-robot', 'Score RH: 82/100', '#60A5FA'],
-                ['fas fa-bell', '3 notifications', '#F472B6']].map(([ic, txt, col]) => (
+              {DEMO_ITEMS.map(([ic, txt, col]) => (
                 <div key={txt} style={{
                   display: 'flex', alignItems: 'center', gap: 10,
                   padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.1)',
@@ -146,13 +177,13 @@ export default function AccueilPublic() {
           </div>
         </div>
 
-        {/* ── Fonctionnalités ── */}
+        {/* Fonctionnalités */}
         <div id="fonctionnalites" style={{ paddingBottom: 64 }}>
           <h2 style={{ textAlign: 'center', fontSize: 28, fontWeight: 700, marginBottom: 8 }}>
-            Tout ce dont votre équipe RH a besoin
+            {t('accueil.everything_hr')}
           </h2>
           <p style={{ textAlign: 'center', opacity: 0.75, marginBottom: 36 }}>
-            Une plateforme complète, du recrutement à la paie
+            {t('accueil.platform_complete')}
           </p>
           <div style={{
             display: 'grid',
@@ -181,7 +212,7 @@ export default function AccueilPublic() {
           </div>
         </div>
 
-        {/* ── CTA final ── */}
+        {/* CTA final */}
         <div style={{
           textAlign: 'center', paddingBottom: 60,
           borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: 48,
@@ -194,11 +225,11 @@ export default function AccueilPublic() {
             boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
           }}>
             <i className="fas fa-sign-in-alt" />
-            Accéder à la plateforme
+            {t('accueil.access_platform')}
           </Link>
           <div style={{ marginTop: 32, opacity: 0.55, fontSize: 12 }}>
-            Développé par <strong>Yemeya Luc</strong> — ACERFI 2026<br />
-            Filière ISA — IA Solutions Architect
+            {t('accueil.developed_by')} <strong>Yemeya Luc</strong> — ACERFI 2026<br />
+            {t('accueil.filiere')}
           </div>
         </div>
 
