@@ -1,7 +1,7 @@
 import json
 import threading
-from groq import Groq
 from django.conf import settings
+from ia.client import appeler_ia, parser_json
 
 SYSTEM_PROMPT = """
 Tu es un expert RH analysant la correspondance entre un CV et une offre d'emploi.
@@ -43,24 +43,8 @@ Source : {candidature.source or 'Non précisée'}
 Analyse la correspondance entre ce profil et cette offre."""
 
     try:
-        client = Groq(api_key=settings.GROQ_API_KEY)
-        response = client.chat.completions.create(
-            model=settings.GROQ_MODEL,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": prompt},
-            ],
-            temperature=0.2,
-            max_tokens=800,
-        )
-
-        content = response.choices[0].message.content.strip()
-        if content.startswith("```"):
-            content = content.split("```")[1]
-            if content.startswith("json"):
-                content = content[4:]
-
-        data = json.loads(content)
+        raw  = appeler_ia(prompt, system=SYSTEM_PROMPT, temperature=0.2)
+        data = parser_json(raw)
         Candidature.objects.filter(pk=candidature_id).update(
             analyse_cv_ia=json.dumps(data, ensure_ascii=False),
             score_cv_ia=data.get("score_correspondance"),

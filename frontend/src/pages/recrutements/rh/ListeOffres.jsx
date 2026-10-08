@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import RHLayout from "../../../components/layout/RHLayout";
 import {
   getOffres, publierOffre, cloturerOffre, mettreEnPauseOffre, deleteOffre,
@@ -15,21 +16,31 @@ const STATUT_BADGE = {
 };
 
 export default function ListeOffres() {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const [offres, setOffres] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filtre, setFiltre] = useState(searchParams.get("statut") || "");
+
+  const FILTRES = [
+    { key: "",          label: t("recrutements.all") },
+    { key: "BROUILLON", label: t("recrutements.statut_brouillon") },
+    { key: "PUBLIEE",   label: t("recrutements.statut_publiee") },
+    { key: "EN_PAUSE",  label: t("recrutements.statut_en_pause") },
+    { key: "CLOTUREE",  label: t("recrutements.statut_cloturee") },
+    { key: "POURVUE",   label: t("recrutements.statut_pourvue") },
+  ];
 
   const charger = (statut = "") => {
     setLoading(true);
     const params = statut ? { statut } : {};
     getOffres(params)
       .then((r) => setOffres(r.data.results ?? r.data))
-      .catch(() => toast.error("Erreur chargement"))
+      .catch(() => toast.error(t("recrutements.error_load")))
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { charger(filtre); }, []);
+  useEffect(() => { charger(filtre); }, []); // eslint-disable-line
 
   const handleFiltre = (s) => { setFiltre(s); charger(s); };
 
@@ -37,9 +48,9 @@ export default function ListeOffres() {
     try {
       const r = await publierOffre(id);
       setOffres((prev) => prev.map((o) => (o.id === id ? r.data : o)));
-      toast.success("Offre publiée");
+      toast.success(t("recrutements.offer_published"));
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Erreur publication");
+      toast.error(err?.response?.data?.detail || t("recrutements.error_publish"));
     }
   };
 
@@ -47,50 +58,50 @@ export default function ListeOffres() {
     try {
       const r = await mettreEnPauseOffre(id);
       setOffres((prev) => prev.map((o) => (o.id === id ? r.data : o)));
-      toast.success("Offre mise en pause");
+      toast.success(t("recrutements.offer_paused"));
     } catch {
-      toast.error("Erreur");
+      toast.error(t("recrutements.error_load"));
     }
   };
 
   const handleCloturer = async (id) => {
-    if (!window.confirm("Clôturer cette offre ?")) return;
+    if (!window.confirm(t("recrutements.confirm_close"))) return;
     try {
       const r = await cloturerOffre(id);
       setOffres((prev) => prev.map((o) => (o.id === id ? r.data : o)));
-      toast.success("Offre clôturée");
+      toast.success(t("recrutements.offer_closed"));
     } catch {
-      toast.error("Erreur");
+      toast.error(t("recrutements.error_load"));
     }
   };
 
   const handleSupprimer = async (id) => {
-    if (!window.confirm("Supprimer définitivement cette offre ?")) return;
+    if (!window.confirm(t("recrutements.confirm_delete_offer"))) return;
     try {
       await deleteOffre(id);
       setOffres((prev) => prev.filter((o) => o.id !== id));
-      toast.success("Offre supprimée");
+      toast.success(t("recrutements.offer_deleted"));
     } catch {
-      toast.error("Erreur suppression");
+      toast.error(t("recrutements.error_delete"));
     }
   };
 
   return (
-    <RHLayout pageTitle="Offres d'emploi">
+    <RHLayout pageTitle={t("recrutements.page_title")}>
       <div className="d-flex justify-content-between align-items-center mb-3">
         <div className="btn-group btn-group-sm">
-          {["", "BROUILLON", "PUBLIEE", "EN_PAUSE", "CLOTUREE", "POURVUE"].map((s) => (
+          {FILTRES.map((f) => (
             <button
-              key={s}
-              className={`btn ${filtre === s ? "btn-primary" : "btn-outline-primary"}`}
-              onClick={() => handleFiltre(s)}
+              key={f.key}
+              className={`btn ${filtre === f.key ? "btn-primary" : "btn-outline-primary"}`}
+              onClick={() => handleFiltre(f.key)}
             >
-              {s || "Toutes"}
+              {f.label}
             </button>
           ))}
         </div>
         <Link to="/rh/recrutements/offres/nouveau" className="btn btn-primary btn-sm">
-          <i className="fas fa-plus mr-1" /> Nouvelle offre
+          <i className="fas fa-plus mr-1" />{t("recrutements.new_offer")}
         </Link>
       </div>
 
@@ -112,20 +123,20 @@ export default function ListeOffres() {
           ) : offres.length === 0 ? (
             <div className="text-center py-5" style={{ color: "var(--text-muted)" }}>
               <i className="fas fa-inbox fa-3x mb-3 d-block" />
-              Aucune offre trouvée
+              {t("recrutements.no_offers")}
             </div>
           ) : (
             <div className="table-responsive">
               <table className="table table-hover mb-0">
                 <thead>
                   <tr style={{ color: "var(--text-muted)", fontSize: "0.83rem" }}>
-                    <th>Titre</th>
-                    <th>Département</th>
-                    <th>Type</th>
-                    <th>Candidatures</th>
-                    <th>Statut</th>
-                    <th>Clôture</th>
-                    <th>Actions</th>
+                    <th>{t("recrutements.col_title")}</th>
+                    <th>{t("recrutements.col_department")}</th>
+                    <th>{t("recrutements.col_type")}</th>
+                    <th>{t("recrutements.col_applications")}</th>
+                    <th>{t("recrutements.col_status")}</th>
+                    <th>{t("recrutements.col_closing")}</th>
+                    <th>{t("recrutements.col_actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -165,21 +176,21 @@ export default function ListeOffres() {
                           <Link
                             to={`/rh/recrutements/offres/${o.id}`}
                             className="btn btn-outline-primary"
-                            title="Voir"
+                            title={t("common.view")}
                           >
                             <i className="fas fa-eye" />
                           </Link>
                           <Link
                             to={`/rh/recrutements/offres/${o.id}/modifier`}
                             className="btn btn-outline-secondary"
-                            title="Modifier"
+                            title={t("common.edit")}
                           >
                             <i className="fas fa-edit" />
                           </Link>
                           {(o.statut === "BROUILLON" || o.statut === "EN_PAUSE") && (
                             <button
                               className="btn btn-outline-success"
-                              title="Publier"
+                              title={t("recrutements.btn_publish")}
                               onClick={() => handlePublier(o.id)}
                             >
                               <i className="fas fa-bullhorn" />
@@ -188,7 +199,7 @@ export default function ListeOffres() {
                           {o.statut === "PUBLIEE" && (
                             <button
                               className="btn btn-outline-warning"
-                              title="Mettre en pause"
+                              title={t("recrutements.btn_pause")}
                               onClick={() => handlePause(o.id)}
                             >
                               <i className="fas fa-pause" />
@@ -197,7 +208,7 @@ export default function ListeOffres() {
                           {o.statut !== "CLOTUREE" && o.statut !== "POURVUE" && (
                             <button
                               className="btn btn-outline-danger"
-                              title="Clôturer"
+                              title={t("recrutements.btn_close")}
                               onClick={() => handleCloturer(o.id)}
                             >
                               <i className="fas fa-times-circle" />
@@ -205,7 +216,7 @@ export default function ListeOffres() {
                           )}
                           <button
                             className="btn btn-outline-danger"
-                            title="Supprimer"
+                            title={t("common.delete")}
                             onClick={() => handleSupprimer(o.id)}
                           >
                             <i className="fas fa-trash" />

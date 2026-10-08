@@ -26,3 +26,11 @@ export const getEntretien = (id) => api.get(`/recrutements/entretiens/${id}/`);
 export const createEntretien = (data) => api.post("/recrutements/entretiens/", data);
 export const updateEntretien = (id, data) => api.patch(`/recrutements/entretiens/${id}/`, data);
 export const deleteEntretien = (id) => api.delete(`/recrutements/entretiens/${id}/`);
+
+// Onboarding légal
+export const updateOnboarding = (id, data) =>
+  api.patch(`/recrutements/candidatures/${id}/update-onboarding/`, data);
+export const convertirEnEmploye = (id) =>
+  api.post(`/recrutements/candidatures/${id}/convertir-en-employe/`);
+export const getOnboardingsEnCours = () =>
+  api.get("/recrutements/candidatures/onboardings-en-cours/");

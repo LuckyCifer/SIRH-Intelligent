@@ -119,6 +119,38 @@ class Candidature(models.Model):
     date_candidature = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # ── Onboarding légal post-embauche ──
+    date_embauche_prevue    = models.DateField(null=True, blank=True)
+    date_embauche_effective = models.DateField(null=True, blank=True)
+
+    # Déclaration CNPS — obligatoire sous 8 jours (Art. CNPS)
+    cnps_declare            = models.BooleanField(default=False)
+    date_declaration_cnps   = models.DateField(null=True, blank=True)
+    numero_cnps_attribue    = models.CharField(max_length=20, blank=True)
+    delai_cnps_respecte     = models.BooleanField(default=False)
+
+    # Visite médicale d'embauche
+    visite_medicale_faite   = models.BooleanField(default=False)
+    date_visite_medicale    = models.DateField(null=True, blank=True)
+    aptitude_medicale       = models.CharField(
+        max_length=20,
+        choices=[
+            ("APTE",          "Apte"),
+            ("APTE_RESERVES", "Apte avec réserves"),
+            ("INAPTE",        "Inapte"),
+            ("EN_ATTENTE",    "Visite non encore effectuée"),
+        ],
+        default="EN_ATTENTE",
+    )
+
+    # Registre du personnel (obligation employeur)
+    inscrit_registre_personnel = models.BooleanField(default=False)
+    numero_registre            = models.CharField(max_length=20, blank=True)
+
+    # Travailleur étranger
+    est_etranger       = models.BooleanField(default=False)
+    visa_mintss_obtenu = models.BooleanField(default=False)
+
     class Meta:
         ordering = ["-date_candidature"]
         verbose_name = "Candidature"

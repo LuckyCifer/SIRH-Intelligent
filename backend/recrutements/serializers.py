@@ -34,15 +34,19 @@ class OffreEmploiSerializer(serializers.ModelSerializer):
 
 
 class CandidatureSerializer(serializers.ModelSerializer):
-    offre_detail = serializers.SerializerMethodField()
-    statut_display = serializers.CharField(source="get_statut_display", read_only=True)
-    analyse_cv_parsed = serializers.SerializerMethodField()
-    nb_entretiens = serializers.SerializerMethodField()
+    offre_detail         = serializers.SerializerMethodField()
+    statut_display       = serializers.CharField(source="get_statut_display", read_only=True)
+    analyse_cv_parsed    = serializers.SerializerMethodField()
+    nb_entretiens        = serializers.SerializerMethodField()
+    checklist_onboarding = serializers.SerializerMethodField()
 
     class Meta:
         model = Candidature
         fields = "__all__"
-        read_only_fields = ["date_candidature", "updated_at", "analyse_cv_ia", "score_cv_ia"]
+        read_only_fields = [
+            "date_candidature", "updated_at", "analyse_cv_ia", "score_cv_ia",
+            "delai_cnps_respecte",
+        ]
 
     def get_offre_detail(self, obj):
         return {"id": obj.offre_id, "titre": obj.offre.titre}
@@ -57,6 +61,62 @@ class CandidatureSerializer(serializers.ModelSerializer):
 
     def get_nb_entretiens(self, obj):
         return obj.entretiens.count()
+
+    def get_checklist_onboarding(self, obj):
+        if obj.statut != "ACCEPTEE":
+            return None
+        from datetime import date, timedelta
+        today = date.today()
+
+        deadline_cnps = None
+        cnps_en_retard = False
+        if obj.date_embauche_effective:
+            deadline_cnps  = obj.date_embauche_effective + timedelta(days=8)
+            cnps_en_retard = today > deadline_cnps and not obj.cnps_declare
+
+        items = [
+            {
+                "cle":      "cnps",
+                "label":    "Déclaration CNPS (délai : 8 jours)",
+                "done":     obj.cnps_declare,
+                "deadline": deadline_cnps.isoformat() if deadline_cnps else None,
+                "en_retard": cnps_en_retard,
+                "extra":    {"numero": obj.numero_cnps_attribue, "date_fait": obj.date_declaration_cnps.isoformat() if obj.date_declaration_cnps else None},
+            },
+            {
+                "cle":      "registre",
+                "label":    "Inscription au registre du personnel",
+                "done":     obj.inscrit_registre_personnel,
+                "deadline": None,
+                "en_retard": False,
+                "extra":    {"numero": obj.numero_registre},
+            },
+            {
+                "cle":      "visite_medicale",
+                "label":    "Visite médicale d'embauche",
+                "done":     obj.visite_medicale_faite,
+                "deadline": None,
+                "en_retard": False,
+                "extra":    {"aptitude": obj.aptitude_medicale, "date_fait": obj.date_visite_medicale.isoformat() if obj.date_visite_medicale else None},
+            },
+        ]
+        if obj.est_etranger:
+            items.append({
+                "cle":      "visa_mintss",
+                "label":    "Visa MINTSS (travailleur étranger)",
+                "done":     obj.visa_mintss_obtenu,
+                "deadline": None,
+                "en_retard": False,
+                "extra":    {},
+            })
+
+        nb_done = sum(1 for i in items if i["done"])
+        return {
+            "items":    items,
+            "nb_done":  nb_done,
+            "nb_total": len(items),
+            "complete": nb_done == len(items),
+        }
 
 
 class EntretienSerializer(serializers.ModelSerializer):

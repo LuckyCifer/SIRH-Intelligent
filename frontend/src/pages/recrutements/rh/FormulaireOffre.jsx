@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import RHLayout from "../../../components/layout/RHLayout";
 import { createOffre, updateOffre, getOffre } from "../../../api/recrutements";
-import api from "../../../api/axios";
+import { chargerTout } from "../../../api/listes";
 
 const FORM_VIDE = {
   titre: "",
@@ -24,6 +25,7 @@ const FORM_VIDE = {
 export default function FormulaireOffre() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const isEdit = Boolean(id);
 
   const [form, setForm] = useState(FORM_VIDE);
@@ -34,8 +36,8 @@ export default function FormulaireOffre() {
 
   useEffect(() => {
     const loads = [
-      api.get("/departements/departements/"),
-      api.get("/departements/postes/"),
+      chargerTout("/departements/"),
+      chargerTout("/departements/postes/"),
     ];
     if (isEdit) loads.push(getOffre(id));
 
@@ -60,8 +62,8 @@ export default function FormulaireOffre() {
           statut: o.statut || "BROUILLON",
         });
       }
-    }).catch(() => toast.error("Erreur chargement")).finally(() => setLoading(false));
-  }, []);
+    }).catch(() => toast.error(t("recrutements.error_load"))).finally(() => setLoading(false));
+  }, []); // eslint-disable-line
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -80,11 +82,13 @@ export default function FormulaireOffre() {
 
       if (isEdit) {
         await updateOffre(id, payload);
-        toast.success("Offre mise à jour");
+        toast.success(t("recrutements.offer_updated"));
       } else {
         const r = await createOffre(payload);
         toast.success(
-          statutFinal === "PUBLIEE" ? "Offre créée et publiée" : "Brouillon sauvegardé"
+          statutFinal === "PUBLIEE"
+            ? t("recrutements.offer_created_published")
+            : t("recrutements.draft_saved")
         );
         navigate(`/rh/recrutements/offres/${r.data.id}`);
         return;
@@ -96,75 +100,63 @@ export default function FormulaireOffre() {
         const msg = Object.entries(detail).map(([k, v]) => `${k}: ${v}`).join("\n");
         toast.error(msg);
       } else {
-        toast.error("Erreur enregistrement");
+        toast.error(t("recrutements.save_error"));
       }
     } finally {
       setSaving(false);
     }
   };
 
+  const pageTitle = isEdit ? t("recrutements.form_title_edit") : t("recrutements.form_title_new");
+
   return (
-    <RHLayout pageTitle={isEdit ? "Modifier l'offre" : "Nouvelle offre d'emploi"}>
+    <RHLayout pageTitle={pageTitle}>
       {loading ? (
         <div className="text-center py-5">
           <i className="fas fa-spinner fa-spin fa-2x" style={{ color: "var(--acerfi-blue)" }} />
         </div>
       ) : (
         <div className="row">
-          {/* Section 1 — Informations générales */}
           <div className="col-lg-8">
-            <div
-              className="card card-outline"
-              style={{ borderColor: "var(--acerfi-blue)", background: "var(--card-bg)" }}
-            >
+            <div className="card card-outline" style={{ borderColor: "var(--acerfi-blue)", background: "var(--card-bg)" }}>
               <div className="card-header">
                 <h3 className="card-title" style={{ color: "var(--page-title)" }}>
                   <i className="fas fa-info-circle mr-2" style={{ color: "var(--acerfi-blue)" }} />
-                  Informations générales
+                  {t("recrutements.general_info")}
                 </h3>
               </div>
               <div className="card-body">
                 <div className="form-group">
-                  <label style={{ color: "var(--text-primary)" }}>Titre du poste *</label>
+                  <label style={{ color: "var(--text-primary)" }}>{t("recrutements.job_title_label")} *</label>
                   <input
-                    type="text"
-                    name="titre"
-                    className="form-control"
-                    value={form.titre}
-                    onChange={handleChange}
-                    required
-                    placeholder="Ex: Développeur Full Stack Senior"
+                    type="text" name="titre" className="form-control"
+                    value={form.titre} onChange={handleChange} required
+                    placeholder={t("recrutements.job_title_placeholder")}
                     style={{ background: "var(--card-bg)", color: "var(--text-primary)" }}
                   />
                 </div>
 
                 <div className="row">
                   <div className="col-md-6 form-group">
-                    <label style={{ color: "var(--text-primary)" }}>Département *</label>
+                    <label style={{ color: "var(--text-primary)" }}>{t("recrutements.department_required")} *</label>
                     <select
-                      name="departement"
-                      className="form-control"
-                      value={form.departement}
-                      onChange={handleChange}
-                      required
+                      name="departement" className="form-control" value={form.departement}
+                      onChange={handleChange} required
                       style={{ background: "var(--card-bg)", color: "var(--text-primary)" }}
                     >
-                      <option value="">— Sélectionner —</option>
+                      <option value="">{t("recrutements.select_placeholder")}</option>
                       {departements.map((d) => (
                         <option key={d.id} value={d.id}>{d.nom}</option>
                       ))}
                     </select>
                   </div>
                   <div className="col-md-6 form-group">
-                    <label style={{ color: "var(--text-primary)" }}>Poste (facultatif)</label>
+                    <label style={{ color: "var(--text-primary)" }}>{t("recrutements.position_optional")}</label>
                     <select
-                      name="poste"
-                      className="form-control"
-                      value={form.poste}
-                      onChange={handleChange}
+                      name="poste" className="form-control" value={form.poste} onChange={handleChange}
                       style={{ background: "var(--card-bg)", color: "var(--text-primary)" }}
                     >
-                      <option value="">— Aucun —</option>
+                      <option value="">{t("recrutements.none_placeholder")}</option>
                       {postes.map((p) => (
                         <option key={p.id} value={p.id}>{p.titre}</option>
                       ))}
@@ -174,70 +166,56 @@ export default function FormulaireOffre() {
 
                 <div className="row">
                   <div className="col-md-4 form-group">
-                    <label style={{ color: "var(--text-primary)" }}>Type de contrat</label>
+                    <label style={{ color: "var(--text-primary)" }}>{t("recrutements.contract_type")}</label>
                     <select
-                      name="type_contrat"
-                      className="form-control"
-                      value={form.type_contrat}
+                      name="type_contrat" className="form-control" value={form.type_contrat}
                       onChange={handleChange}
                       style={{ background: "var(--card-bg)", color: "var(--text-primary)" }}
                     >
-                      {["CDI", "CDD", "STAGE", "FREELANCE"].map((t) => (
-                        <option key={t} value={t}>{t}</option>
+                      {["CDI", "CDD", "STAGE", "FREELANCE"].map((ct) => (
+                        <option key={ct} value={ct}>{ct}</option>
                       ))}
                     </select>
                   </div>
                   <div className="col-md-4 form-group">
-                    <label style={{ color: "var(--text-primary)" }}>Niveau d'expérience</label>
+                    <label style={{ color: "var(--text-primary)" }}>{t("recrutements.experience_level")}</label>
                     <select
-                      name="niveau_experience"
-                      className="form-control"
-                      value={form.niveau_experience}
+                      name="niveau_experience" className="form-control" value={form.niveau_experience}
                       onChange={handleChange}
                       style={{ background: "var(--card-bg)", color: "var(--text-primary)" }}
                     >
-                      <option value="DEBUTANT">Débutant (0-2 ans)</option>
-                      <option value="JUNIOR">Junior (2-5 ans)</option>
-                      <option value="CONFIRME">Confirmé (5-10 ans)</option>
-                      <option value="SENIOR">Senior (10+ ans)</option>
+                      <option value="DEBUTANT">{t("recrutements.exp_beginner")}</option>
+                      <option value="JUNIOR">{t("recrutements.exp_junior")}</option>
+                      <option value="CONFIRME">{t("recrutements.exp_confirmed")}</option>
+                      <option value="SENIOR">{t("recrutements.exp_senior")}</option>
                     </select>
                   </div>
                   <div className="col-md-4 form-group">
-                    <label style={{ color: "var(--text-primary)" }}>Nombre de postes</label>
+                    <label style={{ color: "var(--text-primary)" }}>{t("recrutements.nb_positions")}</label>
                     <input
-                      type="number"
-                      name="nb_postes"
-                      className="form-control"
-                      value={form.nb_postes}
-                      onChange={handleChange}
-                      min="1"
+                      type="number" name="nb_postes" className="form-control"
+                      value={form.nb_postes} onChange={handleChange} min="1"
                       style={{ background: "var(--card-bg)", color: "var(--text-primary)" }}
                     />
                   </div>
                 </div>
 
                 <div className="form-group">
-                  <label style={{ color: "var(--text-primary)" }}>Description du poste *</label>
+                  <label style={{ color: "var(--text-primary)" }}>{t("recrutements.job_description")} *</label>
                   <textarea
-                    name="description"
-                    className="form-control"
-                    rows={5}
-                    value={form.description}
-                    onChange={handleChange}
-                    placeholder="Décrivez les missions, responsabilités…"
+                    name="description" className="form-control" rows={5}
+                    value={form.description} onChange={handleChange}
+                    placeholder={t("recrutements.job_description_placeholder")}
                     style={{ background: "var(--card-bg)", color: "var(--text-primary)" }}
                   />
                 </div>
 
                 <div className="form-group">
-                  <label style={{ color: "var(--text-primary)" }}>Compétences requises *</label>
+                  <label style={{ color: "var(--text-primary)" }}>{t("recrutements.required_skills_label")} *</label>
                   <textarea
-                    name="competences_requises"
-                    className="form-control"
-                    rows={4}
-                    value={form.competences_requises}
-                    onChange={handleChange}
-                    placeholder="Listez les compétences techniques et soft skills…"
+                    name="competences_requises" className="form-control" rows={4}
+                    value={form.competences_requises} onChange={handleChange}
+                    placeholder={t("recrutements.required_skills_placeholder")}
                     style={{ background: "var(--card-bg)", color: "var(--text-primary)" }}
                   />
                 </div>
@@ -245,77 +223,53 @@ export default function FormulaireOffre() {
             </div>
           </div>
 
-          {/* Section 2 — Conditions & Publication */}
           <div className="col-lg-4">
-            <div
-              className="card card-outline"
-              style={{ borderColor: "var(--acerfi-blue)", background: "var(--card-bg)" }}
-            >
+            <div className="card card-outline" style={{ borderColor: "var(--acerfi-blue)", background: "var(--card-bg)" }}>
               <div className="card-header">
                 <h3 className="card-title" style={{ color: "var(--page-title)" }}>
                   <i className="fas fa-cog mr-2" style={{ color: "var(--acerfi-blue)" }} />
-                  Conditions & Publication
+                  {t("recrutements.conditions_publication")}
                 </h3>
               </div>
               <div className="card-body">
                 <div className="form-group">
-                  <label style={{ color: "var(--text-primary)" }}>Lieu</label>
+                  <label style={{ color: "var(--text-primary)" }}>{t("recrutements.place")}</label>
                   <input
-                    type="text"
-                    name="lieu"
-                    className="form-control"
-                    value={form.lieu}
-                    onChange={handleChange}
+                    type="text" name="lieu" className="form-control" value={form.lieu} onChange={handleChange}
                     style={{ background: "var(--card-bg)", color: "var(--text-primary)" }}
                   />
                 </div>
-
                 <div className="form-group">
-                  <label style={{ color: "var(--text-primary)" }}>Salaire min (FCFA)</label>
+                  <label style={{ color: "var(--text-primary)" }}>{t("recrutements.salary_min")}</label>
                   <input
-                    type="number"
-                    name="salaire_min"
-                    className="form-control"
-                    value={form.salaire_min}
-                    onChange={handleChange}
-                    min="0"
+                    type="number" name="salaire_min" className="form-control" value={form.salaire_min}
+                    onChange={handleChange} min="0"
                     style={{ background: "var(--card-bg)", color: "var(--text-primary)" }}
                   />
                 </div>
-
                 <div className="form-group">
-                  <label style={{ color: "var(--text-primary)" }}>Salaire max (FCFA)</label>
+                  <label style={{ color: "var(--text-primary)" }}>{t("recrutements.salary_max")}</label>
                   <input
-                    type="number"
-                    name="salaire_max"
-                    className="form-control"
-                    value={form.salaire_max}
-                    onChange={handleChange}
-                    min="0"
+                    type="number" name="salaire_max" className="form-control" value={form.salaire_max}
+                    onChange={handleChange} min="0"
                     style={{ background: "var(--card-bg)", color: "var(--text-primary)" }}
                   />
                 </div>
-
                 <div className="form-group">
-                  <label style={{ color: "var(--text-primary)" }}>Date de clôture</label>
+                  <label style={{ color: "var(--text-primary)" }}>{t("recrutements.closing_date")}</label>
                   <input
-                    type="date"
-                    name="date_cloture"
-                    className="form-control"
-                    value={form.date_cloture}
+                    type="date" name="date_cloture" className="form-control" value={form.date_cloture}
                     onChange={handleChange}
                     style={{ background: "var(--card-bg)", color: "var(--text-primary)" }}
                   />
                 </div>
-
                 <hr style={{ borderColor: "var(--border-color)" }} />
-
                 <button
                   className="btn btn-block btn-outline-secondary mb-2"
                   disabled={saving}
                   onClick={() => handleSave("BROUILLON")}
                 >
-                  <i className="fas fa-save mr-1" /> Sauvegarder brouillon
+                  <i className="fas fa-save mr-1" />{t("recrutements.save_draft")}
                 </button>
                 <button
                   className="btn btn-block btn-primary"
@@ -323,9 +277,9 @@ export default function FormulaireOffre() {
                   onClick={() => handleSave("PUBLIEE")}
                 >
                   {saving ? (
-                    <><i className="fas fa-spinner fa-spin mr-1" /> Enregistrement…</>
+                    <><i className="fas fa-spinner fa-spin mr-1" />{t("recrutements.saving_offer")}</>
                   ) : (
-                    <><i className="fas fa-bullhorn mr-1" /> Publier l'offre</>
+                    <><i className="fas fa-bullhorn mr-1" />{t("recrutements.publish_offer")}</>
                   )}
                 </button>
               </div>
