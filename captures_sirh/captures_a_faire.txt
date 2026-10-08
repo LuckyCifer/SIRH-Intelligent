@@ -1,0 +1,146 @@
+CAPTURES A REALISER POUR LE RAPPORT DE STAGE
+=============================================
+Resolution : 1920x1080 — Format : PNG — Navigateur : plein ecran
+Comptes demo : lucky (RH) | manager.it (Manager) | alice.mballa (Employe)
+
+PREREQUIS AVANT LES CAPTURES :
+- Demarrer MySQL + Django (port 8000) : cd backend && venv\Scripts\activate && python manage.py runserver
+- Demarrer Vite (port 5173)           : cd frontend && npm run dev
+- Ouvrir Chrome -> localhost:5173
+
+PROCEDURE CAPTURE :
+1. Se connecter avec le compte indique
+2. Naviguer vers la page
+3. Win+Shift+S -> selectionner toute la page
+4. Coller dans Paint -> Enregistrer en PNG
+5. Nommer exactement imageX.png et placer dans ce dossier
+
+============================================================
+CAPTURES PRINCIPALES (tableau de bord et modules cles)
+============================================================
+
+image01.png -> /rh/dashboard                    (compte: lucky)
+              Objectif : widgets stats, graphiques Recharts, score IA
+
+image02.png -> /rh/gestion-comptes              (compte: lucky)
+              Objectif : liste 29 utilisateurs, badges roles, avatars SVG
+
+image03.png -> /rh/gestion-comptes (modal)      (compte: lucky)
+              Action   : cliquer "+ Nouvel utilisateur"
+              Objectif : modal avec champs legaux (CNPS, categorie pro)
+
+image04.png -> /rh/presences                    (compte: lucky)
+              Objectif : colonnes Retard et HS avec valeurs > 0
+              NOTE     : 515 retards detectes apres recalcul du 02/07/2026
+
+image05.png -> /rh/conges                       (compte: lucky)
+              Objectif : liste conges avec types legaux camerounais
+
+image06.png -> /rh/paie                         (compte: lucky)
+              Objectif : 129 bulletins avec CNPS 4.2%
+
+image07.png -> /rh/paie/bulletins/:id           (compte: lucky)
+              Action   : cliquer sur un bulletin de juin 2026
+              Objectif : detail bulletin avec CNPS 4.2%, IRPP, CAC, CFC, RAV, TDL
+
+image08.png -> /rh/rapport-ia                   (compte: lucky)
+              Objectif : liste des rapports IA mensuels generes (3 existants)
+              ACTION REQUISE : generer un nouveau rapport juillet 2026
+
+image09.png -> /rh/rapport-ia/:id               (compte: lucky)
+              Action   : cliquer sur un rapport existant
+              Objectif : detail rapport — score sante RH, recommandations IA
+
+image10.png -> /rh/recrutements                 (compte: lucky)
+              Objectif : tableau de bord avec 5 offres, 14 candidatures, pipeline
+
+image11.png -> /rh/recrutements/offres          (compte: lucky)
+              Objectif : liste 5 offres (dont 3 nouvelles du 02/07/2026)
+
+image12.png -> /rh/recrutements/candidatures/:id (compte: lucky)
+              Action   : ouvrir la fiche de "Carine ESSOMBA" (score 91)
+              Objectif : analyse CV IA visible, statut OFFRE_FAITE
+
+image13.png -> /rh/recrutements/planning        (compte: lucky)
+              Objectif : calendrier des entretiens juillet 2026
+
+image14.png -> /rh/sanctions                    (compte: lucky)
+              Objectif : sanctions avec champs Art.30, delai 48h
+
+image15.png -> /rh/formations                   (compte: lucky)
+              Objectif : liste formations avec inscriptions
+
+============================================================
+CAPTURES EMPLOYE (vue alice.mballa)
+============================================================
+
+image16.png -> /employe/dashboard               (compte: alice.mballa)
+              Objectif : tableau de bord employe
+
+image17.png -> /employe/presences               (compte: alice.mballa)
+              Objectif : badge "Retard Xmin" visible sur les pointages
+              NOTE     : alice a pointe a 10h23, 10h49, 11h14 (retards detectes)
+
+image18.png -> /employe/paie                    (compte: alice.mballa)
+              Objectif : mes bulletins de paie
+
+image19.png -> /employe/conges                  (compte: alice.mballa)
+              Objectif : solde et historique conges
+
+image20.png -> /employe/documents               (compte: alice.mballa)
+              Objectif : mes documents avec bouton telechargement
+
+============================================================
+CAPTURES MANAGER (vue manager.it = Stan Gabriel)
+============================================================
+
+image21.png -> /manager/dashboard               (compte: manager.it)
+              Objectif : dashboard manager
+
+image22.png -> /manager/presences               (compte: manager.it)
+              Objectif : presences equipe IT (Kevin, Kevin, Paul, Alice)
+              NOTE     : Stan est responsable dept IT depuis le 02/07/2026
+
+image23.png -> /manager/conges                  (compte: manager.it)
+              Objectif : conges equipe
+
+============================================================
+CAPTURES FONCTIONNALITES SPECIALES
+============================================================
+
+image24.png -> /rh/parametres-entreprise        (compte: lucky)
+              Objectif : parametres ACERFI SARL, couleurs, logo
+
+image25.png -> /annuaire                        (compte: lucky)
+              Objectif : annuaire 29 employes avec photos/avatars
+
+image26.png -> /rh/departements                 (compte: lucky)
+              Objectif : 9 departements avec responsables
+
+image27.png -> /notifications                   (compte: lucky)
+              Objectif : centre notifications — 37 notifications
+
+image28.png -> /rh/paie/import                  (compte: lucky)
+              Objectif : page import Excel avec template
+
+image29.png -> /rh/objectifs                    (compte: lucky)
+              Objectif : gestion objectifs et evaluations
+
+image30.png -> /employe/rapports                (compte: alice.mballa)
+              Objectif : mes rapports avec score IA visible (score 90/100)
+
+============================================================
+APRES LES CAPTURES
+============================================================
+
+Envoyer les PNG directement a Claude Chatbot via l'interface de chat
+pour integration dans le rapport Word (.docx) du rapport de stage.
+
+Ordre recommande pour le rapport Word :
+- Introduction/contexte : image01 (dashboard), image24 (entreprise)
+- Gestion RH : image02 (comptes), image26 (departements), image25 (annuaire)
+- Presences/Conges : image04, image17, image22, image05, image19, image23
+- Paie : image06, image07
+- IA : image08, image09, image30
+- Recrutements : image10, image11, image12, image13
+- Autres modules : image14, image15, image20, image27, image28, image29

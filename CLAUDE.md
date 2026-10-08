@@ -6,7 +6,7 @@ Plateforme RH complète avec analyses IA. Développé par Yemeya Luc — ACERFI 
 
 - **Backend** : Django 5.2 + DRF + PyMySQL + MySQL (`sirh_db`)
 - **Frontend** : React 18 + Vite + AdminLTE 3.2 + Bootstrap 4
-- **IA** : Groq API (llama-3.3-70b-versatile) — async daemon thread
+- **IA** : Gemini (gemini-flash-latest, principal) + OpenRouter (meta-llama/llama-3.3-70b-instruct:free, fallback) — async daemon thread via `ia/client.py`
 - **Auth** : JWT (djangorestframework-simplejwt) — Bearer token
 - **Charts** : Recharts (déjà installé, pas de nouvelle lib)
 
@@ -41,13 +41,13 @@ gsria/
 | 7 | `documents` | Documents RH |
 | 8 | `objectifs` | Objectifs & Évaluations de performance |
 | 9 | `rapports` | Rapports d'activité (héritage) |
-| 10 | `analyse_ia` | Analyses IA Groq par rapport |
+| 10 | `analyse_ia` | Analyses IA (Gemini/Groq) par rapport hebdomadaire |
 | 11 | `recrutements` | Offres d'emploi + Candidatures + Entretiens |
 | 12 | `formations` | Formations + Inscriptions + Compétences |
 | 13 | `sanctions` | Sanctions disciplinaires |
 | 14 | `paie` | Paie simplifiée (CNPS 2.8%/7.7%, IRPP tranches) |
 | 15 | `carriere` | Historique de carrière |
-| 16 | `rapport_ia` | Rapport IA mensuel (async + Groq) |
+| 16 | `rapport_ia` | Rapport IA mensuel (async + Gemini/Groq) |
 | 17 | `notifications` | Notifications internes (7 types) |
 | 18 | `stagiaires` | Héritage GSRIA |
 
@@ -68,8 +68,10 @@ DB_USER=root
 DB_PASSWORD=
 DB_HOST=localhost
 DB_PORT=3306
-GROQ_API_KEY=gsk_...
-GROQ_MODEL=llama-3.3-70b-versatile
+GEMINI_API_KEY=...
+GEMINI_MODEL=gemini-flash-latest
+OPENROUTER_API_KEY=sk-or-v1-...
+OPENROUTER_MODEL=meta-llama/llama-3.3-70b-instruct:free
 SECRET_KEY=...
 DEBUG=True
 ALLOWED_HOSTS=localhost,127.0.0.1
@@ -145,12 +147,25 @@ Champ `entreprise` FK (null=True, blank=True) sur tous les modèles.
 
 ### Analyse IA async
 Utilise `threading.Thread(target=..., daemon=True)` — ne bloque pas la réponse API.
-Fallback sans GROQ_API_KEY : score calculé sans IA narrative.
+Client centralisé : `ia/client.py` → `appeler_ia()` tente Gemini (2 essais) puis Groq (3 essais).
+Fallback sans clé : score calculé sans IA narrative.
 
 ### Paie — fiscalité camerounaise 2024
-CNPS employé : 2,8% du salaire brut
-CNPS employeur : 7,7% du salaire brut
-IRPP : tranches progressives (exonération < 166 666 FCFA/mois)
+CNPS employé          : 4,2% du salaire brut cotisable (plafonné 750 000 FCFA/mois)
+CNPS patronal pension : 4,2% du salaire brut cotisable
+CNPS patronal famille : 7,0% du salaire brut cotisable
+CNPS patronal AT      : 1,75% / 2,5% / 5% (risques A/B/C)
+CFC salarié           : 1,0% | CFC patronal : 1,5%
+IRPP                  : tranches progressives sur SNC + CAC 10%
+RAV / TDL             : forfaits par tranche de revenu
+Exonération IRPP      : SNC < 500 000 FCFA/an (< 41 666 FCFA/mois)
+Note : Les constantes TAUX_CNPS_EMPLOYE=0.028 et TAUX_CNPS_EMPLOYEUR=0.077 dans
+       paie/models.py sont des valeurs LEGACY pour le fallback uniquement.
+       Le CalculateurPaie (paie/calculateur.py) utilise les taux 2024 corrects.
+
+### Rapports
+Le modèle de l'app `rapports` s'appelle `RapportHebdomadaire`
+(table MySQL : `rapports_rapporthebdomadaire`), pas `RapportActivite`.
 
 ## Routes frontend principales
 
