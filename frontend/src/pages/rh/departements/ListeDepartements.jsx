@@ -1,35 +1,37 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
 import RHLayout from '../../../components/layout/RHLayout'
 import Spinner from '../../../components/Spinner'
 import api from '../../../api/axios'
 
 export default function ListeDepartements() {
+  const { t } = useTranslation()
   const [departements, setDepartements] = useState([])
-  const [loading, setLoading]           = useState(true)
-  const [search, setSearch]             = useState('')
-  const [deleting, setDeleting]         = useState(null)
+  const [loading,      setLoading]      = useState(true)
+  const [search,       setSearch]       = useState('')
+  const [deleting,     setDeleting]     = useState(null)
 
   function load() {
     setLoading(true)
     api.get('/departements/')
       .then(r => setDepartements(r.data.results ?? r.data))
-      .catch(() => toast.error('Impossible de charger les départements.'))
+      .catch(() => toast.error(t('departments.load_error')))
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, []) // eslint-disable-line
 
   async function handleDelete(id, nom) {
-    if (!window.confirm(`Supprimer le département "${nom}" ?`)) return
+    if (!window.confirm(t('departments.delete_confirm', { nom }))) return
     setDeleting(id)
     try {
       await api.delete(`/departements/${id}/`)
-      toast.success('Département supprimé.')
+      toast.success(t('departments.delete_success'))
       load()
     } catch {
-      toast.error('Erreur lors de la suppression.')
+      toast.error(t('departments.delete_error'))
     } finally {
       setDeleting(null)
     }
@@ -37,8 +39,8 @@ export default function ListeDepartements() {
 
   if (loading) {
     return (
-      <RHLayout pageTitle="Départements">
-        <Spinner message="Chargement des départements…" />
+      <RHLayout pageTitle={t('departments.title')}>
+        <Spinner message={t('departments.load_error')} />
       </RHLayout>
     )
   }
@@ -50,9 +52,7 @@ export default function ListeDepartements() {
   )
 
   return (
-    <RHLayout pageTitle="Gestion des Départements">
-
-      {/* ── Toolbar ── */}
+    <RHLayout pageTitle={t('departments.title')}>
       <div className="row mb-3">
         <div className="col-md-6">
           <div className="input-group input-group-sm">
@@ -60,22 +60,21 @@ export default function ListeDepartements() {
               <span className="input-group-text"><i className="fas fa-search" /></span>
             </div>
             <input type="text" className="form-control"
-              placeholder="Rechercher par nom ou code…"
+              placeholder={t('departments.search_placeholder')}
               value={search} onChange={e => setSearch(e.target.value)} />
           </div>
         </div>
         <div className="col-md-6 text-right">
           <Link to="/rh/departements/nouveau" className="btn btn-primary btn-sm">
-            <i className="fas fa-plus mr-1" />Nouveau département
+            <i className="fas fa-plus mr-1" />{t('departments.new_department')}
           </Link>
         </div>
       </div>
 
-      {/* ── Grille ── */}
       {filtered.length === 0 ? (
         <div className="text-center py-5 text-muted">
           <i className="fas fa-building fa-3x mb-3 d-block" />
-          <p>Aucun département trouvé.</p>
+          <p>{t('departments.no_departments')}</p>
         </div>
       ) : (
         <div className="row">
@@ -109,7 +108,7 @@ export default function ListeDepartements() {
                   <div className="d-flex justify-content-between align-items-center" style={{ fontSize: 12 }}>
                     <span style={{ color: 'var(--text-secondary)' }}>
                       <i className="fas fa-users mr-1" />
-                      <strong>{d.nb_employes}</strong> employé{d.nb_employes !== 1 ? 's' : ''}
+                      <strong>{d.nb_employes}</strong> {t('departments.employees_count', { s: d.nb_employes !== 1 ? 's' : '' })}
                     </span>
                     {d.responsable_nom && (
                       <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>
@@ -122,10 +121,10 @@ export default function ListeDepartements() {
                 <div className="card-footer py-2" style={{ background: 'transparent', border: 'none' }}>
                   <div className="btn-group btn-group-sm w-100">
                     <Link to={`/rh/departements/${d.id}`} className="btn btn-outline-primary">
-                      <i className="fas fa-eye mr-1" />Détail
+                      <i className="fas fa-eye mr-1" />{t('common.view')}
                     </Link>
                     <Link to={`/rh/departements/${d.id}/edit`} className="btn btn-outline-secondary">
-                      <i className="fas fa-edit mr-1" />Modifier
+                      <i className="fas fa-edit mr-1" />{t('common.edit')}
                     </Link>
                     <button className="btn btn-outline-danger" disabled={deleting === d.id}
                       onClick={() => handleDelete(d.id, d.nom)}>

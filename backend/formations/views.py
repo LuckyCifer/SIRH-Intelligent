@@ -30,7 +30,10 @@ class FormationViewSet(viewsets.ModelViewSet):
         return [permissions.IsAuthenticated()]
 
     def get_queryset(self):
+        entreprise = getattr(self.request.user, "entreprise", None)
         qs = Formation.objects.select_related("categorie", "cree_par").prefetch_related("inscriptions")
+        if entreprise:
+            qs = qs.filter(entreprise=entreprise)
         statut = self.request.query_params.get("statut")
         categorie = self.request.query_params.get("categorie")
         if statut:
@@ -51,15 +54,18 @@ class FormationViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"])
     def catalogue(self, request):
-        formations = Formation.objects.filter(
-            statut__in=["PLANIFIEE", "EN_COURS"]
-        ).select_related("categorie", "cree_par").prefetch_related("inscriptions")
+        entreprise = getattr(request.user, "entreprise", None)
+        qs = Formation.objects.filter(statut__in=["PLANIFIEE", "EN_COURS"])
+        if entreprise:
+            qs = qs.filter(entreprise=entreprise)
+        formations = qs.select_related("categorie", "cree_par").prefetch_related("inscriptions")
         return Response(FormationSerializer(formations, many=True).data)
 
     @action(detail=False, methods=["get"])
     def stats(self, request):
-        formations = Formation.objects.all()
-        inscriptions = InscriptionFormation.objects.all()
+        entreprise = getattr(request.user, "entreprise", None)
+        formations = Formation.objects.filter(entreprise=entreprise) if entreprise else Formation.objects.all()
+        inscriptions = InscriptionFormation.objects.filter(formation__entreprise=entreprise) if entreprise else InscriptionFormation.objects.all()
         return Response({
             "total_formations": formations.count(),
             "formations_planifiees": formations.filter(statut="PLANIFIEE").count(),

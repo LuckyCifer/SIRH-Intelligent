@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
 import RHLayout from '../../../components/layout/RHLayout'
 import Spinner from '../../../components/Spinner'
 import FiliereBadge from '../../../components/ui/FiliereBadge'
 import api from '../../../api/axios'
 
 export default function DetailDepartement() {
-  const { id } = useParams()
-  const [dept,      setDept]      = useState(null)
-  const [employes,  setEmployes]  = useState([])
-  const [loading,   setLoading]   = useState(true)
+  const { id }    = useParams()
+  const { t }     = useTranslation()
+  const [dept,     setDept]     = useState(null)
+  const [employes, setEmployes] = useState([])
+  const [loading,  setLoading]  = useState(true)
 
   useEffect(() => {
     Promise.all([
@@ -21,21 +23,19 @@ export default function DetailDepartement() {
         setDept(dRes.data)
         setEmployes(eRes.data.results ?? eRes.data)
       })
-      .catch(() => toast.error('Erreur de chargement.'))
+      .catch(() => toast.error(t('departments.load_error_dept')))
       .finally(() => setLoading(false))
-  }, [id])
+  }, [id]) // eslint-disable-line
 
   if (loading) {
     return (
-      <RHLayout pageTitle="Détail département"><Spinner /></RHLayout>
+      <RHLayout pageTitle={t('departments.detail_title')}><Spinner /></RHLayout>
     )
   }
   if (!dept) return null
 
   return (
     <RHLayout pageTitle={`${dept.code} — ${dept.nom}`}>
-
-      {/* ── En-tête ── */}
       <div className="card mb-3">
         <div className="card-body">
           <div className="d-flex align-items-center">
@@ -53,11 +53,12 @@ export default function DetailDepartement() {
                 <code style={{ fontSize: 13 }}>{dept.code}</code>
                 {dept.responsable_nom && (
                   <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                    <i className="fas fa-user-tie mr-1" />Responsable : <strong>{dept.responsable_nom}</strong>
+                    <i className="fas fa-user-tie mr-1" />
+                    {t('departments.manager_label')} : <strong>{dept.responsable_nom}</strong>
                   </span>
                 )}
                 <span className={`badge ${dept.actif ? 'badge-success' : 'badge-secondary'}`}>
-                  {dept.actif ? 'Actif' : 'Inactif'}
+                  {dept.actif ? t('departments.active_label') : t('departments.inactive_label')}
                 </span>
               </div>
               {dept.description && (
@@ -66,7 +67,7 @@ export default function DetailDepartement() {
             </div>
             <div>
               <Link to={`/rh/departements/${id}/edit`} className="btn btn-sm btn-outline-primary">
-                <i className="fas fa-edit mr-1" />Modifier
+                <i className="fas fa-edit mr-1" />{t('common.edit')}
               </Link>
             </div>
           </div>
@@ -74,18 +75,18 @@ export default function DetailDepartement() {
       </div>
 
       <div className="row">
-
-        {/* Postes */}
         <div className="col-md-5">
           <div className="card">
             <div className="card-header d-flex justify-content-between align-items-center">
-              <h3 className="card-title"><i className="fas fa-briefcase mr-2" />Postes</h3>
+              <h3 className="card-title">
+                <i className="fas fa-briefcase mr-2" />{t('departments.section_positions')}
+              </h3>
               <span className="badge badge-secondary">{dept.postes?.length ?? 0}</span>
             </div>
             <div className="card-body p-0">
               {!dept.postes || dept.postes.length === 0 ? (
                 <div className="text-center py-3 text-muted" style={{ fontSize: 13 }}>
-                  Aucun poste défini.
+                  {t('departments.no_positions')}
                 </div>
               ) : (
                 <ul className="list-group list-group-flush">
@@ -111,22 +112,27 @@ export default function DetailDepartement() {
           </div>
         </div>
 
-        {/* Employés */}
         <div className="col-md-7">
           <div className="card">
             <div className="card-header d-flex justify-content-between align-items-center">
-              <h3 className="card-title"><i className="fas fa-users mr-2" />Employés</h3>
+              <h3 className="card-title">
+                <i className="fas fa-users mr-2" />{t('departments.section_employees')}
+              </h3>
               <span className="badge badge-primary">{employes.length}</span>
             </div>
             <div className="card-body p-0">
               {employes.length === 0 ? (
                 <div className="text-center py-3 text-muted" style={{ fontSize: 13 }}>
-                  Aucun employé affecté à ce département.
+                  {t('departments.no_employees')}
                 </div>
               ) : (
                 <table className="table table-sm table-hover mb-0">
                   <thead>
-                    <tr><th>Nom</th><th>Domaine</th><th>Rôle</th></tr>
+                    <tr>
+                      <th>{t('departments.col_name')}</th>
+                      <th>{t('departments.col_domain')}</th>
+                      <th>{t('departments.col_role')}</th>
+                    </tr>
                   </thead>
                   <tbody>
                     {employes.map(e => (
@@ -153,7 +159,7 @@ export default function DetailDepartement() {
 
       <div className="mt-2">
         <Link to="/rh/departements" className="btn btn-sm btn-outline-secondary">
-          <i className="fas fa-arrow-left mr-1" />Retour à la liste
+          <i className="fas fa-arrow-left mr-1" />{t('departments.back_to_list')}
         </Link>
       </div>
     </RHLayout>

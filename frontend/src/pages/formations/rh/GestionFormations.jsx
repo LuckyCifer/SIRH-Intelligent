@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import RHLayout from "../../../components/layout/RHLayout";
 import { getFormations, getStatsFormations, deleteFormation, terminerFormation } from "../../../api/formations";
 
@@ -8,17 +9,21 @@ const STATUT_BADGE = {
   PLANIFIEE: "info", EN_COURS: "primary", TERMINEE: "success", ANNULEE: "secondary",
 };
 
-const MODALITE_LABEL = {
-  PRESENTIEL: "Présentiel", DISTANCIEL: "À distance", HYBRIDE: "Hybride", ELEARNING: "E-learning",
-};
-
 export default function GestionFormations() {
-  const [formations, setFormations] = useState([]);
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const { t } = useTranslation();
+  const [formations,   setFormations]   = useState([]);
+  const [stats,        setStats]        = useState(null);
+  const [loading,      setLoading]      = useState(true);
+  const [search,       setSearch]       = useState("");
   const [filtreStatut, setFiltreStatut] = useState("");
-  const [actionId, setActionId] = useState(null);
+  const [actionId,     setActionId]     = useState(null);
+
+  const MODALITE_LABEL = {
+    PRESENTIEL: t("formations.modality_presentiel"),
+    DISTANCIEL: t("formations.modality_distanciel"),
+    HYBRIDE:    t("formations.modality_hybride"),
+    ELEARNING:  t("formations.modality_elearning"),
+  };
 
   const charger = () => {
     Promise.all([getFormations(), getStatsFormations()])
@@ -26,11 +31,11 @@ export default function GestionFormations() {
         setFormations(fRes.data.results ?? fRes.data);
         setStats(sRes.data);
       })
-      .catch(() => toast.error("Erreur chargement"))
+      .catch(() => toast.error(t("formations.load_error")))
       .finally(() => setLoading(false));
   };
 
-  useEffect(charger, []);
+  useEffect(charger, []); // eslint-disable-line
 
   const liste = formations.filter((f) => {
     if (search && !f.titre.toLowerCase().includes(search.toLowerCase())) return false;
@@ -39,42 +44,41 @@ export default function GestionFormations() {
   });
 
   const handleTerminer = async (id) => {
-    if (!window.confirm("Marquer cette formation comme terminée ?")) return;
+    if (!window.confirm(t("formations.finish_confirm"))) return;
     setActionId(id);
     try {
       await terminerFormation(id);
       setFormations((prev) => prev.map((f) => f.id === id ? { ...f, statut: "TERMINEE" } : f));
-      toast.success("Formation terminée");
+      toast.success(t("formations.finish_success"));
     } catch {
-      toast.error("Erreur");
+      toast.error(t("formations.finish_error"));
     } finally {
       setActionId(null);
     }
   };
 
   const handleSupprimer = async (id) => {
-    if (!window.confirm("Supprimer cette formation ? Cette action est irréversible.")) return;
+    if (!window.confirm(t("formations.delete_confirm"))) return;
     setActionId(id);
     try {
       await deleteFormation(id);
       setFormations((prev) => prev.filter((f) => f.id !== id));
-      toast.success("Formation supprimée");
+      toast.success(t("formations.delete_success"));
     } catch {
-      toast.error("Suppression impossible — des inscriptions existent peut-être");
+      toast.error(t("formations.delete_error"));
     } finally {
       setActionId(null);
     }
   };
 
   return (
-    <RHLayout pageTitle="Gestion des formations">
-      {/* Stats */}
+    <RHLayout pageTitle={t("formations.title")}>
       <div className="row mb-3">
         {[
-          { label: "Planifiées", val: stats?.formations_planifiees ?? "—", icon: "calendar", color: "#17a2b8" },
-          { label: "En cours", val: stats?.formations_en_cours ?? "—", icon: "play-circle", color: "#007bff" },
-          { label: "Taux présence", val: stats?.taux_presence != null ? `${stats.taux_presence}%` : "—", icon: "chart-bar", color: "#28a745" },
-          { label: "Coût total", val: stats?.cout_total != null ? `${Number(stats.cout_total).toLocaleString("fr-FR")} FCFA` : "—", icon: "coins", color: "#E76F51" },
+          { label: t("formations.stat_planned"),       val: stats?.formations_planifiees ?? "—", icon: "calendar",    color: "#17a2b8" },
+          { label: t("formations.stat_in_progress"),   val: stats?.formations_en_cours   ?? "—", icon: "play-circle", color: "#007bff" },
+          { label: t("formations.stat_presence_rate"), val: stats?.taux_presence != null ? `${stats.taux_presence}%` : "—", icon: "chart-bar", color: "#28a745" },
+          { label: t("formations.stat_total_cost"),    val: stats?.cout_total != null ? `${Number(stats.cout_total).toLocaleString("fr-FR")} FCFA` : "—", icon: "coins", color: "#E76F51" },
         ].map((s) => (
           <div key={s.label} className="col-lg-3 col-md-6 mb-2">
             <div className="card" style={{ background: "var(--card-bg)", border: `1px solid var(--border-color)`, borderLeft: `4px solid ${s.color}` }}>
@@ -90,36 +94,27 @@ export default function GestionFormations() {
         ))}
       </div>
 
-      {/* Toolbar */}
       <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div className="d-flex gap-2 flex-wrap">
-          <input
-            type="text"
-            className="form-control form-control-sm"
-            placeholder="Rechercher..."
+          <input type="text" className="form-control form-control-sm"
+            placeholder={t("formations.search_placeholder")}
             style={{ width: 220, background: "var(--card-bg)", color: "var(--text-primary)" }}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <select
-            className="form-control form-control-sm"
+            value={search} onChange={(e) => setSearch(e.target.value)} />
+          <select className="form-control form-control-sm"
             style={{ width: 160, background: "var(--card-bg)", color: "var(--text-primary)" }}
-            value={filtreStatut}
-            onChange={(e) => setFiltreStatut(e.target.value)}
-          >
-            <option value="">Tous les statuts</option>
-            <option value="PLANIFIEE">Planifiée</option>
-            <option value="EN_COURS">En cours</option>
-            <option value="TERMINEE">Terminée</option>
-            <option value="ANNULEE">Annulée</option>
+            value={filtreStatut} onChange={(e) => setFiltreStatut(e.target.value)}>
+            <option value="">{t("formations.all_statuses")}</option>
+            <option value="PLANIFIEE">{t("formations.planned_label")}</option>
+            <option value="EN_COURS">{t("formations.in_progress_label")}</option>
+            <option value="TERMINEE">{t("formations.finished_label")}</option>
+            <option value="ANNULEE">{t("formations.cancelled_label")}</option>
           </select>
         </div>
         <Link to="/rh/formations/nouveau" className="btn btn-primary btn-sm">
-          <i className="fas fa-plus mr-1" /> Nouvelle formation
+          <i className="fas fa-plus mr-1" /> {t("formations.new_formation")}
         </Link>
       </div>
 
-      {/* Tableau */}
       <div className="card" style={{ background: "var(--card-bg)", border: "1px solid var(--border-color)" }}>
         <div className="card-body p-0">
           {loading ? (
@@ -129,20 +124,20 @@ export default function GestionFormations() {
           ) : liste.length === 0 ? (
             <div className="text-center py-5" style={{ color: "var(--text-muted)" }}>
               <i className="fas fa-graduation-cap fa-3x mb-3 d-block" />
-              Aucune formation trouvée.
+              {t("formations.no_formations")}
             </div>
           ) : (
             <div className="table-responsive">
               <table className="table table-hover mb-0">
                 <thead>
                   <tr style={{ background: "var(--card-bg)", color: "var(--text-muted)", fontSize: "0.82rem" }}>
-                    <th>Formation</th>
-                    <th>Catégorie</th>
-                    <th>Dates</th>
-                    <th>Modalité</th>
-                    <th>Places</th>
-                    <th>Statut</th>
-                    <th>Actions</th>
+                    <th>{t("formations.col_formation")}</th>
+                    <th>{t("formations.category")}</th>
+                    <th>{t("formations.col_date")}</th>
+                    <th>{t("formations.modality")}</th>
+                    <th>{t("formations.places")}</th>
+                    <th>{t("formations.col_status")}</th>
+                    <th>{t("common.actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -170,56 +165,42 @@ export default function GestionFormations() {
                         <small>{MODALITE_LABEL[f.modalite] || f.modalite}</small>
                       </td>
                       <td>
-                        <div style={{ fontSize: "0.82rem" }}>
-                          {f.nb_inscrits}/{f.places_max}
-                        </div>
+                        <div style={{ fontSize: "0.82rem" }}>{f.nb_inscrits}/{f.places_max}</div>
                         <div className="progress" style={{ height: 4, width: 60 }}>
-                          <div
-                            className={`progress-bar ${f.places_restantes <= 0 ? "bg-danger" : "bg-success"}`}
-                            style={{ width: `${Math.min(100, (f.nb_inscrits / f.places_max) * 100)}%` }}
-                          />
+                          <div className={`progress-bar ${f.places_restantes <= 0 ? "bg-danger" : "bg-success"}`}
+                            style={{ width: `${Math.min(100, (f.nb_inscrits / f.places_max) * 100)}%` }} />
                         </div>
                       </td>
                       <td>
-                        <span className={`badge badge-${STATUT_BADGE[f.statut]}`}>
-                          {f.statut_display}
-                        </span>
+                        <span className={`badge badge-${STATUT_BADGE[f.statut]}`}>{f.statut_display}</span>
                       </td>
                       <td>
                         <div className="d-flex gap-1">
-                          <Link
-                            to={`/rh/formations/${f.id}`}
+                          <Link to={`/rh/formations/${f.id}`}
                             className="btn btn-xs btn-outline-info"
-                            title="Voir détail"
-                          >
+                            title={t("common.view")}>
                             <i className="fas fa-eye" />
                           </Link>
                           {f.statut !== "TERMINEE" && f.statut !== "ANNULEE" && (
-                            <Link
-                              to={`/rh/formations/${f.id}/modifier`}
+                            <Link to={`/rh/formations/${f.id}/modifier`}
                               className="btn btn-xs btn-outline-warning"
-                              title="Modifier"
-                            >
+                              title={t("common.edit")}>
                               <i className="fas fa-edit" />
                             </Link>
                           )}
                           {f.statut === "EN_COURS" && (
-                            <button
-                              className="btn btn-xs btn-outline-success"
-                              title="Terminer"
+                            <button className="btn btn-xs btn-outline-success"
+                              title={t("formations.finish_btn")}
                               onClick={() => handleTerminer(f.id)}
-                              disabled={actionId === f.id}
-                            >
+                              disabled={actionId === f.id}>
                               <i className="fas fa-check" />
                             </button>
                           )}
                           {(f.statut === "PLANIFIEE" || f.statut === "ANNULEE") && (
-                            <button
-                              className="btn btn-xs btn-outline-danger"
-                              title="Supprimer"
+                            <button className="btn btn-xs btn-outline-danger"
+                              title={t("common.delete")}
                               onClick={() => handleSupprimer(f.id)}
-                              disabled={actionId === f.id}
-                            >
+                              disabled={actionId === f.id}>
                               <i className="fas fa-trash" />
                             </button>
                           )}

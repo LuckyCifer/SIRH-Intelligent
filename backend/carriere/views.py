@@ -40,9 +40,13 @@ class EvenementCarriereViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="timeline-employe")
     def timeline_employe(self, request):
+        from accounts.models import User as UserModel
         employe_id = request.query_params.get("employe_id")
         if not employe_id:
             return Response({"error": "employe_id requis"}, status=status.HTTP_400_BAD_REQUEST)
+        entreprise = getattr(request.user, "entreprise", None)
+        if entreprise and not UserModel.objects.filter(pk=employe_id, entreprise=entreprise).exists():
+            return Response(status=status.HTTP_403_FORBIDDEN)
         evenements = EvenementCarriere.objects.filter(
             employe_id=employe_id
         ).select_related(

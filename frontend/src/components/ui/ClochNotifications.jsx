@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { getCompteur, getNotifications, marquerLue, toutLire } from '../../api/notifications'
 
 const TYPE_ICON = {
@@ -18,6 +19,7 @@ function timeAgo(dateStr) {
 }
 
 export default function ClochNotifications() {
+  const { t } = useTranslation()
   const [nonLues, setNonLues]         = useState(0)
   const [notifs, setNotifs]           = useState([])
   const [open, setOpen]               = useState(false)
@@ -111,10 +113,10 @@ export default function ClochNotifications() {
             right: 0,
             top: '100%',
             width: 340,
-            background: 'var(--card-bg)',
+            background: 'var(--bg-card)',
             border: '1px solid var(--border-color)',
             borderRadius: 8,
-            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
             zIndex: 9999,
           }}
         >
@@ -127,7 +129,7 @@ export default function ClochNotifications() {
             alignItems: 'center',
           }}>
             <strong style={{ color: 'var(--text-primary)', fontSize: 14 }}>
-              Notifications {nonLues > 0 && <span className="badge badge-danger ml-1">{nonLues}</span>}
+              {t('notifications.title')} {nonLues > 0 && <span className="badge badge-danger ml-1">{nonLues}</span>}
             </strong>
             {nonLues > 0 && (
               <button
@@ -135,7 +137,7 @@ export default function ClochNotifications() {
                 style={{ fontSize: 12, color: 'var(--acerfi-blue)' }}
                 onClick={handleToutLire}
               >
-                Tout lire
+                {t('notifications.mark_all_read_short')}
               </button>
             )}
           </div>
@@ -145,7 +147,7 @@ export default function ClochNotifications() {
             {notifs.length === 0 ? (
               <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 13 }}>
                 <i className="fas fa-bell-slash mb-2 d-block" style={{ fontSize: 24 }} />
-                Aucune notification
+                {t('notifications.no_notifications')}
               </div>
             ) : (
               notifs.map(notif => {
@@ -205,7 +207,7 @@ export default function ClochNotifications() {
               onClick={() => setOpen(false)}
               style={{ fontSize: 13, color: 'var(--acerfi-blue)', textDecoration: 'none' }}
             >
-              Voir toutes les notifications →
+              {t('notifications.see_all')} →
             </Link>
           </div>
         </div>

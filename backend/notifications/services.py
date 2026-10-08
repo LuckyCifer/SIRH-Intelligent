@@ -15,8 +15,8 @@ def creer_notification(destinataire, titre, message, type_notif="INFO", categori
 
 def notifier_conge_soumis(demande):
     from accounts.models import User
-    managers_rh = User.objects.filter(role__in=("RH", "ADMIN", "MANAGER"), is_active=True)
-    for user in managers_rh:
+    # RH/ADMIN : gestion globale des congés
+    for user in User.objects.filter(role__in=("RH", "ADMIN"), is_active=True):
         creer_notification(
             destinataire=user,
             titre="Nouvelle demande de congé",
@@ -24,7 +24,19 @@ def notifier_conge_soumis(demande):
                     f"du {demande.date_debut} au {demande.date_fin}.",
             type_notif="INFO",
             categorie="CONGE",
-            lien=f"/rh/conges",
+            lien="/rh/conges",
+        )
+    # Manager direct de l'employé uniquement, avec son propre lien
+    responsable = getattr(getattr(demande.employe, "departement", None), "responsable", None)
+    if responsable and responsable.role == "MANAGER" and responsable.is_active:
+        creer_notification(
+            destinataire=responsable,
+            titre="Nouvelle demande de congé",
+            message=f"{demande.employe.get_full_name()} a soumis une demande de congé "
+                    f"du {demande.date_debut} au {demande.date_fin}.",
+            type_notif="INFO",
+            categorie="CONGE",
+            lien="/manager/conges",
         )
 
 
@@ -37,7 +49,7 @@ def notifier_conge_valide(demande, approuve=True):
         message=f"Votre demande de congé du {demande.date_debut} au {demande.date_fin} a été {statut}.",
         type_notif=type_notif,
         categorie="CONGE",
-        lien="/conges",
+        lien="/employe/conges",
     )
 
 
@@ -98,11 +110,11 @@ def notifier_objectif_en_retard(objectif):
                 f"et affiche une progression de {objectif.progression}%.",
         type_notif="ALERTE",
         categorie="EVALUATION",
-        lien="/objectifs",
+        lien="/employe/mes-objectifs",
     )
+    # RH/ADMIN : page de gestion RH
     from accounts.models import User
-    managers = User.objects.filter(role__in=("RH", "ADMIN", "MANAGER"), is_active=True)
-    for user in managers:
+    for user in User.objects.filter(role__in=("RH", "ADMIN"), is_active=True):
         creer_notification(
             destinataire=user,
             titre="Objectif employé en retard",
@@ -111,4 +123,16 @@ def notifier_objectif_en_retard(objectif):
             type_notif="ALERTE",
             categorie="EVALUATION",
             lien="/rh/objectifs",
+        )
+    # Manager direct de l'employé uniquement, avec son propre lien
+    responsable = getattr(getattr(objectif.employe, "departement", None), "responsable", None)
+    if responsable and responsable.role == "MANAGER" and responsable.is_active:
+        creer_notification(
+            destinataire=responsable,
+            titre="Objectif employé en retard",
+            message=f"L'objectif « {objectif.titre} » de {objectif.employe.get_full_name()} "
+                    f"est en retard ({objectif.progression}%).",
+            type_notif="ALERTE",
+            categorie="EVALUATION",
+            lien="/manager/objectifs-equipe",
         )

@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import ManagerLayout from "../../../components/layout/ManagerLayout";
-import { getInscriptions, getFormations } from "../../../api/formations";
+import { getInscriptions } from "../../../api/formations";
 
 const STATUT_BADGE = {
   EN_ATTENTE: "warning", INSCRIT: "primary", PRESENT: "success", ABSENT: "danger", ANNULE: "secondary",
 };
 
 export default function FormationsEquipe() {
+  const { t } = useTranslation();
   const [inscriptions, setInscriptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -16,9 +18,9 @@ export default function FormationsEquipe() {
   useEffect(() => {
     getInscriptions()
       .then((r) => setInscriptions(r.data.results ?? r.data))
-      .catch(() => toast.error("Erreur chargement"))
+      .catch(() => toast.error(t("formations.load_error")))
       .finally(() => setLoading(false));
-  }, []);
+  }, []); // eslint-disable-line
 
   const liste = inscriptions.filter((i) => {
     const nom = `${i.employe_detail?.first_name} ${i.employe_detail?.last_name}`.toLowerCase();
@@ -36,14 +38,13 @@ export default function FormationsEquipe() {
   };
 
   return (
-    <ManagerLayout pageTitle="Formations de l'équipe">
-      {/* Stats */}
+    <ManagerLayout pageTitle={t("formations.team_formations")}>
       <div className="row mb-3">
         {[
-          { label: "Total inscriptions", val: stats.total, icon: "list", color: "#0077B6" },
-          { label: "En attente", val: stats.enAttente, icon: "clock", color: "#ffc107" },
-          { label: "Inscrits confirmés", val: stats.inscrits, icon: "check-circle", color: "#17a2b8" },
-          { label: "Présents", val: stats.presents, icon: "user-check", color: "#28a745" },
+          { label: t("formations.total_inscriptions"), val: stats.total,     icon: "list",        color: "#0077B6" },
+          { label: t("formations.pending_count"),       val: stats.enAttente, icon: "clock",       color: "#ffc107" },
+          { label: t("formations.confirmed_enrolled"),  val: stats.inscrits,  icon: "check-circle", color: "#17a2b8" },
+          { label: t("formations.present_count"),       val: stats.presents,  icon: "user-check",  color: "#28a745" },
         ].map((s) => (
           <div key={s.label} className="col-md-3 col-sm-6 mb-2">
             <div className="card" style={{ background: "var(--card-bg)", border: `1px solid var(--border-color)`, borderLeft: `4px solid ${s.color}` }}>
@@ -59,45 +60,36 @@ export default function FormationsEquipe() {
         ))}
       </div>
 
-      {/* Filtres */}
       <div className="card mb-3" style={{ background: "var(--card-bg)", border: "1px solid var(--border-color)" }}>
         <div className="card-body py-2">
           <div className="row">
             <div className="col-md-6">
-              <input
-                type="text"
-                className="form-control form-control-sm"
-                placeholder="Rechercher par employé ou formation..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                style={{ background: "var(--card-bg)", color: "var(--text-primary)" }}
-              />
+              <input type="text" className="form-control form-control-sm"
+                placeholder={t("formations.search_by_employee_formation")}
+                value={search} onChange={(e) => setSearch(e.target.value)}
+                style={{ background: "var(--card-bg)", color: "var(--text-primary)" }} />
             </div>
             <div className="col-md-4">
-              <select
-                className="form-control form-control-sm"
-                value={filtreStatut}
+              <select className="form-control form-control-sm" value={filtreStatut}
                 onChange={(e) => setFiltreStatut(e.target.value)}
-                style={{ background: "var(--card-bg)", color: "var(--text-primary)" }}
-              >
-                <option value="">Tous les statuts</option>
-                <option value="EN_ATTENTE">En attente</option>
-                <option value="INSCRIT">Inscrit</option>
-                <option value="PRESENT">Présent</option>
-                <option value="ABSENT">Absent</option>
-                <option value="ANNULE">Annulé</option>
+                style={{ background: "var(--card-bg)", color: "var(--text-primary)" }}>
+                <option value="">{t("formations.all_statuses")}</option>
+                <option value="EN_ATTENTE">{t("formations.waiting_validation")}</option>
+                <option value="INSCRIT">{t("formations.enrolled")}</option>
+                <option value="PRESENT">{t("formations.present_label")}</option>
+                <option value="ABSENT">{t("formations.mark_absent")}</option>
+                <option value="ANNULE">{t("formations.cancelled")}</option>
               </select>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Tableau */}
       <div className="card" style={{ background: "var(--card-bg)", border: "1px solid var(--border-color)" }}>
         <div className="card-header" style={{ background: "var(--card-bg)", borderBottom: "1px solid var(--border-color)" }}>
           <h5 style={{ color: "var(--page-title)", margin: 0 }}>
             <i className="fas fa-list mr-2" style={{ color: "var(--acerfi-blue)" }} />
-            Inscriptions ({liste.length})
+            {t("formations.registrations_count", { count: liste.length })}
           </h5>
         </div>
         <div className="card-body p-0">
@@ -108,19 +100,19 @@ export default function FormationsEquipe() {
           ) : liste.length === 0 ? (
             <div className="text-center py-5" style={{ color: "var(--text-muted)" }}>
               <i className="fas fa-graduation-cap fa-3x mb-3 d-block" />
-              Aucune inscription trouvée.
+              {t("formations.no_registrations")}
             </div>
           ) : (
             <div className="table-responsive">
               <table className="table table-hover mb-0">
                 <thead>
                   <tr style={{ background: "var(--card-bg)", color: "var(--text-muted)", fontSize: "0.82rem" }}>
-                    <th>Employé</th>
-                    <th>Formation</th>
-                    <th>Date</th>
-                    <th>Durée</th>
-                    <th>Statut</th>
-                    <th>Note</th>
+                    <th>{t("formations.col_employee")}</th>
+                    <th>{t("formations.col_formation")}</th>
+                    <th>{t("formations.col_date")}</th>
+                    <th>{t("formations.col_duration")}</th>
+                    <th>{t("formations.col_status")}</th>
+                    <th>{t("formations.col_note")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -151,9 +143,10 @@ export default function FormationsEquipe() {
                       </td>
                       <td>
                         {i.note_formation ? (
-                          <span style={{ color: "#ffc107" }}>
-                            {"★".repeat(i.note_formation)}{"☆".repeat(5 - i.note_formation)}
-                          </span>
+                          <span>{Array.from({length: 5}, (_, k) => (
+                            <i key={k} className={k < i.note_formation ? "fas fa-star" : "far fa-star"}
+                              style={{ color: "#ffc107", fontSize: 11 }} />
+                          ))}</span>
                         ) : <span style={{ color: "var(--text-muted)" }}>—</span>}
                       </td>
                     </tr>

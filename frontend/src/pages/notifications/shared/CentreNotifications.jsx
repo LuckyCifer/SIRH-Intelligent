@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
 import RHLayout from '../../../components/layout/RHLayout'
 import EmployeLayout from '../../../components/layout/EmployeLayout'
 import ManagerLayout from '../../../components/layout/ManagerLayout'
@@ -9,27 +10,21 @@ import {
   getNotifications, marquerLue, toutLire, supprimerLues
 } from '../../../api/notifications'
 
-const TYPE_META = {
-  INFO:   { icon: 'fas fa-info-circle',        color: '#17a2b8', label: 'Info' },
-  SUCCES: { icon: 'fas fa-check-circle',       color: '#28a745', label: 'Succès' },
-  ALERTE: { icon: 'fas fa-exclamation-circle', color: '#fd7e14', label: 'Alerte' },
-  URGENT: { icon: 'fas fa-times-circle',       color: '#dc3545', label: 'Urgent' },
-}
-
-const CATEGORIES = [
-  ['', 'Toutes'], ['CONGE','Congés'], ['EVALUATION','Évaluation'],
-  ['CONTRAT','Contrats'], ['PAIE','Paie'], ['FORMATION','Formations'],
-  ['RECRUTEMENT','Recrutements'], ['SYSTEME','Système'],
-]
-
-function formatDate(str) {
-  return new Date(str).toLocaleString('fr-FR', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  })
-}
-
 function NotificationRow({ notif, onLue, onSelect, selected }) {
+  const { t, i18n } = useTranslation()
+  const locale = i18n.language === 'en' ? 'en-US' : 'fr-FR'
+  const TYPE_META = {
+    INFO:   { icon: 'fas fa-info-circle',        color: '#17a2b8', label: t('notifications.type_info') },
+    SUCCES: { icon: 'fas fa-check-circle',       color: '#28a745', label: t('common.success') },
+    ALERTE: { icon: 'fas fa-exclamation-circle', color: '#fd7e14', label: t('common.warning') },
+    URGENT: { icon: 'fas fa-times-circle',       color: '#dc3545', label: t('notifications.type_urgent') },
+  }
+  function formatDate(str) {
+    return new Date(str).toLocaleString(locale, {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    })
+  }
   const meta = TYPE_META[notif.type_notif] || TYPE_META.INFO
   return (
     <div
@@ -81,7 +76,7 @@ function NotificationRow({ notif, onLue, onSelect, selected }) {
         {notif.lien && (
           <Link to={notif.lien} onClick={e => e.stopPropagation()}
             style={{ fontSize: 12, color: 'var(--acerfi-blue)', marginTop: 4, display: 'inline-block' }}>
-            <i className="fas fa-arrow-right mr-1" />Voir le détail
+            <i className="fas fa-arrow-right mr-1" />{t('common.details')}
           </Link>
         )}
       </div>
@@ -90,6 +85,7 @@ function NotificationRow({ notif, onLue, onSelect, selected }) {
 }
 
 export default function CentreNotifications() {
+  const { t } = useTranslation()
   const { user } = useAuthStore()
   const [notifs, setNotifs]       = useState([])
   const [loading, setLoading]     = useState(true)
@@ -98,6 +94,17 @@ export default function CentreNotifications() {
   const [selected, setSelected]   = useState(new Set())
   const [page, setPage]           = useState(1)
   const [hasNext, setHasNext]     = useState(false)
+
+  const CATEGORIES = [
+    ['', t('notifications.all')],
+    ['CONGE', t('nav.conges')],
+    ['EVALUATION', t('nav.evaluations')],
+    ['CONTRAT', t('nav.contrats')],
+    ['PAIE', t('nav.paie')],
+    ['FORMATION', t('nav.formations')],
+    ['RECRUTEMENT', t('nav.recrutements')],
+    ['SYSTEME', t('notifications.system')],
+  ]
 
   const charger = useCallback(async () => {
     setLoading(true)
@@ -110,11 +117,11 @@ export default function CentreNotifications() {
       setNotifs(Array.isArray(data) ? data : [])
       setHasNext(!!r.data.next)
     } catch {
-      toast.error('Erreur de chargement.', { id: 'notif-load' })
+      toast.error(t('common.error'), { id: 'notif-load' })
     } finally {
       setLoading(false)
     }
-  }, [page, filtreLue, filtreCat])
+  }, [page, filtreLue, filtreCat, t])
 
   useEffect(() => { charger() }, [charger])
 
@@ -136,14 +143,14 @@ export default function CentreNotifications() {
   async function handleToutLire() {
     await toutLire()
     setNotifs(prev => prev.map(n => ({ ...n, lue: true })))
-    toast.success('Toutes les notifications marquées comme lues.')
+    toast.success(t('notifications.mark_all_read'))
   }
 
   async function handleSupprimerLues() {
-    if (!window.confirm('Supprimer toutes les notifications lues ?')) return
+    if (!window.confirm(t('common.are_you_sure'))) return
     const r = await supprimerLues().catch(() => null)
     if (r) {
-      toast.success(`${r.data.supprimees} notification(s) supprimée(s).`)
+      toast.success(t('notifications.deleted_count', { count: r.data.supprimees }))
       charger()
     }
   }
@@ -156,7 +163,6 @@ export default function CentreNotifications() {
 
   const content = (
     <div>
-      {/* Filtres */}
       <div className="card mb-3" style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
         <div className="card-body py-3">
           <div className="row align-items-center">
@@ -164,9 +170,9 @@ export default function CentreNotifications() {
               <select className="form-control form-control-sm"
                 value={filtreLue} onChange={e => { setFiltreLue(e.target.value); setPage(1) }}
                 style={{ background: 'var(--input-bg)', color: 'var(--text-primary)', borderColor: 'var(--border-color)' }}>
-                <option value="">Toutes (lues + non lues)</option>
-                <option value="false">Non lues</option>
-                <option value="true">Lues</option>
+                <option value="">{t('notifications.all')}</option>
+                <option value="false">{t('notifications.unread')}</option>
+                <option value="true">{t('common.active')}</option>
               </select>
             </div>
             <div className="col-md-4 mb-2">
@@ -179,24 +185,23 @@ export default function CentreNotifications() {
             <div className="col-md-5 mb-2 text-right">
               {nonLues > 0 && (
                 <button className="btn btn-sm btn-outline-primary mr-2" onClick={handleToutLire}>
-                  <i className="fas fa-check-double mr-1" />Tout marquer comme lu
+                  <i className="fas fa-check-double mr-1" />{t('notifications.mark_all_read')}
                 </button>
               )}
               <button className="btn btn-sm btn-outline-danger" onClick={handleSupprimerLues}>
-                <i className="fas fa-trash mr-1" />Supprimer les lues
+                <i className="fas fa-trash mr-1" />{t('common.delete')}
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Liste */}
       <div className="card" style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
         <div className="card-header d-flex justify-content-between align-items-center"
           style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
           <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
-            {loading ? '…' : `${notifs.length} notification(s)`}
-            {nonLues > 0 && <span className="badge badge-danger ml-2">{nonLues} non lues</span>}
+            {loading ? '…' : t('notifications.count', { count: notifs.length })}
+            {nonLues > 0 && <span className="badge badge-danger ml-2">{nonLues} {t('notifications.unread')}</span>}
           </span>
         </div>
 
@@ -205,7 +210,7 @@ export default function CentreNotifications() {
         ) : notifs.length === 0 ? (
           <div style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--text-secondary)' }}>
             <i className="fas fa-bell-slash fa-3x mb-3 d-block" />
-            <p>Aucune notification pour le moment.</p>
+            <p>{t('notifications.no_notifications')}</p>
           </div>
         ) : (
           <>
@@ -223,13 +228,13 @@ export default function CentreNotifications() {
                 {page > 1 && (
                   <button className="btn btn-sm btn-outline-secondary"
                     onClick={() => setPage(p => p - 1)}>
-                    <i className="fas fa-chevron-left mr-1" />Précédent
+                    <i className="fas fa-chevron-left mr-1" />{t('common.previous')}
                   </button>
                 )}
                 {hasNext && (
                   <button className="btn btn-sm btn-outline-primary"
                     onClick={() => setPage(p => p + 1)}>
-                    Suivant<i className="fas fa-chevron-right ml-1" />
+                    {t('common.next')}<i className="fas fa-chevron-right ml-1" />
                   </button>
                 )}
               </div>
@@ -240,5 +245,5 @@ export default function CentreNotifications() {
     </div>
   )
 
-  return <Layout pageTitle="Centre de notifications">{content}</Layout>
+  return <Layout pageTitle={t('notifications.centre')}>{content}</Layout>
 }
