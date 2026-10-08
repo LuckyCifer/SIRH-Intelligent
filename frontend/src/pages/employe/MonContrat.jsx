@@ -1,38 +1,61 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import EmployeLayout from '../../components/layout/EmployeLayout'
 import Spinner from '../../components/Spinner'
 import useAuthStore from '../../store/authStore'
 import api from '../../api/axios'
-
-const TYPE_CONFIG = {
-  CDI:       { cls: 'badge-success', label: 'CDI — Durée Indéterminée' },
-  CDD:       { cls: 'badge-primary', label: 'CDD — Durée Déterminée' },
-  STAGE:     { cls: 'badge-warning', label: 'Convention de Stage' },
-  FREELANCE: { cls: 'badge-info',    label: 'Contrat Freelance' },
-  INTERIM:   { cls: 'badge-secondary', label: "Contrat d'Intérim" },
-}
-
-const STATUT_CONFIG = {
-  ACTIF:    { cls: 'badge-success', label: 'Actif' },
-  EXPIRE:   { cls: 'badge-danger',  label: 'Expiré' },
-  RESILIE:  { cls: 'badge-secondary', label: 'Résilié' },
-  EN_COURS: { cls: 'badge-warning', label: 'En cours de renouvellement' },
-}
-
-function fmtDate(d) {
-  if (!d) return '—'
-  return new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
-}
-
-function fmtSalaire(s) {
-  if (!s) return '—'
-  return new Intl.NumberFormat('fr-FR').format(s) + ' FCFA'
-}
+import toast from 'react-hot-toast'
+import { useApercu } from '../../components/ui/useApercu'
 
 export default function MonContrat() {
+  const { t, i18n } = useTranslation()
   const { user } = useAuthStore()
   const [contrat, setContrat] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [apercuBusy, setApercuBusy] = useState(false)
+  const { voirFichier, apercuModal } = useApercu()
+
+  async function handleApercuContrat() {
+    setApercuBusy(true)
+    try {
+      const res = await fetch(contrat.document)
+      if (!res.ok) throw new Error(res.status)
+      voirFichier(await res.blob(), decodeURIComponent(contrat.document.split('/').pop()), t('monContrat.download_pdf'))
+    } catch {
+      toast.error(t('apercu.load_error'), { id: 'apercu-err' })
+    } finally {
+      setApercuBusy(false)
+    }
+  }
+
+  const locale = i18n.language === 'en' ? 'en-US' : 'fr-FR'
+
+  const TYPE_CONFIG = {
+    CDI:       { cls: 'badge-success',   label: t('monContrat.type_cdi') },
+    CDD:       { cls: 'badge-primary',   label: t('monContrat.type_cdd') },
+    STAGE:     { cls: 'badge-warning',   label: t('monContrat.type_stage') },
+    FREELANCE: { cls: 'badge-info',      label: t('monContrat.type_freelance') },
+    INTERIM:   { cls: 'badge-secondary', label: t('monContrat.type_interim') },
+  }
+
+  const STATUT_CONFIG = {
+    ACTIF:    { cls: 'badge-success',   label: t('monContrat.status_actif') },
+    EXPIRE:   { cls: 'badge-danger',    label: t('monContrat.status_expire') },
+    RESILIE:  { cls: 'badge-secondary', label: t('monContrat.status_resilie') },
+    EN_COURS: { cls: 'badge-warning',   label: t('monContrat.status_en_cours') },
+  }
+
+  function fmtDate(d) {
+    if (!d) return '—'
+    return new Date(d + 'T12:00:00').toLocaleDateString(locale, {
+      day: 'numeric', month: 'long', year: 'numeric',
+    })
+  }
+
+  function fmtSalaire(s) {
+    if (!s) return '—'
+    return new Intl.NumberFormat(locale).format(s) + ' FCFA'
+  }
 
   useEffect(() => {
     api.get('/contrats/?statut=ACTIF')
@@ -46,21 +69,23 @@ export default function MonContrat() {
 
   if (loading) {
     return (
-      <EmployeLayout pageTitle="Mon contrat" breadcrumb={{ to: '/employe/dashboard', label: 'Tableau de bord' }}>
-        <Spinner message="Chargement de votre contrat…" />
+      <EmployeLayout pageTitle={t('monContrat.title')}
+        breadcrumb={{ to: '/employe/dashboard', label: t('nav.tableau_de_bord') }}>
+        <Spinner message={t('monContrat.loading')} />
       </EmployeLayout>
     )
   }
 
   return (
-    <EmployeLayout pageTitle="Mon contrat" breadcrumb={{ to: '/employe/dashboard', label: 'Tableau de bord' }}>
+    <EmployeLayout pageTitle={t('monContrat.title')}
+      breadcrumb={{ to: '/employe/dashboard', label: t('nav.tableau_de_bord') }}>
       {!contrat ? (
         <div className="text-center py-5">
           <i className="fas fa-file-contract fa-3x mb-3 d-block text-muted" />
-          <h5 style={{ color: 'var(--text-primary)' }}>Aucun contrat actif</h5>
+          <h5 style={{ color: 'var(--text-primary)' }}>{t('monContrat.no_contract')}</h5>
           <p className="text-muted" style={{ fontSize: 13 }}>
-            Votre contrat n'est pas encore enregistré dans le système.<br />
-            Contactez votre responsable RH pour plus d'informations.
+            {t('monContrat.no_contract_msg')}<br />
+            {t('monContrat.contact_rh')}
           </p>
         </div>
       ) : (
@@ -70,7 +95,7 @@ export default function MonContrat() {
               <div className="card-header d-flex justify-content-between align-items-center">
                 <h3 className="card-title">
                   <i className="fas fa-file-contract mr-2" />
-                  Détails de votre contrat
+                  {t('monContrat.details_title')}
                 </h3>
                 <div>
                   <span className={`badge ${TYPE_CONFIG[contrat.type_contrat]?.cls || 'badge-secondary'} mr-2`}>
@@ -86,42 +111,52 @@ export default function MonContrat() {
                   <tbody>
                     <tr>
                       <td className="text-muted" style={{ width: '40%' }}>
-                        <i className="fas fa-building mr-2" />Département
+                        <i className="fas fa-building mr-2" />{t('monContrat.field_dept')}
                       </td>
                       <td className="font-weight-bold">{contrat.departement_nom || '—'}</td>
                     </tr>
                     <tr>
-                      <td className="text-muted"><i className="fas fa-briefcase mr-2" />Poste</td>
+                      <td className="text-muted">
+                        <i className="fas fa-briefcase mr-2" />{t('monContrat.field_poste')}
+                      </td>
                       <td className="font-weight-bold">{contrat.poste_titre || '—'}</td>
                     </tr>
                     <tr>
-                      <td className="text-muted"><i className="fas fa-calendar-check mr-2" />Date de début</td>
+                      <td className="text-muted">
+                        <i className="fas fa-calendar-check mr-2" />{t('monContrat.field_start')}
+                      </td>
                       <td>{fmtDate(contrat.date_debut)}</td>
                     </tr>
                     <tr>
-                      <td className="text-muted"><i className="fas fa-calendar-times mr-2" />Date de fin</td>
+                      <td className="text-muted">
+                        <i className="fas fa-calendar-times mr-2" />{t('monContrat.field_end')}
+                      </td>
                       <td>
                         {contrat.date_fin ? fmtDate(contrat.date_fin) : (
-                          <span className="badge badge-success">CDI — Sans limite</span>
+                          <span className="badge badge-success">{t('monContrat.no_end_date')}</span>
                         )}
                       </td>
                     </tr>
                     {contrat.salaire && (
                       <tr>
-                        <td className="text-muted"><i className="fas fa-money-bill mr-2" />Salaire mensuel brut</td>
+                        <td className="text-muted">
+                          <i className="fas fa-money-bill mr-2" />{t('monContrat.field_salary')}
+                        </td>
                         <td className="font-weight-bold">{fmtSalaire(contrat.salaire)}</td>
                       </tr>
                     )}
                     {contrat.jours_restants != null && (
                       <tr>
-                        <td className="text-muted"><i className="fas fa-hourglass-half mr-2" />Jours restants</td>
+                        <td className="text-muted">
+                          <i className="fas fa-hourglass-half mr-2" />{t('monContrat.field_days_remaining')}
+                        </td>
                         <td>
                           <span className={`badge ${contrat.expire_bientot ? 'badge-danger' : 'badge-info'}`}>
-                            {contrat.jours_restants} jour{contrat.jours_restants > 1 ? 's' : ''}
+                            {contrat.jours_restants} j
                           </span>
                           {contrat.expire_bientot && (
                             <span className="text-danger ml-2" style={{ fontSize: 12 }}>
-                              <i className="fas fa-exclamation-triangle mr-1" />Expire bientôt
+                              <i className="fas fa-exclamation-triangle mr-1" />{t('monContrat.expires_soon')}
                             </span>
                           )}
                         </td>
@@ -139,10 +174,11 @@ export default function MonContrat() {
               </div>
               {contrat.document && (
                 <div className="card-footer">
-                  <a href={contrat.document} target="_blank" rel="noopener noreferrer"
-                    className="btn btn-sm btn-outline-primary">
-                    <i className="fas fa-download mr-1" />Télécharger mon contrat (PDF)
-                  </a>
+                  <button type="button" className="btn btn-sm btn-outline-primary"
+                    onClick={handleApercuContrat} disabled={apercuBusy}>
+                    <i className={`fas ${apercuBusy ? 'fa-spinner fa-spin' : 'fa-eye'} mr-1`} />
+                    {t('apercu.preview')} — {t('monContrat.download_pdf')}
+                  </button>
                 </div>
               )}
             </div>
@@ -152,26 +188,27 @@ export default function MonContrat() {
             <div className="card">
               <div className="card-header">
                 <h3 className="card-title">
-                  <i className="fas fa-user-tie mr-2" />Informations
+                  <i className="fas fa-user-tie mr-2" />{t('monContrat.info_section')}
                 </h3>
               </div>
               <div className="card-body" style={{ fontSize: 13 }}>
-                <p className="text-muted mb-1">Nom complet</p>
+                <p className="text-muted mb-1">{t('monContrat.info_fullname')}</p>
                 <p className="font-weight-bold">{user?.first_name} {user?.last_name}</p>
-                <p className="text-muted mb-1 mt-2">Identifiant</p>
+                <p className="text-muted mb-1 mt-2">{t('monContrat.info_username')}</p>
                 <p><code>{user?.username}</code></p>
-                <p className="text-muted mb-1 mt-2">Email</p>
+                <p className="text-muted mb-1 mt-2">{t('monContrat.info_email')}</p>
                 <p>{user?.email || '—'}</p>
                 <hr />
                 <p className="text-muted" style={{ fontSize: 11 }}>
                   <i className="fas fa-lock mr-1" />
-                  Pour toute modification de contrat, contactez votre responsable RH.
+                  {t('monContrat.info_readonly')}
                 </p>
               </div>
             </div>
           </div>
         </div>
       )}
+      {apercuModal}
     </EmployeLayout>
   )
 }
