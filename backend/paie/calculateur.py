@@ -6,11 +6,15 @@ Taux applicables :
   CNPS patronal pension 4,2 %
   CNPS patronal famille 7,0 %
   CNPS patronal AT      1,75 % (risque A, défaut)
-  CFC salarié         1,0 %
-  CFC patronal        1,5 %
-  FNE                 1,0 %
+  CFC salarié         1,0 %  } sur le salaire brut taxable,
+  CFC patronal        1,5 %  } SANS plafond (assiette = base IRPP brute)
+  FNE                 1,0 %  }
   IRPP sur SNC (tranches) + CAC 10 %
-  RAV et TDL : forfaits par tranche de revenu
+  RAV : forfait mensuel selon le salaire brut (0 à 13 000 FCFA)
+  TDL : forfait mensuel selon le salaire de base > 62 000 (250 à 2 500 FCFA)
+
+Sources : MINFI (minfi.gov.cm, « Les autres retenues sur les salaires ») pour CFC/FNE ;
+barèmes RAV et TDL publiés (CGI, loi de finances) repris par lefisk.cm et fiscafinance.com.
 """
 from decimal import Decimal, ROUND_HALF_UP
 
@@ -46,26 +50,34 @@ class CalculateurPaie:
         (None,              Decimal("0.35")),
     ]
 
-    # ── RAV (taxe radio-télévision) ───────────────────────────────────────────
-    # (seuil_min_exclu, forfait) — parcourir du plus bas au plus haut
+    # ── RAV (redevance audiovisuelle) — base : salaire brut mensuel ─────────
+    # (seuil_exclu, forfait mensuel) : forfait dû si montant > seuil
     RAV_TRANCHES = [
-        (Decimal("0"),        Decimal("0")),
-        (Decimal("61999"),    Decimal("650")),
-        (Decimal("100000"),   Decimal("1300")),
-        (Decimal("200000"),   Decimal("1625")),
-        (Decimal("300000"),   Decimal("1950")),
-        (Decimal("500000"),   Decimal("2600")),
-        (Decimal("1000000"),  Decimal("3250")),
+        (Decimal("50000"),    Decimal("750")),
+        (Decimal("100000"),   Decimal("1950")),
+        (Decimal("200000"),   Decimal("3250")),
+        (Decimal("300000"),   Decimal("4550")),
+        (Decimal("400000"),   Decimal("5850")),
+        (Decimal("500000"),   Decimal("7150")),
+        (Decimal("600000"),   Decimal("8450")),
+        (Decimal("700000"),   Decimal("9750")),
+        (Decimal("800000"),   Decimal("11050")),
+        (Decimal("900000"),   Decimal("12350")),
+        (Decimal("1000000"),  Decimal("13000")),
     ]
 
-    # ── TDL (taxe développement local) ───────────────────────────────────────
+    # ── TDL (taxe de développement local) — base : salaire de base mensuel ──
+    # Annuel 3 000 → 30 000 FCFA, soit 250 → 2 500 FCFA/mois
     TDL_TRANCHES = [
-        (Decimal("0"),        Decimal("0")),
-        (Decimal("61999"),    Decimal("1000")),
-        (Decimal("100000"),   Decimal("2500")),
-        (Decimal("300000"),   Decimal("4500")),
-        (Decimal("500000"),   Decimal("7200")),
-        (Decimal("1000000"),  Decimal("10800")),
+        (Decimal("62000"),    Decimal("250")),
+        (Decimal("75000"),    Decimal("500")),
+        (Decimal("100000"),   Decimal("750")),
+        (Decimal("125000"),   Decimal("1000")),
+        (Decimal("150000"),   Decimal("1250")),
+        (Decimal("200000"),   Decimal("1500")),
+        (Decimal("250000"),   Decimal("2000")),
+        (Decimal("300000"),   Decimal("2250")),
+        (Decimal("500000"),   Decimal("2500")),
     ]
 
     # ── Divers ────────────────────────────────────────────────────────────────
@@ -186,8 +198,9 @@ class CalculateurPaie:
 
         cnps_d = self.calculer_cnps(sbt)
         irpp_d = self.calculer_irpp(sbt, cnps_d["salarie"])
-        cfc_d  = self.calculer_cfc(cnps_d["base"])
-        fne    = self._round(cnps_d["base"] * self.TAUX_FNE)
+        # CFC et FNE : assiette = salaire brut taxable, non plafonnée (≠ CNPS)
+        cfc_d  = self.calculer_cfc(sbt)
+        fne    = self._round(sbt * self.TAUX_FNE)
         rav    = self.calculer_rav(total_brut)
         tdl    = self.calculer_tdl(self._D(bulletin.salaire_categoriel))
 
@@ -232,10 +245,8 @@ class CalculateurPaie:
         bulletin.salaire_net    = max(Decimal("0"), total_brut - total_retenues)
 
         # ── Coût total employeur ──
-        # Spec: total_brut + indemnités non cotisables + charges patronales
+        # total_brut inclut déjà les indemnités non cotisables (transport, logement…)
         bulletin.cout_total_employeur = (total_brut
-                                        + self._D(bulletin.indemnite_transport)
-                                        + self._D(bulletin.indemnite_logement)
                                         + cnps_d["patronal_pension"]
                                         + cnps_d["patronal_famille"]
                                         + cnps_d["patronal_at"]

@@ -90,29 +90,12 @@ def _forfait(montant: Decimal, tranches: list) -> Decimal:
             break
     return result
 
-IRPP_TRANCHES = [
-    (Decimal("166667"), Decimal("0.10")),
-    (Decimal("250000"), Decimal("0.15")),
-    (Decimal("416667"), Decimal("0.25")),
-    (None,              Decimal("0.35")),
-]
-RAV_TRANCHES = [
-    (Decimal("0"),        Decimal("0")),
-    (Decimal("61999"),    Decimal("650")),
-    (Decimal("100000"),   Decimal("1300")),
-    (Decimal("200000"),   Decimal("1625")),
-    (Decimal("300000"),   Decimal("1950")),
-    (Decimal("500000"),   Decimal("2600")),
-    (Decimal("1000000"),  Decimal("3250")),
-]
-TDL_TRANCHES = [
-    (Decimal("0"),        Decimal("0")),
-    (Decimal("61999"),    Decimal("1000")),
-    (Decimal("100000"),   Decimal("2500")),
-    (Decimal("300000"),   Decimal("4500")),
-    (Decimal("500000"),   Decimal("7200")),
-    (Decimal("1000000"),  Decimal("10800")),
-]
+# Barèmes : source unique dans paie.calculateur (évite les divergences)
+from paie.calculateur import CalculateurPaie as _CP  # noqa: E402
+
+IRPP_TRANCHES = _CP.IRPP_TRANCHES
+RAV_TRANCHES  = _CP.RAV_TRANCHES
+TDL_TRANCHES  = _CP.TDL_TRANCHES
 
 
 def calculer_paie(salaire_brut: float, anciennete_mois: int = 0,
@@ -159,7 +142,7 @@ def calculer_paie(salaire_brut: float, anciennete_mois: int = 0,
     cnps_p_fam = _r(base_cnps * Decimal("0.07"))
     cnps_p_at  = _r(base_cnps * Decimal("0.0175"))
     cfc_p      = _r(sbt * Decimal("0.015"))
-    fne_v      = _r(base_cnps * Decimal("0.01"))
+    fne_v      = _r(sbt * Decimal("0.01"))   # FNE : assiette non plafonnée
     cout_total = _r(total_brut) + cnps_p_pen + cnps_p_fam + cnps_p_at + cfc_p + fne_v
 
     return {
