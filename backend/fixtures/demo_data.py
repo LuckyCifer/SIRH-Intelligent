@@ -193,6 +193,56 @@ for username, type_c, salaire, debut, fin in contrats_data:
         }
     )
 
+# 7. Pointages de démonstration — Avril, Mai, Juin 2026
+from presences.models import Pointage
+from datetime import time, datetime
+import random, calendar
+
+random.seed(2026)
+
+employes_actifs = list(User.objects.filter(role='EMPLOYE', entreprise=entreprise))
+
+def _jours_ouvres(annee_p, mois_p):
+    return [
+        date(annee_p, mois_p, d)
+        for d in range(1, calendar.monthrange(annee_p, mois_p)[1] + 1)
+        if date(annee_p, mois_p, d).weekday() < 5
+    ]
+
+nb_pts = 0
+for emp in employes_actifs:
+    for annee_p, mois_p in [(2026, 4), (2026, 5), (2026, 6)]:
+        for jour in _jours_ouvres(annee_p, mois_p):
+            r = random.random()
+            if r < 0.06:
+                # Absence implicite — pas de pointage créé (compté côté backend)
+                continue
+            elif r < 0.11:
+                # Congé
+                Pointage.objects.get_or_create(
+                    employe=emp, date=jour,
+                    defaults={'statut': 'CONGE', 'entreprise': entreprise}
+                )
+            else:
+                # Présent ou Retard (statut auto-calculé par Pointage.save())
+                if r < 0.72:
+                    arr = time(7, random.randint(30, 59))   # à l'heure
+                else:
+                    arr = time(8, random.randint(10, 45))   # en retard
+                dt_dep = datetime.combine(jour, arr) + timedelta(hours=random.uniform(7.5, 9.5))
+                Pointage.objects.get_or_create(
+                    employe=emp, date=jour,
+                    defaults={
+                        'heure_arrivee': arr,
+                        'heure_depart':  dt_dep.time(),
+                        'statut':        'PRESENT',
+                        'entreprise':    entreprise,
+                    }
+                )
+            nb_pts += 1
+
+print(f"Pointages de démo : {nb_pts} enregistrés (Avr-Mai-Juin 2026)")
+
 print()
 print("=== Données de démonstration créées avec succès ===")
 print(f"Entreprise : {entreprise.nom}")
