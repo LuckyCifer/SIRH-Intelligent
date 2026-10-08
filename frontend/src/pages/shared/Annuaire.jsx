@@ -1,17 +1,12 @@
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
 import api from '../../api/axios'
 import DynamicLayout from '../../components/layout/DynamicLayout'
+import UserAvatar from '../../components/ui/UserAvatar'
 
 const ROLE_COLORS = {
   EMPLOYE: '#2E74B5', MANAGER: '#28A745', RH: '#DC3545', ADMIN: '#6F42C1',
-}
-
-function getInitiales(user) {
-  const n = user.full_name || user.username || ''
-  const parts = n.trim().split(' ')
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
-  return n.slice(0, 2).toUpperCase()
 }
 
 function CarteEmploye({ emp }) {
@@ -19,14 +14,8 @@ function CarteEmploye({ emp }) {
   return (
     <div className="card h-100" style={{ borderTop: `3px solid ${couleur}` }}>
       <div className="card-body text-center py-3">
-        <div style={{
-          width: 64, height: 64, borderRadius: '50%',
-          background: couleur, color: '#fff',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 22, fontWeight: 700,
-          margin: '0 auto 10px',
-        }}>
-          {getInitiales(emp)}
+        <div style={{ margin: '0 auto 10px', display: 'inline-flex' }}>
+          <UserAvatar user={emp} size={64} shape="circle" />
         </div>
         <div className="font-weight-bold" style={{ fontSize: 14, color: 'var(--text-primary)' }}>
           {emp.full_name || emp.username}
@@ -59,19 +48,20 @@ function CarteEmploye({ emp }) {
 }
 
 export default function Annuaire() {
+  const { t } = useTranslation()
   const [employes, setEmployes] = useState([])
   const [loading,  setLoading]  = useState(true)
   const [search,   setSearch]   = useState('')
 
   useEffect(() => {
-    api.get('/accounts/users/')
+    api.get('/accounts/annuaire/')
       .then(r => {
         const all = r.data.results ?? r.data
-        setEmployes(all.filter(u => u.is_active))
+        setEmployes(all)
       })
-      .catch(() => toast.error('Impossible de charger l\'annuaire.'))
+      .catch(() => toast.error(t('common.error')))
       .finally(() => setLoading(false))
-  }, [])
+  }, [t])
 
   const filtered = employes.filter(emp => {
     if (!search) return true
@@ -85,7 +75,7 @@ export default function Annuaire() {
   })
 
   return (
-    <DynamicLayout pageTitle="Annuaire de l'entreprise">
+    <DynamicLayout pageTitle={t('annuaire.title')}>
 
       {/* Barre de recherche */}
       <div className="row mb-3">
@@ -99,7 +89,7 @@ export default function Annuaire() {
             <input
               type="text"
               className="form-control"
-              placeholder="Rechercher par nom, email, poste, rôle…"
+              placeholder={t('annuaire.search_placeholder')}
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
@@ -115,8 +105,8 @@ export default function Annuaire() {
         </div>
         <div className="col-md-6 d-flex align-items-center justify-content-end">
           <span className="text-muted" style={{ fontSize: 13 }}>
-            {filtered.length} collaborateur{filtered.length !== 1 ? 's' : ''}
-            {search && ` trouvé${filtered.length !== 1 ? 's' : ''}`}
+            {t(filtered.length !== 1 ? 'annuaire.collaborators_plural' : 'annuaire.collaborators_count', { count: filtered.length })}
+            {search && ` ${t(filtered.length !== 1 ? 'annuaire.found_count_plural' : 'annuaire.found_count', { count: filtered.length })}`}
           </span>
         </div>
       </div>
@@ -125,12 +115,12 @@ export default function Annuaire() {
       {loading ? (
         <div className="text-center py-5">
           <i className="fas fa-spinner fa-spin fa-2x text-muted" />
-          <p className="mt-2 text-muted">Chargement de l'annuaire…</p>
+          <p className="mt-2 text-muted">{t('annuaire.loading')}</p>
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-5 text-muted">
           <i className="fas fa-users-slash fa-3x mb-3 d-block" />
-          {search ? `Aucun résultat pour "${search}".` : 'Aucun collaborateur.'}
+          {search ? `${t('annuaire.no_results_for')} "${search}".` : t('annuaire.no_collaborators')}
         </div>
       ) : (
         <div className="row">

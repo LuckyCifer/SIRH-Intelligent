@@ -34,3 +34,4 @@ IsStagiaire       = IsEmploye
 IsEncadreur       = IsManager
 IsAdminRH         = IsRH
 IsEncadreurOrAdmin = IsManagerOrRH
+IsRHOrAdmin       = IsRH  # alias explicite pour UserManagementViewSet

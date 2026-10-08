@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
 import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -20,12 +21,14 @@ import { getStatsFormations, getInscriptions } from '../../api/formations'
 import { getStatsSanctions } from '../../api/sanctions'
 import { getStatsMasseSalariale } from '../../api/paie'
 import { getDernierRapport } from '../../api/rapportIA'
+import { getAlertesAvancement } from '../../api/gestionComptes'
+import { getOnboardingsEnCours } from '../../api/recrutements'
 
 const ALERTE_CONFIG = {
-  AUCUNE:  { badge: 'badge-success', row: '',             label: 'OK',      color: '#28A745' },
-  FAIBLE:  { badge: 'badge-success', row: '',             label: 'Faible',  color: '#FFC107' },
-  MOYENNE: { badge: 'badge-warning', row: 'table-warning', label: 'Moyenne', color: '#FD7E14' },
-  ELEVEE:  { badge: 'badge-danger',  row: 'table-danger',  label: 'Élevée',  color: '#DC3545' },
+  AUCUNE:  { badge: 'badge-success', row: '',              color: '#28A745' },
+  FAIBLE:  { badge: 'badge-success', row: '',              color: '#FFC107' },
+  MOYENNE: { badge: 'badge-warning', row: 'table-warning', color: '#FD7E14' },
+  ELEVEE:  { badge: 'badge-danger',  row: 'table-danger',  color: '#DC3545' },
 }
 
 const PROGRESSION_COLORS = {
@@ -34,17 +37,27 @@ const PROGRESSION_COLORS = {
   BONNE:      '#2E74B5',
   EXCELLENTE: '#28A745',
 }
-const PROGRESSION_LABELS = {
-  FAIBLE: 'Faible', MOYENNE: 'Moyenne', BONNE: 'Bonne', EXCELLENTE: 'Excellente',
-}
 
 const ROLE_OPTIONS = ['EMPLOYE', 'MANAGER', 'RH', 'ADMIN']
-const ROLE_LABELS  = { EMPLOYE: 'Employé', MANAGER: 'Manager', RH: 'RH', ADMIN: 'Admin' }
 
 export default function DashboardAdmin() {
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = searchParams.get('tab') || 'stats'
+  const { t, i18n } = useTranslation()
+  const locale = i18n.language === 'en' ? 'en-US' : 'fr-FR'
   const { theme } = useTheme()
+
+  const PROGRESSION_LABELS = {
+    FAIBLE: t('admin.progression_labels.FAIBLE'),
+    MOYENNE: t('admin.progression_labels.MOYENNE'),
+    BONNE: t('admin.progression_labels.BONNE'),
+    EXCELLENTE: t('admin.progression_labels.EXCELLENTE'),
+  }
+  const ROLE_LABELS = {
+    EMPLOYE: t('accounts.employe'), MANAGER: t('accounts.manager'),
+    RH: t('accounts.rh'), ADMIN: t('accounts.admin'),
+  }
+  const alerteLabel = (key) => t(`admin.alerte_labels.${key}`) || key
   const chartText = theme === 'dark' ? '#A8C4D8' : '#555555'
   const chartGrid = theme === 'dark' ? '#2A4A64' : '#DDDDDD'
   const tooltipStyle = { background: theme === 'dark' ? '#1E3448' : '#fff', border: `1px solid ${chartGrid}`, color: chartText }
@@ -60,16 +73,18 @@ export default function DashboardAdmin() {
   const [statsFormationsRH, setStatsFormationsRH] = useState(null)
   const [nbInscEnAttente,   setNbInscEnAttente]   = useState(0)
   const [statsSanctionsRH,  setStatsSanctionsRH]  = useState(null)
-  const [statsPaie,         setStatsPaie]         = useState(null)
-  const [dernierRapportIA,  setDernierRapportIA]  = useState(null)
-  const [loading,           setLoading]           = useState(true)
-  const [updatingRole,      setUpdatingRole]      = useState(null)
+  const [statsPaie,          setStatsPaie]          = useState(null)
+  const [dernierRapportIA,   setDernierRapportIA]   = useState(null)
+  const [alertesAvancement,  setAlertesAvancement]  = useState([])
+  const [onboardingsEnCours, setOnboardingsEnCours] = useState([])
+  const [loading,            setLoading]            = useState(true)
+  const [updatingRole,       setUpdatingRole]       = useState(null)
 
   useEffect(() => {
     async function load() {
       try {
         const moisAujourdhui = new Date().toISOString().slice(0, 7)
-        const [sRes, aRes, uRes, cRes, docRes, presRes, evalRes, recrutRes, formStatsRes, formInscRes, sanctStatsRes, paieStatsRes, rapportIARes] = await Promise.all([
+        const [sRes, aRes, uRes, cRes, docRes, presRes, evalRes, recrutRes, formStatsRes, formInscRes, sanctStatsRes, paieStatsRes, rapportIARes, avancRes, onbRes] = await Promise.all([
           api.get('/analyse/stats/').catch(() => ({ data: null })),
           api.get('/analyse/alertes/').catch(() => ({ data: [] })),
           api.get('/accounts/users/').catch(() => ({ data: [] })),
@@ -83,6 +98,8 @@ export default function DashboardAdmin() {
           getStatsSanctions().catch(() => ({ data: null })),
           getStatsMasseSalariale({ mois: new Date().getMonth() + 1, annee: new Date().getFullYear() }).catch(() => ({ data: null })),
           getDernierRapport().catch(() => ({ data: null })),
+          getAlertesAvancement().catch(() => ({ data: [] })),
+          getOnboardingsEnCours().catch(() => ({ data: [] })),
         ])
         setStats(sRes.data)
         setAlertes(aRes.data.results ?? aRes.data)
@@ -100,8 +117,10 @@ export default function DashboardAdmin() {
         setStatsSanctionsRH(sanctStatsRes.data)
         setStatsPaie(paieStatsRes.data)
         setDernierRapportIA(rapportIARes.data)
+        setAlertesAvancement(avancRes.data?.results ?? avancRes.data ?? [])
+        setOnboardingsEnCours(onbRes.data?.results ?? onbRes.data ?? [])
       } catch {
-        toast.error('Erreur lors du chargement des données admin.')
+        toast.error(t('admin.load_error'))
       } finally {
         setLoading(false)
       }
@@ -114,9 +133,9 @@ export default function DashboardAdmin() {
     try {
       await api.put(`/accounts/users/${userId}/`, { role: newRole })
       setUsers(us => us.map(u => u.id === userId ? { ...u, role: newRole } : u))
-      toast.success('Rôle mis à jour.')
+      toast.success(t('admin.role_updated'))
     } catch {
-      toast.error('Erreur lors de la mise à jour du rôle.')
+      toast.error(t('admin.role_update_error'))
     } finally {
       setUpdatingRole(null)
     }
@@ -124,10 +143,10 @@ export default function DashboardAdmin() {
 
   if (loading) {
     return (
-      <AdminLayout pageTitle="Administration">
+      <AdminLayout pageTitle={t('admin.title')}>
         <div className="text-center py-5">
           <i className="fas fa-spinner fa-spin fa-2x" style={{ color: 'var(--acerfi-blue)' }} />
-          <p className="mt-2 text-muted">Chargement…</p>
+          <p className="mt-2 text-muted">{t('common.loading')}</p>
         </div>
       </AdminLayout>
     )
@@ -154,7 +173,7 @@ export default function DashboardAdmin() {
     key:   k,
   }))
   const alertePieData = Object.entries(stats?.par_niveau_alerte ?? {}).map(([k, v]) => ({
-    name:  ALERTE_CONFIG[k]?.label || k,
+    name:  alerteLabel(k),
     value: v,
     key:   k,
   }))
@@ -162,14 +181,14 @@ export default function DashboardAdmin() {
   const nbAlertesActives = alertes.filter(a => ['MOYENNE', 'ELEVEE'].includes(a.niveau_alerte)).length
 
   const TABS = [
-    { key: 'stats',      icon: 'fas fa-chart-pie',           label: 'Statistiques' },
-    { key: 'analyses',   icon: 'fas fa-robot',               label: 'Analyses IA' },
-    { key: 'alertes',    icon: 'fas fa-exclamation-triangle', label: `Alertes (${nbAlertesActives})` },
-    { key: 'utilisateurs', icon: 'fas fa-users-cog',         label: 'Utilisateurs' },
+    { key: 'stats',        icon: 'fas fa-chart-pie',           label: t('admin.tab_stats') },
+    { key: 'analyses',     icon: 'fas fa-robot',               label: t('admin.tab_ia') },
+    { key: 'alertes',      icon: 'fas fa-exclamation-triangle', label: t('admin.tab_alerts', { count: nbAlertesActives }) },
+    { key: 'utilisateurs', icon: 'fas fa-users-cog',           label: t('admin.tab_users') },
   ]
 
   return (
-    <AdminLayout pageTitle="Tableau de bord Administration">
+    <AdminLayout pageTitle={t('admin.title')}>
 
       {/* ── Small Boxes ── */}
       <div className="row">
@@ -177,11 +196,11 @@ export default function DashboardAdmin() {
           <div className="small-box bg-info">
             <div className="inner">
               <h3>{stats?.total_analyses ?? 0}</h3>
-              <p>Analyses IA réalisées</p>
+              <p>{t('admin.ia_analyses_done')}</p>
             </div>
             <div className="icon"><i className="fas fa-robot" /></div>
             <span className="small-box-footer">
-              <i className="fas fa-chart-bar mr-1" />Toutes filières confondues
+              <i className="fas fa-chart-bar mr-1" />{t('admin.all_filieres')}
             </span>
           </div>
         </div>
@@ -190,11 +209,11 @@ export default function DashboardAdmin() {
           <div className="small-box bg-primary">
             <div className="inner">
               <h3>{stats?.score_moyen_global != null ? `${stats.score_moyen_global}` : '—'}</h3>
-              <p>Score moyen global / 100</p>
+              <p>{t('admin.global_score')}</p>
             </div>
             <div className="icon"><i className="fas fa-star" /></div>
             <span className="small-box-footer">
-              <i className="fas fa-graduation-cap mr-1" />Toutes filières
+              <i className="fas fa-graduation-cap mr-1" />{t('admin.all_filieres_short')}
             </span>
           </div>
         </div>
@@ -203,10 +222,10 @@ export default function DashboardAdmin() {
           <div className="small-box bg-warning">
             <div className="inner">
               <h3>{stats?.par_niveau_alerte?.MOYENNE ?? 0}</h3>
-              <p>Alertes moyennes</p>
+              <p>{t('admin.medium_alerts')}</p>
             </div>
             <div className="icon"><i className="fas fa-exclamation-circle" /></div>
-            <span className="small-box-footer"><i className="fas fa-eye mr-1" />À surveiller</span>
+            <span className="small-box-footer"><i className="fas fa-eye mr-1" />{t('admin.to_monitor')}</span>
           </div>
         </div>
 
@@ -214,10 +233,10 @@ export default function DashboardAdmin() {
           <div className="small-box bg-danger">
             <div className="inner">
               <h3>{stats?.par_niveau_alerte?.ELEVEE ?? 0}</h3>
-              <p>Alertes élevées</p>
+              <p>{t('admin.high_alerts')}</p>
             </div>
             <div className="icon"><i className="fas fa-times-circle" /></div>
-            <span className="small-box-footer"><i className="fas fa-bell mr-1" />Intervention requise</span>
+            <span className="small-box-footer"><i className="fas fa-bell mr-1" />{t('admin.intervention_needed')}</span>
           </div>
         </div>
       </div>
@@ -230,10 +249,10 @@ export default function DashboardAdmin() {
               <div className="card-header d-flex justify-content-between align-items-center py-2">
                 <h3 className="card-title" style={{ fontSize: 13 }}>
                   <i className="fas fa-umbrella-beach mr-2" />
-                  Congés & Absences — {new Date().getFullYear()}
+                  {t('admin.leave_absences', { year: new Date().getFullYear() })}
                 </h3>
                 <Link to="/rh/conges" className="btn btn-xs btn-outline-primary">
-                  Gérer les congés
+                  {t('admin.manage_leaves')}
                 </Link>
               </div>
               <div className="card-body py-2">
@@ -252,19 +271,19 @@ export default function DashboardAdmin() {
                     <div className="font-weight-bold" style={{ fontSize: 20, color: '#28a745' }}>
                       {statsConges.approuves}
                     </div>
-                    <small className="text-muted">Approuvés</small>
+                    <small className="text-muted">{t('admin.approved_leaves')}</small>
                   </div>
                   <div className="col-6 col-md-3 border-right">
                     <div className="font-weight-bold" style={{ fontSize: 20, color: '#2E74B5' }}>
                       {statsConges.total_jours_pris}j
                     </div>
-                    <small className="text-muted">Jours pris</small>
+                    <small className="text-muted">{t('admin.days_taken')}</small>
                   </div>
                   <div className="col-6 col-md-3">
                     <div className="font-weight-bold" style={{ fontSize: 20, color: '#6f42c1' }}>
                       {statsConges.taux_approbation}%
                     </div>
-                    <small className="text-muted">Taux approbation</small>
+                    <small className="text-muted">{t('admin.approval_rate')}</small>
                   </div>
                 </div>
               </div>
@@ -281,10 +300,10 @@ export default function DashboardAdmin() {
               <div className="card-header d-flex justify-content-between align-items-center py-2">
                 <h3 className="card-title" style={{ fontSize: 13 }}>
                   <i className="fas fa-chart-bar mr-2" style={{ color: 'var(--acerfi-blue)' }} />
-                  Évaluations de performance — période en cours
+                  {t('admin.performance_evals')}
                 </h3>
                 <Link to="/rh/evaluations" className="btn btn-xs btn-outline-primary">
-                  Tableau des évaluations
+                  {t('admin.eval_board')}
                 </Link>
               </div>
               <div className="card-body py-2">
@@ -293,7 +312,7 @@ export default function DashboardAdmin() {
                     <div className="font-weight-bold" style={{ fontSize: 20, color: 'var(--acerfi-blue)' }}>
                       {statsEvaluations.total}
                     </div>
-                    <small className="text-muted">Évaluations</small>
+                    <small className="text-muted">{t('nav.evaluations')}</small>
                   </div>
                   <div className="col-6 col-md-3 border-right">
                     <div className="font-weight-bold" style={{ fontSize: 20, color: '#28a745' }}>
@@ -317,6 +336,183 @@ export default function DashboardAdmin() {
                     </div>
                     <small className="text-muted">En attente</small>
                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Onboardings en cours ── */}
+      {onboardingsEnCours.length > 0 && (() => {
+        const today = new Date()
+        const avecRetardCnps = onboardingsEnCours.filter(c => {
+          if (c.cnps_declare) return false
+          if (!c.date_embauche_effective) return false
+          const dl = new Date(new Date(c.date_embauche_effective + 'T00:00:00').getTime() + 8 * 86400000)
+          return today > dl
+        })
+        return (
+          <div className="row mb-3">
+            <div className="col-12">
+              <div className={`card ${avecRetardCnps.length > 0 ? 'card-danger' : 'card-success'} card-outline mb-0`}>
+                <div className="card-header d-flex justify-content-between align-items-center py-2">
+                  <h3 className="card-title" style={{ fontSize: 13 }}>
+                    <i className="fas fa-clipboard-list mr-2" />
+                    {t('admin_extra.onboardings_title')} —{' '}
+                    <strong>{onboardingsEnCours.length}</strong> {t('admin_extra.onboardings_count', { count: onboardingsEnCours.length })}
+                    {avecRetardCnps.length > 0 && (
+                      <span className="badge badge-danger ml-2" style={{ fontSize: 10 }}>
+                        {t('admin_extra.cnps_late_count', { count: avecRetardCnps.length })}
+                      </span>
+                    )}
+                  </h3>
+                  <Link to="/rh/recrutements" className="btn btn-xs btn-outline-secondary">
+                    {t('admin_extra.module_recrutements')}
+                  </Link>
+                </div>
+                <div className="card-body p-0">
+                  <div className="table-responsive">
+                    <table className="table table-sm mb-0" style={{ fontSize: 12 }}>
+                      <thead className="thead-light">
+                        <tr>
+                          <th>{t('admin_extra.col_candidate')}</th>
+                          <th>{t('admin_extra.col_poste')}</th>
+                          <th>{t('admin_extra.col_hire_date')}</th>
+                          <th className="text-center">CNPS</th>
+                          <th className="text-center">{t('admin_extra.col_register')}</th>
+                          <th className="text-center">{t('admin_extra.col_medical')}</th>
+                          <th>{t('admin_extra.col_progression')}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {onboardingsEnCours.map(c => {
+                          const cl = c.checklist_onboarding
+                          const pct = cl ? Math.round((cl.nb_done / cl.nb_total) * 100) : 0
+                          const cnpsRetard = (() => {
+                            if (c.cnps_declare) return false
+                            if (!c.date_embauche_effective) return false
+                            const dl = new Date(new Date(c.date_embauche_effective + 'T00:00:00').getTime() + 8 * 86400000)
+                            return today > dl
+                          })()
+                          return (
+                            <tr key={c.id} style={{ background: cnpsRetard ? 'rgba(220,53,69,0.06)' : '' }}>
+                              <td className="font-weight-bold align-middle">
+                                <Link to={`/rh/recrutements/candidatures/${c.id}`} className="text-dark">
+                                  {c.nom_complet}
+                                </Link>
+                              </td>
+                              <td className="align-middle text-muted" style={{ fontSize: 11 }}>
+                                {c.offre_detail?.titre || '—'}
+                              </td>
+                              <td className="align-middle">
+                                {c.date_embauche_effective
+                                  ? new Date(c.date_embauche_effective + 'T00:00:00').toLocaleDateString(locale, { day: '2-digit', month: 'short' })
+                                  : <span className="text-muted">—</span>
+                                }
+                              </td>
+                              <td className="text-center align-middle">
+                                {c.cnps_declare
+                                  ? <i className="fas fa-check-circle text-success" title={t('admin_extra.cnps_declared')} />
+                                  : <i className={`fas fa-times-circle ${cnpsRetard ? 'text-danger' : 'text-muted'}`}
+                                      title={cnpsRetard ? t('admin_extra.cnps_late_tooltip') : t('admin_extra.cnps_not_declared')} />
+                                }
+                              </td>
+                              <td className="text-center align-middle">
+                                {c.inscrit_registre_personnel
+                                  ? <i className="fas fa-check-circle text-success" />
+                                  : <i className="fas fa-times-circle text-muted" />
+                                }
+                              </td>
+                              <td className="text-center align-middle">
+                                {c.visite_medicale_faite
+                                  ? <i className="fas fa-check-circle text-success" />
+                                  : <i className="fas fa-times-circle text-muted" />
+                                }
+                              </td>
+                              <td className="align-middle" style={{ minWidth: 100 }}>
+                                <div className="progress" style={{ height: 6 }}>
+                                  <div className={`progress-bar bg-${pct === 100 ? 'success' : pct >= 50 ? 'warning' : 'danger'}`}
+                                    style={{ width: `${pct}%` }} />
+                                </div>
+                                <small className="text-muted">{pct}%</small>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* ── Avancements à traiter ── */}
+      {alertesAvancement.length > 0 && (
+        <div className="row mb-3">
+          <div className="col-12">
+            <div className="card card-warning card-outline mb-0">
+              <div className="card-header d-flex justify-content-between align-items-center py-2">
+                <h3 className="card-title" style={{ fontSize: 13 }}>
+                  <i className="fas fa-star-half-alt mr-2 text-warning" />
+                  {t('admin_extra.advancements_title')} —{' '}
+                  <strong>{alertesAvancement.length}</strong> {t('admin_extra.advancements_count', { count: alertesAvancement.length })}
+                </h3>
+                <Link to="/rh/gestion-comptes" className="btn btn-xs btn-outline-warning">
+                  {t('admin_extra.manage_accounts')}
+                </Link>
+              </div>
+              <div className="card-body p-0">
+                <div className="table-responsive">
+                  <table className="table table-sm mb-0" style={{ fontSize: 12 }}>
+                    <thead className="thead-light">
+                      <tr>
+                        <th>{t('admin_extra.col_employee')}</th>
+                        <th>{t('admin_extra.col_cat_ech')}</th>
+                        <th>{t('admin_extra.col_next_advancement')}</th>
+                        <th>{t('admin_extra.col_seniority')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {alertesAvancement.map(u => {
+                        const today    = new Date()
+                        const dateAv   = u.prochain_avancement ? new Date(u.prochain_avancement + 'T00:00:00') : null
+                        const enRetard = dateAv && dateAv < today
+                        return (
+                          <tr key={u.id} style={{ background: enRetard ? 'rgba(220,53,69,0.07)' : 'rgba(255,193,7,0.07)' }}>
+                            <td className="font-weight-bold align-middle">
+                              {u.full_name || u.username}
+                            </td>
+                            <td className="align-middle">
+                              {u.categorie_pro
+                                ? <span>Cat. {u.categorie_pro} — Éch. {u.echelon}</span>
+                                : <span className="text-muted">—</span>
+                              }
+                            </td>
+                            <td className="align-middle">
+                              {dateAv
+                                ? <span className={enRetard ? 'text-danger font-weight-bold' : 'text-warning font-weight-bold'}>
+                                    {enRetard && <i className="fas fa-exclamation-triangle mr-1" />}
+                                    {dateAv.toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' })}
+                                    {enRetard && ` ${t('admin_extra.overdue')}`}
+                                  </span>
+                                : '—'
+                              }
+                            </td>
+                            <td className="align-middle text-muted">
+                              {u.anciennete_mois != null
+                                ? `${Math.floor(u.anciennete_mois / 12)}a ${u.anciennete_mois % 12}m`
+                                : '—'
+                              }
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
@@ -351,7 +547,7 @@ export default function DashboardAdmin() {
                     {/* PieChart répartition filières */}
                     <div className="col-md-5 d-flex flex-column align-items-center">
                       <h5 className="text-center mb-3" style={{ color: 'var(--page-title)', fontSize: 14 }}>
-                        Répartition par filière
+                        {t('admin.distribution_by_filiere')}
                       </h5>
                       {pieData.length > 0 ? (
                         <ResponsiveContainer width="100%" height={260}>
@@ -370,7 +566,7 @@ export default function DashboardAdmin() {
                       ) : (
                         <div className="text-muted text-center py-5">
                           <i className="fas fa-chart-pie fa-2x mb-2 d-block" />
-                          Aucune donnée disponible.
+                          {t('admin_extra.no_data')}
                         </div>
                       )}
                     </div>
@@ -378,7 +574,7 @@ export default function DashboardAdmin() {
                     {/* BarChart scores par filière */}
                     <div className="col-md-7 d-flex flex-column">
                       <h5 className="text-center mb-3" style={{ color: 'var(--page-title)', fontSize: 14 }}>
-                        Score IA moyen par filière
+                        {t('admin.avg_score_by_filiere')}
                       </h5>
                       <ResponsiveContainer width="100%" height={200}>
                         <BarChart data={barFiliereData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
@@ -386,7 +582,7 @@ export default function DashboardAdmin() {
                           <XAxis dataKey="name" tick={{ fontSize: 11, fill: chartText }} />
                           <YAxis domain={[0, 100]} tick={{ fontSize: 12, fill: chartText }} />
                           <Tooltip contentStyle={tooltipStyle} />
-                          <Bar dataKey="score" name="Score moyen" radius={[4, 4, 0, 0]}>
+                          <Bar dataKey="score" name={t('admin_extra.avg_score')} radius={[4, 4, 0, 0]}>
                             {barFiliereData.map((entry, idx) => (
                               <Cell key={idx} fill={getFiliere(entry.key || 'AUTRE').couleur} />
                             ))}
@@ -398,7 +594,7 @@ export default function DashboardAdmin() {
                       <div className="table-responsive mt-3">
                         <table className="table table-sm table-bordered">
                           <thead>
-                            <tr><th>Filière</th><th>Analyses</th><th>Score moyen</th><th>Alertes</th></tr>
+                            <tr><th>{t('admin_extra.col_filiere')}</th><th>{t('admin_extra.col_analyses')}</th><th>{t('admin_extra.avg_score')}</th><th>{t('admin_extra.col_alerts')}</th></tr>
                           </thead>
                           <tbody>
                             {filiereList.map(f => (
@@ -425,7 +621,7 @@ export default function DashboardAdmin() {
                   {stats && (
                     <div className="row mt-3">
                       <div className="col-12">
-                        <h5 style={{ color: 'var(--page-title)', fontSize: 14 }}>Répartition des alertes</h5>
+                        <h5 style={{ color: 'var(--page-title)', fontSize: 14 }}>{t('admin_extra.alerts_distribution')}</h5>
                         {Object.entries(stats.par_niveau_alerte).map(([lvl, count]) => {
                           const pct = stats.total_analyses > 0
                             ? ((count / stats.total_analyses) * 100).toFixed(1) : 0
@@ -460,7 +656,7 @@ export default function DashboardAdmin() {
                     <div className="col-lg-7">
                       <h5 style={{ color: 'var(--page-title)', fontSize: 14, marginBottom: 12 }}>
                         <i className="fas fa-chart-line mr-2 text-primary" />
-                        Évolution du score moyen global semaine par semaine
+                        {t('admin.score_evolution')}
                       </h5>
                       {evolutionData.length >= 2 ? (
                         <ResponsiveContainer width="100%" height={240}>
@@ -470,13 +666,13 @@ export default function DashboardAdmin() {
                               tick={{ fontSize: 12, fill: chartText }} />
                             <YAxis domain={[0, 100]} tick={{ fontSize: 12, fill: chartText }} />
                             <Tooltip
-                              formatter={v => [`${v}/100`, 'Score moyen']}
-                              labelFormatter={l => `Semaine ${l}`}
+                              formatter={v => [`${v}/100`, t('admin_extra.avg_score')]}
+                              labelFormatter={l => `${t('admin.week_label')} ${l}`}
                               contentStyle={tooltipStyle}
                             />
                             <ReferenceLine y={60} stroke="#FD7E14" strokeDasharray="6 3"
-                              label={{ value: 'Seuil 60', fill: '#FD7E14', fontSize: 11 }} />
-                            <Line type="monotone" dataKey="score_moyen" name="Score moyen"
+                              label={{ value: t('admin_extra.threshold_60'), fill: '#FD7E14', fontSize: 11 }} />
+                            <Line type="monotone" dataKey="score_moyen" name={t('admin_extra.avg_score')}
                               stroke="#2E74B5" strokeWidth={2}
                               dot={{ r: 4, fill: '#2E74B5' }} activeDot={{ r: 6 }} />
                           </LineChart>
@@ -484,7 +680,7 @@ export default function DashboardAdmin() {
                       ) : (
                         <div className="text-center text-muted py-4">
                           <i className="fas fa-chart-line fa-2x mb-2 d-block" />
-                          Pas assez de données (minimum 2 semaines).
+                          {t('admin_extra.not_enough_data')}
                         </div>
                       )}
                     </div>
@@ -493,7 +689,7 @@ export default function DashboardAdmin() {
                     <div className="col-lg-5">
                       <h5 style={{ color: 'var(--page-title)', fontSize: 14, marginBottom: 12 }}>
                         <i className="fas fa-chart-bar mr-2" style={{ color: '#6f42c1' }} />
-                        Répartition des niveaux de progression
+                        {t('admin.progression_distribution')}
                       </h5>
                       {progressionData.some(d => d.value > 0) ? (
                         <ResponsiveContainer width="100%" height={240}>
@@ -504,7 +700,7 @@ export default function DashboardAdmin() {
                             <YAxis type="category" dataKey="name"
                               tick={{ fontSize: 12, fill: chartText }} width={75} />
                             <Tooltip contentStyle={tooltipStyle} />
-                            <Bar dataKey="value" name="Stagiaires" radius={[0, 4, 4, 0]}>
+                            <Bar dataKey="value" name={t('admin_extra.interns')} radius={[0, 4, 4, 0]}>
                               {progressionData.map(entry => (
                                 <Cell key={entry.key} fill={PROGRESSION_COLORS[entry.key] || '#8ba7c0'} />
                               ))}
@@ -514,7 +710,7 @@ export default function DashboardAdmin() {
                       ) : (
                         <div className="text-center text-muted py-4">
                           <i className="fas fa-chart-bar fa-2x mb-2 d-block" />
-                          Aucune donnée de progression.
+                          {t('admin_extra.no_progression_data')}
                         </div>
                       )}
                     </div>
@@ -525,7 +721,7 @@ export default function DashboardAdmin() {
                     <div className="col-md-5">
                       <h5 style={{ color: 'var(--page-title)', fontSize: 14, marginBottom: 12 }}>
                         <i className="fas fa-bell mr-2 text-danger" />
-                        Répartition des alertes IA
+                        {t('admin_extra.alerts_ia_distribution')}
                       </h5>
                       {alertePieData.some(d => d.value > 0) ? (
                         <ResponsiveContainer width="100%" height={220}>
@@ -544,7 +740,7 @@ export default function DashboardAdmin() {
                       ) : (
                         <div className="text-center text-muted py-4">
                           <i className="fas fa-check-circle fa-2x text-success mb-2 d-block" />
-                          Aucune alerte active.
+                          {t('admin_extra.no_active_alerts_chart')}
                         </div>
                       )}
                     </div>
@@ -553,12 +749,12 @@ export default function DashboardAdmin() {
                     <div className="col-md-7">
                       <h5 style={{ color: 'var(--page-title)', fontSize: 14, marginBottom: 12 }}>
                         <i className="fas fa-table mr-2" />
-                        Résumé des analyses
+                        {t('admin_extra.analyses_summary')}
                       </h5>
                       <div className="table-responsive">
                         <table className="table table-sm table-bordered">
                           <thead>
-                            <tr><th>Niveau d'alerte</th><th>Analyses</th><th>% du total</th></tr>
+                            <tr><th>{t('admin_extra.col_alert_level')}</th><th>{t('admin_extra.col_analyses')}</th><th>{t('admin_extra.col_pct_total')}</th></tr>
                           </thead>
                           <tbody>
                             {Object.entries(stats?.par_niveau_alerte ?? {}).map(([k, v]) => {
@@ -568,7 +764,7 @@ export default function DashboardAdmin() {
                                 <tr key={k}>
                                   <td>
                                     <span className={`badge ${ALERTE_CONFIG[k]?.badge || 'badge-secondary'}`}>
-                                      {ALERTE_CONFIG[k]?.label || k}
+                                      {alerteLabel(k)}
                                     </span>
                                   </td>
                                   <td className="text-center font-weight-bold">{v}</td>
@@ -581,7 +777,7 @@ export default function DashboardAdmin() {
                       </div>
                       <table className="table table-sm table-bordered mt-2">
                         <thead>
-                          <tr><th>Progression</th><th>Stagiaires</th></tr>
+                          <tr><th>{t('admin.progression_distribution')}</th><th>{t('admin_extra.interns')}</th></tr>
                         </thead>
                         <tbody>
                           {progressionData.map(d => (
@@ -611,10 +807,10 @@ export default function DashboardAdmin() {
                     <div className="alert alert-warning d-flex align-items-center justify-content-between mb-2" style={{ fontSize: 13 }}>
                       <span>
                         <i className="fas fa-umbrella-beach mr-2" />
-                        <strong>{statsConges.en_attente}</strong> demande{statsConges.en_attente > 1 ? 's' : ''} de congé en attente de validation
+                        {t('admin_extra.alert_conges', { count: statsConges.en_attente })}
                       </span>
                       <Link to="/rh/conges" className="btn btn-xs btn-warning ml-3">
-                        <i className="fas fa-arrow-right mr-1" />Voir
+                        <i className="fas fa-arrow-right mr-1" />{t('admin_extra.see_btn')}
                       </Link>
                     </div>
                   )}
@@ -622,10 +818,10 @@ export default function DashboardAdmin() {
                     <div className="alert alert-warning d-flex align-items-center justify-content-between mb-2" style={{ fontSize: 13 }}>
                       <span>
                         <i className="fas fa-paperclip mr-2" />
-                        <strong>{docsExpirants}</strong> document{docsExpirants > 1 ? 's' : ''} expir{docsExpirants > 1 ? 'ant' : 'ant'} dans moins de 30 jours
+                        {t('admin_extra.alert_docs', { count: docsExpirants })}
                       </span>
                       <Link to="/rh/documents" className="btn btn-xs btn-warning ml-3">
-                        <i className="fas fa-arrow-right mr-1" />Voir
+                        <i className="fas fa-arrow-right mr-1" />{t('admin_extra.see_btn')}
                       </Link>
                     </div>
                   )}
@@ -633,10 +829,10 @@ export default function DashboardAdmin() {
                     <div className="alert alert-info d-flex align-items-center justify-content-between mb-2" style={{ fontSize: 13 }}>
                       <span>
                         <i className="fas fa-fingerprint mr-2" />
-                        <strong>{sansPointageCount}</strong> employé{sansPointageCount > 1 ? 's' : ''} sans aucun pointage ce mois
+                        {t('admin_extra.alert_pointage', { count: sansPointageCount })}
                       </span>
                       <Link to="/rh/presences" className="btn btn-xs btn-info ml-3">
-                        <i className="fas fa-arrow-right mr-1" />Voir
+                        <i className="fas fa-arrow-right mr-1" />{t('admin_extra.see_btn')}
                       </Link>
                     </div>
                   )}
@@ -644,10 +840,10 @@ export default function DashboardAdmin() {
                     <div className="alert alert-info d-flex align-items-center justify-content-between mb-2" style={{ fontSize: 13 }}>
                       <span>
                         <i className="fas fa-graduation-cap mr-2" />
-                        <strong>{nbInscEnAttente}</strong> inscription{nbInscEnAttente > 1 ? 's' : ''} en formation en attente de validation
+                        {t('admin_extra.alert_insc', { count: nbInscEnAttente })}
                       </span>
                       <Link to="/rh/formations" className="btn btn-xs btn-info ml-3">
-                        <i className="fas fa-arrow-right mr-1" />Voir
+                        <i className="fas fa-arrow-right mr-1" />{t('admin_extra.see_btn')}
                       </Link>
                     </div>
                   )}
@@ -655,10 +851,10 @@ export default function DashboardAdmin() {
                     <div className="alert alert-warning d-flex align-items-center justify-content-between mb-2" style={{ fontSize: 13 }}>
                       <span>
                         <i className="fas fa-coins mr-2" />
-                        <strong>{statsPaie.bulletins_par_statut.BROUILLON}</strong> bulletin{statsPaie.bulletins_par_statut.BROUILLON > 1 ? 's' : ''} de paie en attente de validation ce mois
+                        {t('admin_extra.alert_paie', { count: statsPaie.bulletins_par_statut.BROUILLON })}
                       </span>
                       <Link to="/rh/paie" className="btn btn-xs btn-warning ml-3">
-                        <i className="fas fa-arrow-right mr-1" />Voir
+                        <i className="fas fa-arrow-right mr-1" />{t('admin_extra.see_btn')}
                       </Link>
                     </div>
                   )}
@@ -666,32 +862,32 @@ export default function DashboardAdmin() {
                     <div className="alert alert-danger d-flex align-items-center justify-content-between mb-2" style={{ fontSize: 13 }}>
                       <span>
                         <i className="fas fa-gavel mr-2" />
-                        <strong>{statsSanctionsRH.contestees}</strong> sanction{statsSanctionsRH.contestees > 1 ? 's' : ''} contestée{statsSanctionsRH.contestees > 1 ? 's' : ''} — nécessite{statsSanctionsRH.contestees > 1 ? 'nt' : ''} une révision
+                        {t('admin_extra.alert_sanctions', { count: statsSanctionsRH.contestees })}
                       </span>
                       <Link to="/rh/sanctions" className="btn btn-xs btn-danger ml-3">
-                        <i className="fas fa-arrow-right mr-1" />Voir
+                        <i className="fas fa-arrow-right mr-1" />{t('admin_extra.see_btn')}
                       </Link>
                     </div>
                   )}
                   <div className="d-flex align-items-center mb-3">
                     <h5 className="m-0" style={{ color: 'var(--page-title)' }}>
                       <i className="fas fa-exclamation-triangle text-warning mr-2" />
-                      Alertes actives — {nbAlertesActives} stagiaire{nbAlertesActives !== 1 ? 's' : ''} concerné{nbAlertesActives !== 1 ? 's' : ''}
+                      {t('admin.active_alerts')} — {nbAlertesActives}
                     </h5>
                   </div>
                   {alertes.length === 0 ? (
                     <div className="text-center py-5 text-muted">
                       <i className="fas fa-check-circle fa-3x text-success mb-3 d-block" />
-                      <strong>Aucune alerte active !</strong>
-                      <p className="mt-1">Tous les stagiaires sont en bonne progression.</p>
+                      <strong>{t('admin_extra.no_active_alerts_msg')}</strong>
+                      <p className="mt-1">{t('admin_extra.all_good_msg')}</p>
                     </div>
                   ) : (
                     <div className="table-responsive">
                       <table className="table table-bordered table-hover">
                         <thead>
                           <tr>
-                            <th>Stagiaire</th><th>Filière</th><th>Semaine</th>
-                            <th>Score IA</th><th>Niveau alerte</th><th>Motif</th><th>Date</th>
+                            <th>{t('admin_extra.col_intern')}</th><th>{t('admin_extra.col_filiere')}</th><th>{t('admin_extra.col_week')}</th>
+                            <th>{t('admin_extra.col_ia_score')}</th><th>{t('admin_extra.col_alert_lv')}</th><th>{t('admin_extra.col_reason')}</th><th>{t('admin_extra.col_date')}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -705,7 +901,7 @@ export default function DashboardAdmin() {
                                 <td className="text-center font-weight-bold" style={{ color: 'var(--page-title)' }}>
                                   {a.score}/100
                                 </td>
-                                <td><span className={`badge ${cfg.badge}`}>{cfg.label}</span></td>
+                                <td><span className={`badge ${cfg.badge}`}>{alerteLabel(a.niveau_alerte)}</span></td>
                                 <td className="text-sm" style={{ maxWidth: 300 }}>
                                   {a.motif || <span className="text-muted">—</span>}
                                 </td>
@@ -728,15 +924,15 @@ export default function DashboardAdmin() {
                   <div className="d-flex align-items-center justify-content-between mb-3">
                     <h5 className="m-0" style={{ color: 'var(--page-title)' }}>
                       <i className="fas fa-users-cog mr-2" />
-                      Gestion des comptes — {users.length} utilisateur{users.length !== 1 ? 's' : ''}
+                      {t('admin.user_management')} — {users.length}
                     </h5>
                   </div>
                   <div className="table-responsive">
                     <table className="table table-bordered table-striped table-hover">
                       <thead>
                         <tr>
-                          <th>Nom complet</th><th>Identifiant</th><th>Email</th>
-                          <th>Filière</th><th>Rôle</th><th>Statut</th>
+                          <th>{t('admin_extra.col_fullname')}</th><th>{t('admin_extra.col_username')}</th><th>{t('admin_extra.col_email')}</th>
+                          <th>{t('admin_extra.col_filiere')}</th><th>{t('admin_extra.col_role')}</th><th>{t('admin_extra.col_status')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -764,8 +960,8 @@ export default function DashboardAdmin() {
                             </td>
                             <td>
                               {u.is_active
-                                ? <span className="badge badge-success"><i className="fas fa-check mr-1" />Actif</span>
-                                : <span className="badge badge-secondary"><i className="fas fa-ban mr-1" />Inactif</span>}
+                                ? <span className="badge badge-success"><i className="fas fa-check mr-1" />{t('common.active')}</span>
+                                : <span className="badge badge-secondary"><i className="fas fa-ban mr-1" />{t('common.inactive')}</span>}
                             </td>
                           </tr>
                         ))}
@@ -788,9 +984,9 @@ export default function DashboardAdmin() {
               <div className="card card-outline mb-0" style={{ borderColor: '#17a2b8', background: 'var(--card-bg)' }}>
                 <div className="card-header d-flex justify-content-between align-items-center py-2">
                   <h3 className="card-title" style={{ fontSize: 13 }}>
-                    <i className="fas fa-graduation-cap mr-2" style={{ color: '#17a2b8' }} />Formations
+                    <i className="fas fa-graduation-cap mr-2" style={{ color: '#17a2b8' }} />{t('admin_extra.formations_card')}
                   </h3>
-                  <Link to="/rh/formations" className="btn btn-xs btn-outline-info">Gérer</Link>
+                  <Link to="/rh/formations" className="btn btn-xs btn-outline-info">{t('admin_extra.manage_btn')}</Link>
                 </div>
                 <div className="card-body py-2">
                   <div className="row text-center">
@@ -798,21 +994,21 @@ export default function DashboardAdmin() {
                       <div className="font-weight-bold" style={{ fontSize: 18, color: '#17a2b8' }}>
                         {(statsFormationsRH.formations_planifiees ?? 0) + (statsFormationsRH.formations_en_cours ?? 0)}
                       </div>
-                      <small className="text-muted">Actives</small>
+                      <small className="text-muted">{t('admin_extra.active_stat')}</small>
                     </div>
                     <div className="col-4 border-right">
                       <div className="font-weight-bold" style={{ fontSize: 18, color: '#28a745' }}>
                         {statsFormationsRH.taux_presence != null ? `${statsFormationsRH.taux_presence}%` : '—'}
                       </div>
-                      <small className="text-muted">Taux présence</small>
+                      <small className="text-muted">{t('admin_extra.attendance_rate_stat')}</small>
                     </div>
                     <div className="col-4">
                       <div className="font-weight-bold" style={{ fontSize: 16, color: '#E76F51' }}>
                         {statsFormationsRH.cout_total != null
-                          ? `${Number(statsFormationsRH.cout_total).toLocaleString('fr-FR')} F`
+                          ? `${Number(statsFormationsRH.cout_total).toLocaleString(locale)} F`
                           : '—'}
                       </div>
-                      <small className="text-muted">Coût total</small>
+                      <small className="text-muted">{t('admin_extra.total_cost_stat')}</small>
                     </div>
                   </div>
                 </div>
@@ -824,23 +1020,23 @@ export default function DashboardAdmin() {
               <div className="card card-outline mb-0" style={{ borderColor: '#dc3545', background: 'var(--card-bg)' }}>
                 <div className="card-header d-flex justify-content-between align-items-center py-2">
                   <h3 className="card-title" style={{ fontSize: 13 }}>
-                    <i className="fas fa-gavel mr-2" style={{ color: '#dc3545' }} />Sanctions disciplinaires
+                    <i className="fas fa-gavel mr-2" style={{ color: '#dc3545' }} />{t('admin_extra.sanctions_card')}
                   </h3>
-                  <Link to="/rh/sanctions" className="btn btn-xs btn-outline-danger">Gérer</Link>
+                  <Link to="/rh/sanctions" className="btn btn-xs btn-outline-danger">{t('admin_extra.manage_btn')}</Link>
                 </div>
                 <div className="card-body py-2">
                   <div className="row text-center">
                     <div className="col-4 border-right">
                       <div className="font-weight-bold" style={{ fontSize: 18, color: '#6c757d' }}>{statsSanctionsRH.total ?? '—'}</div>
-                      <small className="text-muted">Total</small>
+                      <small className="text-muted">{t('admin_extra.total_stat')}</small>
                     </div>
                     <div className="col-4 border-right">
                       <div className="font-weight-bold" style={{ fontSize: 18, color: '#ffc107' }}>{statsSanctionsRH.en_cours ?? '—'}</div>
-                      <small className="text-muted">En cours</small>
+                      <small className="text-muted">{t('admin_extra.ongoing_stat')}</small>
                     </div>
                     <div className="col-4">
                       <div className="font-weight-bold" style={{ fontSize: 18, color: '#dc3545' }}>{statsSanctionsRH.contestees ?? '—'}</div>
-                      <small className="text-muted">Contestées</small>
+                      <small className="text-muted">{t('admin_extra.contested_stat')}</small>
                     </div>
                   </div>
                 </div>
@@ -858,32 +1054,32 @@ export default function DashboardAdmin() {
               <div className="card-header d-flex justify-content-between align-items-center py-2">
                 <h3 className="card-title" style={{ fontSize: 13 }}>
                   <i className="fas fa-coins mr-2" style={{ color: 'var(--acerfi-blue)' }} />
-                  Paie — {new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+                  {t('admin_extra.paie_card_prefix')} {new Date().toLocaleDateString(locale, { month: 'long', year: 'numeric' })}
                   <span className="badge badge-secondary ml-2" style={{ fontSize: 11 }}>
                     {statsPaie.nb_bulletins} bulletin{statsPaie.nb_bulletins > 1 ? 's' : ''}
                   </span>
                 </h3>
-                <Link to="/rh/paie" className="btn btn-xs btn-outline-primary">Gérer la paie</Link>
+                <Link to="/rh/paie" className="btn btn-xs btn-outline-primary">{t('admin_extra.manage_payroll_btn')}</Link>
               </div>
               <div className="card-body py-2">
                 <div className="row text-center">
                   <div className="col-6 col-md-3 border-right">
                     <div className="font-weight-bold" style={{ fontSize: 18, color: 'var(--acerfi-blue)' }}>
-                      {Number(statsPaie.masse_nette).toLocaleString('fr-FR')} F
+                      {Number(statsPaie.masse_nette).toLocaleString(locale)} F
                     </div>
-                    <small className="text-muted">Masse nette</small>
+                    <small className="text-muted">{t('admin_extra.net_mass_stat')}</small>
                   </div>
                   <div className="col-6 col-md-3 border-right">
                     <div className="font-weight-bold" style={{ fontSize: 18, color: '#fd7e14' }}>
-                      {Number(statsPaie.total_cnps).toLocaleString('fr-FR')} F
+                      {Number(statsPaie.total_cnps).toLocaleString(locale)} F
                     </div>
-                    <small className="text-muted">Total CNPS</small>
+                    <small className="text-muted">{t('admin_extra.total_cnps_stat')}</small>
                   </div>
                   <div className="col-6 col-md-3 border-right">
                     <div className="font-weight-bold" style={{ fontSize: 18, color: '#6f42c1' }}>
-                      {Number(statsPaie.total_irpp).toLocaleString('fr-FR')} F
+                      {Number(statsPaie.total_irpp).toLocaleString(locale)} F
                     </div>
-                    <small className="text-muted">Total IRPP</small>
+                    <small className="text-muted">{t('admin_extra.total_irpp_stat')}</small>
                   </div>
                   <div className="col-6 col-md-3">
                     <div className="font-weight-bold" style={{ fontSize: 18, color: statsPaie.bulletins_par_statut?.BROUILLON > 0 ? '#fd7e14' : '#28a745' }}>
@@ -891,8 +1087,8 @@ export default function DashboardAdmin() {
                     </div>
                     <small className="text-muted">
                       {(statsPaie.bulletins_par_statut?.BROUILLON ?? 0) > 0
-                        ? <span style={{ color: '#fd7e14' }}>À valider</span>
-                        : 'À valider'}
+                        ? <span style={{ color: '#fd7e14' }}>{t('admin_extra.to_validate_stat')}</span>
+                        : t('admin_extra.to_validate_stat')}
                     </small>
                   </div>
                 </div>
@@ -910,14 +1106,14 @@ export default function DashboardAdmin() {
               <div className="card-header d-flex justify-content-between align-items-center py-2">
                 <h3 className="card-title" style={{ fontSize: 13 }}>
                   <i className="fas fa-robot mr-2" style={{ color: 'var(--acerfi-blue)' }} />
-                  Santé RH — Rapport IA {dernierRapportIA.periode}
+                  {t('admin_extra.rapport_ia_card_prefix')} {dernierRapportIA.periode}
                   {(() => {
                     const s = dernierRapportIA.score_sante_rh
                     const color = s >= 85 ? '#28A745' : s >= 70 ? '#5ba3d9' : s >= 55 ? '#FD7E14' : '#DC3545'
                     return <span className="badge ml-2" style={{ background: color, color: '#fff', fontSize: 11 }}>{Math.round(s)}/100</span>
                   })()}
                 </h3>
-                <Link to="/rh/rapport-ia" className="btn btn-xs btn-outline-primary">Voir le rapport</Link>
+                <Link to="/rh/rapport-ia" className="btn btn-xs btn-outline-primary">{t('admin_extra.see_report_btn')}</Link>
               </div>
               <div className="card-body py-2">
                 <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6, lineHeight: 1.5 }}>
@@ -951,10 +1147,10 @@ export default function DashboardAdmin() {
               <div className="card-header d-flex justify-content-between align-items-center py-2">
                 <h3 className="card-title" style={{ fontSize: 13 }}>
                   <i className="fas fa-user-plus mr-2" />
-                  Recrutements en cours
+                  {t('admin_extra.recrutements_card')}
                 </h3>
                 <Link to="/rh/recrutements" className="btn btn-xs btn-outline-success">
-                  Tableau de bord recrutement
+                  {t('admin_extra.recruitment_dashboard_btn')}
                 </Link>
               </div>
               <div className="card-body py-2">
@@ -963,33 +1159,33 @@ export default function DashboardAdmin() {
                     <div className="font-weight-bold" style={{ fontSize: 20, color: '#28a745' }}>
                       {statsRecrutements.publiees}
                     </div>
-                    <small style={{ color: 'var(--text-muted)' }}>Offres publiées</small>
+                    <small style={{ color: 'var(--text-muted)' }}>{t('admin_extra.published_offers_stat')}</small>
                   </div>
                   <div className="col-6 col-md-3 border-right">
                     <div className="font-weight-bold" style={{ fontSize: 20, color: '#fd7e14' }}>
                       {(statsRecrutements.par_statut_candidature?.RECUE || 0) +
                        (statsRecrutements.par_statut_candidature?.EN_COURS || 0)}
                     </div>
-                    <small style={{ color: 'var(--text-muted)' }}>Candidatures en attente</small>
+                    <small style={{ color: 'var(--text-muted)' }}>{t('admin_extra.pending_applications_stat')}</small>
                   </div>
                   <div className="col-6 col-md-3 border-right">
                     <div className="font-weight-bold" style={{ fontSize: 20, color: '#007bff' }}>
                       {statsRecrutements.entretiens_a_venir}
                     </div>
-                    <small style={{ color: 'var(--text-muted)' }}>Entretiens à venir</small>
+                    <small style={{ color: 'var(--text-muted)' }}>{t('admin_extra.upcoming_interviews_stat')}</small>
                   </div>
                   <div className="col-6 col-md-3">
                     <div className="font-weight-bold" style={{ fontSize: 20, color: '#6c757d' }}>
                       {statsRecrutements.total_candidatures}
                     </div>
-                    <small style={{ color: 'var(--text-muted)' }}>Candidatures totales</small>
+                    <small style={{ color: 'var(--text-muted)' }}>{t('admin_extra.total_applications_stat')}</small>
                   </div>
                 </div>
                 {/* Alerte candidatures non traitées */}
                 {(statsRecrutements.par_statut_candidature?.RECUE || 0) > 5 && (
                   <div className="alert alert-warning mt-2 mb-0 py-1 px-3" style={{ fontSize: '0.85rem' }}>
                     <i className="fas fa-exclamation-triangle mr-1" />
-                    <strong>{statsRecrutements.par_statut_candidature.RECUE} candidatures</strong> non traitées — pensez à les examiner.
+                    {t('admin_extra.unprocessed_alert', { count: statsRecrutements.par_statut_candidature.RECUE })}
                   </div>
                 )}
               </div>

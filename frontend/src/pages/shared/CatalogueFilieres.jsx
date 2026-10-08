@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import useAuthStore from '../../store/authStore'
 import EmployeLayout  from '../../components/layout/EmployeLayout'
 import ManagerLayout  from '../../components/layout/ManagerLayout'
@@ -12,21 +13,21 @@ const LAYOUT_MAP = {
 }
 
 export default function CatalogueFilieres() {
+  const { t } = useTranslation()
   const { user } = useAuthStore()
   const Layout = LAYOUT_MAP[user?.role] || EmployeLayout
 
   return (
-    <Layout pageTitle="Postes & Métiers SIRH">
+    <Layout pageTitle={t('catalogue.title')}>
 
       {/* ── Introduction ── */}
       <div className="alert alert-info py-3 mb-4" style={{ fontSize: 13 }}>
         <div className="d-flex align-items-start">
           <i className="fas fa-graduation-cap fa-2x mr-3 mt-1" />
           <div>
-            <strong>Les 8 domaines de formation ACERFI</strong>
+            <strong>{t('catalogue.domain_title')}</strong>
             <p className="mb-0 mt-1" style={{ color: 'var(--text-secondary)' }}>
-              ACERFI Formation propose des programmes certifiants dans 8 domaines clés du numérique,
-              pensés pour les professionnels et futurs experts du marché africain.
+              {t('catalogue.domain_desc')}
             </p>
           </div>
         </div>
