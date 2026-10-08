@@ -1,0 +1,62 @@
+name: sirh
+
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: sirh_db
+      MYSQL_ROOT_PASSWORD: sirh_root
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "3307:3306"   # 3306 est déjà utilisé par le MySQL local
+    volumes:
+      - mysql_data:/var/lib/mysql
+      # Export de la base locale, importé uniquement si le volume mysql_data est vide
+      - ./docker/mysql-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-psirh_root"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file:
+      # Clés IA, SECRET_KEY, paiement... (format raw : pas d'interpolation des "$")
+      - path: ./backend/.env
+        format: raw
+        required: false
+    environment:
+      DB_NAME: sirh_db
+      DB_USER: root
+      DB_PASSWORD: sirh_root
+      DB_HOST: db
+      DB_PORT: "3306"
+      DEBUG: "False"
+      ALLOWED_HOSTS: localhost,127.0.0.1,backend
+      CORS_ALLOWED_ORIGINS: http://localhost:8080
+      LOAD_DEMO_DATA: "False"   # les données viennent de docker/mysql-init
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - media:/app/media
+      - static:/app/staticfiles
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    volumes:
+      - media:/srv/media:ro
+      - static:/srv/static:ro
+
+volumes:
+  mysql_data:
+  media:
+  static:
