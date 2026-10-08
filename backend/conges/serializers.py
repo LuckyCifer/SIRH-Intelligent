@@ -17,8 +17,13 @@ class DemandeCongeSerializer(serializers.ModelSerializer):
     class Meta:
         model  = DemandeConge
         fields = "__all__"
-        read_only_fields = ["nb_jours", "statut", "valideur", "commentaire_valideur",
-                            "date_validation", "created_at", "updated_at"]
+        read_only_fields = [
+            "nb_jours", "statut", "valideur", "commentaire_valideur",
+            "date_validation", "created_at", "updated_at",
+            # Champs calculés automatiquement
+            "allocation_conge", "date_retour_prevue", "jours_ouvrable_pauses",
+            "majoration_enfants", "majoration_anciennete",
+        ]
 
     def get_employe_detail(self, obj):
         from accounts.serializers import UserSerializer

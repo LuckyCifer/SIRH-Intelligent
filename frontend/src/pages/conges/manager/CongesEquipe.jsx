@@ -1,34 +1,37 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
 import ManagerLayout from '../../../components/layout/ManagerLayout'
 import Spinner from '../../../components/Spinner'
 import CalendrierAbsences from '../../../components/ui/CalendrierAbsences'
 import { getDemandes } from '../../../api/conges'
-
-const STATUT_CONFIG = {
-  EN_ATTENTE: { cls: 'badge-warning',   label: 'En attente' },
-  APPROUVE:   { cls: 'badge-success',   label: 'Approuvé' },
-  REFUSE:     { cls: 'badge-danger',    label: 'Refusé' },
-  ANNULE:     { cls: 'badge-secondary', label: 'Annulé' },
-}
 
 function fmtDate(d) {
   if (!d) return '—'
   return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-function tempsDepuis(iso) {
+function tempsDepuis(iso, t) {
   if (!iso) return ''
   const diff = Date.now() - new Date(iso).getTime()
   const j = Math.floor(diff / 86400000)
   const h = Math.floor(diff / 3600000)
-  if (j >= 1) return `il y a ${j} jour${j > 1 ? 's' : ''}`
-  if (h >= 1) return `il y a ${h}h`
-  return 'à l\'instant'
+  if (j >= 1) return t('conges_extra.time_days_ago', { count: j })
+  if (h >= 1) return t('conges_extra.time_hours_ago', { count: h })
+  return t('conges_extra.time_just_now')
 }
 
 function CarteDemande({ d, onAction }) {
+  const { t } = useTranslation()
+
+  const STATUT_CONFIG = {
+    EN_ATTENTE: { cls: 'badge-warning',   label: t('conges.pending') },
+    APPROUVE:   { cls: 'badge-success',   label: t('conges.approved') },
+    REFUSE:     { cls: 'badge-danger',    label: t('conges.rejected') },
+    ANNULE:     { cls: 'badge-secondary', label: t('conges.cancelled') },
+  }
+
   const soldeApres = d.solde_employe != null
     ? (d.solde_employe - d.nb_jours).toFixed(0)
     : null
@@ -56,13 +59,13 @@ function CarteDemande({ d, onAction }) {
 
         <div style={{ fontSize: 13, marginBottom: 6 }}>
           <i className="fas fa-calendar-alt mr-2" style={{ color: 'var(--acerfi-blue)' }} />
-          Du <strong>{fmtDate(d.date_debut)}</strong> au <strong>{fmtDate(d.date_fin)}</strong>
+          {t('conges_extra.from')} <strong>{fmtDate(d.date_debut)}</strong> {t('conges_extra.to')} <strong>{fmtDate(d.date_fin)}</strong>
           <span className="badge badge-secondary ml-2">{d.nb_jours}j</span>
         </div>
 
         {d.created_at && (
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
-            <i className="fas fa-clock mr-1" />Soumis {tempsDepuis(d.created_at)}
+            <i className="fas fa-clock mr-1" />{t('conges_extra.submitted')} {tempsDepuis(d.created_at, t)}
           </div>
         )}
 
@@ -74,8 +77,8 @@ function CarteDemande({ d, onAction }) {
 
         {soldeApres !== null && (
           <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-            Après approbation : <strong className={soldeApres < 0 ? 'text-danger' : ''}>
-              {soldeApres}j restants
+            {t('conges_extra.after_approval')} : <strong className={soldeApres < 0 ? 'text-danger' : ''}>
+              {soldeApres}j {t('conges.days_remaining')}
             </strong>
           </div>
         )}
@@ -85,10 +88,10 @@ function CarteDemande({ d, onAction }) {
         <div className="card-footer py-2" style={{ background: 'transparent' }}>
           <div className="btn-group btn-group-sm w-100">
             <Link to={`/manager/conges/${d.id}/valider?action=approuver`} className="btn btn-success">
-              <i className="fas fa-check mr-1" />Approuver
+              <i className="fas fa-check mr-1" />{t('common.approve')}
             </Link>
             <Link to={`/manager/conges/${d.id}/valider?action=refuser`} className="btn btn-danger">
-              <i className="fas fa-times mr-1" />Refuser
+              <i className="fas fa-times mr-1" />{t('common.reject')}
             </Link>
           </div>
         </div>
@@ -111,6 +114,7 @@ function CarteDemande({ d, onAction }) {
 }
 
 export default function CongesEquipe() {
+  const { t } = useTranslation()
   const annee   = new Date().getFullYear()
   const [demandes, setDemandes]   = useState([])
   const [loading,  setLoading]    = useState(true)
@@ -122,7 +126,7 @@ export default function CongesEquipe() {
       const res = await getDemandes({ annee })
       setDemandes(res.data.results ?? res.data)
     } catch {
-      toast.error('Impossible de charger les congés.')
+      toast.error(t('conges_extra.load_error'))
     } finally {
       setLoading(false)
     }
@@ -132,48 +136,48 @@ export default function CongesEquipe() {
 
   if (loading) {
     return (
-      <ManagerLayout pageTitle="Congés de mon équipe">
-        <Spinner message="Chargement des demandes…" />
+      <ManagerLayout pageTitle={t('conges_extra.team_leaves')}>
+        <Spinner message={t('conges_extra.loading_requests')} />
       </ManagerLayout>
     )
   }
 
   const tabs = [
-    { key: 'en_attente', label: 'En attente', filter: d => d.statut === 'EN_ATTENTE' },
-    { key: 'approuve',   label: 'Approuvés',  filter: d => d.statut === 'APPROUVE' },
-    { key: 'refuse',     label: 'Refusés',    filter: d => d.statut === 'REFUSE' },
-    { key: 'tous',       label: 'Tous',       filter: () => true },
+    { key: 'en_attente', label: t('conges.pending'),   filter: d => d.statut === 'EN_ATTENTE' },
+    { key: 'approuve',   label: t('conges_extra.approved_plural'), filter: d => d.statut === 'APPROUVE' },
+    { key: 'refuse',     label: t('conges_extra.rejected_plural'), filter: d => d.statut === 'REFUSE' },
+    { key: 'tous',       label: t('common.all'),        filter: () => true },
   ]
 
-  const activeFilter = tabs.find(t => t.key === activeTab)?.filter ?? (() => true)
+  const activeFilter = tabs.find(tp => tp.key === activeTab)?.filter ?? (() => true)
   const filtered     = demandes.filter(activeFilter)
   const nbAttente    = demandes.filter(d => d.statut === 'EN_ATTENTE').length
   const approuves    = demandes.filter(d => d.statut === 'APPROUVE')
 
   return (
-    <ManagerLayout pageTitle="Congés de mon équipe">
+    <ManagerLayout pageTitle={t('conges_extra.team_leaves')}>
 
       {/* Résumé */}
       {nbAttente > 0 && (
         <div className="alert alert-warning py-2 mb-3" style={{ fontSize: 13 }}>
           <i className="fas fa-hourglass-half mr-2" />
-          <strong>{nbAttente}</strong> demande{nbAttente > 1 ? 's' : ''} en attente de validation.
+          <strong>{nbAttente}</strong> {t('conges_extra.pending_validation', { count: nbAttente })}
         </div>
       )}
 
       {/* Onglets */}
       <ul className="nav nav-tabs mb-0">
-        {tabs.map(t => {
-          const count = demandes.filter(t.filter).length
+        {tabs.map(tp => {
+          const count = demandes.filter(tp.filter).length
           return (
-            <li className="nav-item" key={t.key}>
+            <li className="nav-item" key={tp.key}>
               <button
-                className={`nav-link ${activeTab === t.key ? 'active' : ''}`}
-                onClick={() => setActiveTab(t.key)}
+                className={`nav-link ${activeTab === tp.key ? 'active' : ''}`}
+                onClick={() => setActiveTab(tp.key)}
               >
-                {t.label}
+                {tp.label}
                 {count > 0 && (
-                  <span className={`badge ml-1 ${t.key === 'en_attente' && count > 0 ? 'badge-danger' : 'badge-secondary'}`}>
+                  <span className={`badge ml-1 ${tp.key === 'en_attente' && count > 0 ? 'badge-danger' : 'badge-secondary'}`}>
                     {count}
                   </span>
                 )}
@@ -186,7 +190,7 @@ export default function CongesEquipe() {
             className={`nav-link ${showCal ? 'active' : ''}`}
             onClick={() => setShowCal(c => !c)}
           >
-            <i className="fas fa-calendar-alt mr-1" />Calendrier
+            <i className="fas fa-calendar-alt mr-1" />{t('conges_extra.calendar_btn')}
           </button>
         </li>
       </ul>
@@ -207,7 +211,7 @@ export default function CongesEquipe() {
             {filtered.length === 0 ? (
               <div className="text-center py-4 text-muted">
                 <i className="fas fa-check-double fa-2x mb-2 d-block text-success" />
-                Aucune demande dans cet onglet.
+                {t('conges_extra.no_requests_tab')}
               </div>
             ) : (
               <div className="row">

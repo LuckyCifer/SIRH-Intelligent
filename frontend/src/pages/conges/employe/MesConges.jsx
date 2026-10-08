@@ -1,16 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
 import EmployeLayout from '../../../components/layout/EmployeLayout'
 import Spinner from '../../../components/Spinner'
-import { getDemandes, getMesSoldes, annulerConge, getTypesConge } from '../../../api/conges'
-
-const STATUT_CONFIG = {
-  EN_ATTENTE: { cls: 'badge-warning',   label: 'En attente',  icon: 'fas fa-hourglass-half' },
-  APPROUVE:   { cls: 'badge-success',   label: 'Approuvé',    icon: 'fas fa-check-circle' },
-  REFUSE:     { cls: 'badge-danger',    label: 'Refusé',      icon: 'fas fa-times-circle' },
-  ANNULE:     { cls: 'badge-secondary', label: 'Annulé',      icon: 'fas fa-ban' },
-}
+import { getDemandes, getMesSoldes, annulerConge } from '../../../api/conges'
 
 function fmtDate(d) {
   if (!d) return '—'
@@ -18,6 +12,7 @@ function fmtDate(d) {
 }
 
 function SoldeCard({ solde }) {
+  const { t } = useTranslation()
   const pct    = solde.jours_acquis > 0
     ? (parseFloat(solde.jours_pris) / parseFloat(solde.jours_acquis)) * 100
     : 0
@@ -33,7 +28,7 @@ function SoldeCard({ solde }) {
             {solde.type_conge_detail?.nom || '—'}
           </span>
           <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-            {parseFloat(solde.jours_pris).toFixed(0)} / {parseFloat(solde.jours_acquis).toFixed(0)} jours pris
+            {parseFloat(solde.jours_pris).toFixed(0)} / {parseFloat(solde.jours_acquis).toFixed(0)} {t('conges_extra.days_taken_short')}
           </span>
         </div>
         <div className="progress mb-1" style={{ height: 8 }}>
@@ -42,12 +37,13 @@ function SoldeCard({ solde }) {
         </div>
         <div className="d-flex justify-content-between" style={{ fontSize: 11, color: 'var(--text-muted)' }}>
           <span>
-            <strong style={{ color }}>{parseFloat(solde.solde_restant).toFixed(0)}</strong> jour{parseFloat(solde.solde_restant) !== 1 ? 's' : ''} restant{parseFloat(solde.solde_restant) !== 1 ? 's' : ''}
+            <strong style={{ color }}>{parseFloat(solde.solde_restant).toFixed(0)}</strong>{' '}
+            {t('conges.days_remaining')}
           </span>
           {parseFloat(solde.jours_en_attente) > 0 && (
             <span>
               <i className="fas fa-clock mr-1" />
-              {parseFloat(solde.jours_en_attente).toFixed(0)}j en attente
+              {parseFloat(solde.jours_en_attente).toFixed(0)}{t('conges_extra.days_pending_short')}
             </span>
           )}
         </div>
@@ -57,11 +53,19 @@ function SoldeCard({ solde }) {
 }
 
 export default function MesConges() {
+  const { t } = useTranslation()
   const annee = new Date().getFullYear()
   const [demandes, setDemandes] = useState([])
   const [soldes,   setSoldes]   = useState([])
   const [loading,  setLoading]  = useState(true)
   const [cancelling, setCancelling] = useState(null)
+
+  const STATUT_CONFIG = {
+    EN_ATTENTE: { cls: 'badge-warning',   label: t('conges.pending'),   icon: 'fas fa-hourglass-half' },
+    APPROUVE:   { cls: 'badge-success',   label: t('conges.approved'),  icon: 'fas fa-check-circle' },
+    REFUSE:     { cls: 'badge-danger',    label: t('conges.rejected'),  icon: 'fas fa-times-circle' },
+    ANNULE:     { cls: 'badge-secondary', label: t('conges.cancelled'), icon: 'fas fa-ban' },
+  }
 
   async function load() {
     try {
@@ -72,7 +76,7 @@ export default function MesConges() {
       setDemandes(dRes.data.results ?? dRes.data)
       setSoldes(sRes.data.results ?? sRes.data)
     } catch {
-      toast.error('Impossible de charger les congés.')
+      toast.error(t('conges_extra.load_error'))
     } finally {
       setLoading(false)
     }
@@ -81,14 +85,14 @@ export default function MesConges() {
   useEffect(() => { load() }, [])
 
   async function handleAnnuler(id) {
-    if (!window.confirm('Annuler cette demande de congé ?')) return
+    if (!window.confirm(t('conges_extra.confirm_cancel'))) return
     setCancelling(id)
     try {
       await annulerConge(id)
-      toast.success('Demande annulée.')
+      toast.success(t('conges_extra.cancel_success'))
       load()
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Erreur lors de l\'annulation.')
+      toast.error(err.response?.data?.error || t('conges_extra.cancel_error'))
     } finally {
       setCancelling(null)
     }
@@ -96,23 +100,23 @@ export default function MesConges() {
 
   if (loading) {
     return (
-      <EmployeLayout pageTitle="Mes Congés">
-        <Spinner message="Chargement de vos congés…" />
+      <EmployeLayout pageTitle={t('conges.my_leaves')}>
+        <Spinner message={t('conges_extra.loading_leaves')} />
       </EmployeLayout>
     )
   }
 
   return (
-    <EmployeLayout pageTitle={`Mes Congés — ${annee}`}>
+    <EmployeLayout pageTitle={`${t('conges.my_leaves')} — ${annee}`}>
 
       {/* ── Soldes ── */}
       <div className="row mb-2">
         <div className="col-12 d-flex justify-content-between align-items-center mb-3">
           <h5 className="m-0" style={{ color: 'var(--page-title)' }}>
-            <i className="fas fa-wallet mr-2" />Mes soldes
+            <i className="fas fa-wallet mr-2" />{t('conges_extra.my_balances')}
           </h5>
           <Link to="/employe/conges/nouveau" className="btn btn-primary btn-sm">
-            <i className="fas fa-plus mr-1" />Nouvelle demande
+            <i className="fas fa-plus mr-1" />{t('conges.new_request')}
           </Link>
         </div>
       </div>
@@ -120,7 +124,7 @@ export default function MesConges() {
       {soldes.length === 0 ? (
         <div className="alert alert-info" style={{ fontSize: 13 }}>
           <i className="fas fa-info-circle mr-2" />
-          Aucun solde initialisé. Faites votre première demande pour initialiser vos soldes.
+          {t('conges_extra.no_balance_init')}
         </div>
       ) : (
         <div className="row">
@@ -137,19 +141,19 @@ export default function MesConges() {
         <div className="card-header d-flex justify-content-between align-items-center">
           <h3 className="card-title">
             <i className="fas fa-list-ul mr-2" />
-            Mes demandes ({demandes.length})
+            {t('conges_extra.my_requests')} ({demandes.length})
           </h3>
           <Link to="/employe/conges/nouveau" className="btn btn-sm btn-outline-primary">
-            <i className="fas fa-plus mr-1" />Nouvelle demande
+            <i className="fas fa-plus mr-1" />{t('conges.new_request')}
           </Link>
         </div>
         <div className="card-body p-0">
           {demandes.length === 0 ? (
             <div className="text-center py-5 text-muted">
               <i className="fas fa-umbrella-beach fa-3x mb-3 d-block" />
-              <p>Aucune demande de congé.</p>
+              <p>{t('conges.no_leaves')}</p>
               <Link to="/employe/conges/nouveau" className="btn btn-primary btn-sm">
-                <i className="fas fa-plus mr-1" />Faire une demande
+                <i className="fas fa-plus mr-1" />{t('conges_extra.make_request')}
               </Link>
             </div>
           ) : (
@@ -157,11 +161,11 @@ export default function MesConges() {
               <table className="table table-bordered table-hover mb-0">
                 <thead>
                   <tr>
-                    <th>Type</th>
-                    <th>Période</th>
-                    <th>Nb jours</th>
-                    <th>Statut</th>
-                    <th>Commentaire</th>
+                    <th>{t('conges_extra.col_type')}</th>
+                    <th>{t('conges_extra.col_period')}</th>
+                    <th>{t('conges_extra.col_nb_days')}</th>
+                    <th>{t('conges_extra.col_status')}</th>
+                    <th>{t('conges.comment')}</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -203,7 +207,7 @@ export default function MesConges() {
                             >
                               {cancelling === d.id
                                 ? <i className="fas fa-spinner fa-spin" />
-                                : <><i className="fas fa-times mr-1" />Annuler</>
+                                : <><i className="fas fa-times mr-1" />{t('common.cancel')}</>
                               }
                             </button>
                           )}

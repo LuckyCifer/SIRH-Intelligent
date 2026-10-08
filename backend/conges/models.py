@@ -1,11 +1,22 @@
 """
 Modèles — Congés & Absences (SIRH)
+Conformité Code du Travail camerounais — Loi n°92/007 du 14 août 1992.
 """
 from django.db import models
 from django.conf import settings
 
 
 class TypeConge(models.Model):
+
+    class CodeLegal(models.TextChoices):
+        ANNUEL    = "ANNUEL",    "Congé annuel ordinaire"
+        MATERNITE = "MATERNITE", "Congé de maternité"
+        MALADIE   = "MALADIE",   "Congé maladie"
+        PERMISSION = "PERMISSION", "Permission exceptionnelle d'absence"
+        SYNDICAL  = "SYNDICAL",  "Congé syndical"
+        SANS_SOLDE = "SANS_SOLDE", "Congé sans solde"
+        PATERNITE = "PATERNITE", "Congé de paternité"
+
     nom            = models.CharField(max_length=100)
     code           = models.CharField(max_length=20, unique=True)
     jours_par_an   = models.IntegerField(default=30, help_text="Nombre de jours alloués par an")
@@ -14,6 +25,16 @@ class TypeConge(models.Model):
     couleur        = models.CharField(max_length=7, default="#2E74B5")
     description    = models.TextField(blank=True)
     actif          = models.BooleanField(default=True)
+    # Champs légaux (Art. 89-93 Code du Travail)
+    code_legal     = models.CharField(
+        max_length=30,
+        choices=CodeLegal.choices,
+        default=CodeLegal.ANNUEL,
+    )
+    deductible_conge_annuel = models.BooleanField(
+        default=True,
+        help_text="Ce type de congé se déduit-il du solde de congé annuel ?",
+    )
 
     class Meta:
         verbose_name        = "Type de congé"
@@ -69,6 +90,13 @@ class DemandeConge(models.Model):
         null=True, blank=True,
         related_name="demandes_conge",
     )
+    # Champs calculés — conformité Art. 89-93
+    allocation_conge      = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    date_retour_prevue    = models.DateField(null=True, blank=True)
+    jours_ouvrable_pauses = models.IntegerField(default=0, help_text="Jours fériés tombant en semaine pendant le congé")
+    majoration_enfants    = models.IntegerField(default=0)
+    majoration_anciennete = models.IntegerField(default=0)
+    notifie_valideur      = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -81,14 +109,21 @@ class DemandeConge(models.Model):
         return f"{self.employe} — {self.type_conge.nom} ({self.date_debut} → {self.date_fin})"
 
     def save(self, *args, **kwargs):
-        from datetime import timedelta
-        delta = self.date_fin - self.date_debut
-        nb = 0
-        for i in range(delta.days + 1):
-            jour = self.date_debut + timedelta(days=i)
-            if jour.weekday() < 5:
-                nb += 1
-        self.nb_jours = nb
+        if self.date_debut and self.date_fin:
+            from .calculateur_conges import CalculateurConges
+            from datetime import timedelta
+            calc = CalculateurConges()
+            self.nb_jours = calc.calculer_jours_ouvrables(self.date_debut, self.date_fin)
+            # Nombre de jours fériés tombant en semaine pendant le congé
+            feries = calc.get_jours_feries(self.date_debut.year)
+            if self.date_fin.year != self.date_debut.year:
+                feries |= calc.get_jours_feries(self.date_fin.year)
+            self.jours_ouvrable_pauses = sum(
+                1 for i in range((self.date_fin - self.date_debut).days + 1)
+                if (self.date_debut + timedelta(days=i)).weekday() < 5
+                and (self.date_debut + timedelta(days=i)) in feries
+            )
+            self.date_retour_prevue = calc.calculer_date_retour(self.date_fin)
         super().save(*args, **kwargs)
 
 

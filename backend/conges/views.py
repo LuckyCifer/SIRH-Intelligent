@@ -2,9 +2,11 @@ from django.utils import timezone
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
+from rest_framework.exceptions import ValidationError
 from accounts.permissions import IsRH, IsManagerOrRH
 from .models import TypeConge, DemandeConge, SoldeConge
 from .serializers import TypeCongeSerializer, DemandeCongeSerializer, SoldeCongeSerializer
+from .calculateur_conges import CalculateurConges
 
 
 def _get_or_init_solde(employe, type_conge, annee):
@@ -87,8 +89,21 @@ class DemandeCongeViewSet(viewsets.ModelViewSet):
             try:
                 employe = User.objects.get(pk=employe_id)
             except User.DoesNotExist:
-                from rest_framework.exceptions import ValidationError
                 raise ValidationError({"employe": "Employé introuvable."})
+
+        # Vérification éligibilité Art. 92 — 12 mois de service pour congé annuel
+        type_conge = serializer.validated_data.get("type_conge")
+        if type_conge and getattr(type_conge, "code_legal", "ANNUEL") == "ANNUEL":
+            calc = CalculateurConges()
+            eligibilite = calc.verifier_droit_conge(employe)
+            if not eligibilite["eligible"]:
+                raise ValidationError({
+                    "non_field_errors": [
+                        f"Droit au congé annuel non acquis (Art. 92). "
+                        f"Ancienneté requise : 12 mois. "
+                        f"Il reste {eligibilite['mois_restants']} mois."
+                    ]
+                })
 
         demande = serializer.save(employe=employe)
 
@@ -157,6 +172,70 @@ class DemandeCongeViewSet(viewsets.ModelViewSet):
         demande.save()
         self._mettre_a_jour_solde(demande, "annuler")
         return Response({"message": "Demande annulée."})
+
+    @action(detail=False, methods=["get"], url_path="solde-detaille")
+    def solde_detaille(self, request):
+        """
+        Retourne le solde légal détaillé (Art. 89-93) pour un employé.
+        GET /conges/demandes/solde-detaille/?employe=<id>&annee=<year>&nb_enfants=<n>
+        """
+        annee      = int(request.query_params.get("annee", timezone.now().year))
+        nb_enfants = int(request.query_params.get("nb_enfants", 0))
+
+        user = request.user
+        if user.role in ("RH", "ADMIN"):
+            employe_id = request.query_params.get("employe")
+            if employe_id:
+                from accounts.models import User as UserModel
+                try:
+                    employe = UserModel.objects.get(pk=employe_id)
+                except UserModel.DoesNotExist:
+                    return Response({"error": "Employé introuvable."}, status=404)
+            else:
+                employe = user
+        else:
+            employe = user
+
+        calc         = CalculateurConges()
+        droit        = calc.calculer_solde_annuel(employe, annee, nb_enfants=nb_enfants)
+        eligibilite  = calc.verifier_droit_conge(employe)
+
+        try:
+            allocation = float(calc.calculer_allocation_conge(employe))
+        except Exception:
+            allocation = 0
+
+        # Jours consommés sur les types déductibles du congé annuel
+        demandes_qs = DemandeConge.objects.filter(
+            employe=employe,
+            date_debut__year=annee,
+        )
+        try:
+            demandes_deductibles = demandes_qs.filter(type_conge__deductible_conge_annuel=True)
+        except Exception:
+            demandes_deductibles = demandes_qs
+
+        jours_pris       = sum(d.nb_jours for d in demandes_deductibles.filter(statut="APPROUVE"))
+        jours_en_attente = sum(d.nb_jours for d in demandes_deductibles.filter(statut="EN_ATTENTE"))
+        jours_restants   = droit["total_jours_droit"] - jours_pris - jours_en_attente
+
+        # Jours fériés de l'année courante (pour affichage)
+        feries_annee = sorted(calc.get_jours_feries(annee))
+
+        return Response({
+            "annee": annee,
+            "employe": {
+                "id":  employe.pk,
+                "nom": employe.get_full_name() or employe.username,
+            },
+            "eligibilite":     eligibilite,
+            "droit_calcule":   droit,
+            "allocation_estimee": allocation,
+            "jours_pris":        jours_pris,
+            "jours_en_attente":  jours_en_attente,
+            "jours_restants":    jours_restants,
+            "jours_feries":      [str(d) for d in feries_annee],
+        })
 
     def _mettre_a_jour_solde(self, demande, action_type):
         annee = demande.date_debut.year

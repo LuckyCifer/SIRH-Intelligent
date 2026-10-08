@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
 import ManagerLayout from '../../../components/layout/ManagerLayout'
 import Spinner from '../../../components/Spinner'
 import { getDemande, approuverConge, refuserConge } from '../../../api/conges'
@@ -13,6 +14,7 @@ function fmtDate(d) {
 }
 
 export default function ValidationConge() {
+  const { t } = useTranslation()
   const { id } = useParams()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
@@ -29,14 +31,14 @@ export default function ValidationConge() {
       .then(r => {
         const d = r.data
         if (d.statut !== 'EN_ATTENTE') {
-          toast.error('Cette demande n\'est plus en attente.')
+          toast.error(t('conges_extra.no_longer_pending'))
           navigate('/manager/conges')
         } else {
           setDemande(d)
         }
       })
       .catch(() => {
-        toast.error('Demande introuvable.')
+        toast.error(t('conges_extra.request_not_found'))
         navigate('/manager/conges')
       })
       .finally(() => setLoading(false))
@@ -44,21 +46,21 @@ export default function ValidationConge() {
 
   async function handleConfirm() {
     if (!isApprouver && !commentaire.trim()) {
-      toast.error('Un commentaire est obligatoire en cas de refus.')
+      toast.error(t('conges_extra.comment_required_rejection'))
       return
     }
     setSaving(true)
     try {
       if (isApprouver) {
         await approuverConge(id, { commentaire })
-        toast.success('✅ Congé approuvé avec succès !')
+        toast.success(t('conges_extra.approved_success'))
       } else {
         await refuserConge(id, { commentaire })
-        toast.success('Congé refusé.')
+        toast.success(t('conges_extra.rejected_success'))
       }
       navigate('/manager/conges')
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Erreur lors de la validation.')
+      toast.error(err.response?.data?.error || t('conges_extra.validation_error'))
     } finally {
       setSaving(false)
     }
@@ -66,8 +68,8 @@ export default function ValidationConge() {
 
   if (loading) {
     return (
-      <ManagerLayout pageTitle="Validation de congé">
-        <Spinner message="Chargement de la demande…" />
+      <ManagerLayout pageTitle={t('conges_extra.leave_validation')}>
+        <Spinner message={t('conges_extra.loading_request')} />
       </ManagerLayout>
     )
   }
@@ -81,7 +83,7 @@ export default function ValidationConge() {
 
   return (
     <ManagerLayout
-      pageTitle={isApprouver ? 'Approuver un congé' : 'Refuser un congé'}
+      pageTitle={isApprouver ? t('conges_extra.approve_leave') : t('conges_extra.reject_leave')}
     >
       <div className="row">
 
@@ -91,7 +93,7 @@ export default function ValidationConge() {
             <div className="card-header">
               <h3 className="card-title">
                 <i className={`fas fa-${isApprouver ? 'check-circle text-success' : 'times-circle text-danger'} mr-2`} />
-                {isApprouver ? 'Confirmer l\'approbation' : 'Confirmer le refus'}
+                {isApprouver ? t('conges_extra.confirm_approval') : t('conges_extra.confirm_rejection')}
               </h3>
             </div>
 
@@ -109,8 +111,8 @@ export default function ValidationConge() {
                     {typeNom}
                   </span>
                   <i className="fas fa-calendar-alt mr-1" />
-                  Du <strong>{fmtDate(d.date_debut)}</strong> au <strong>{fmtDate(d.date_fin)}</strong>
-                  <span className="badge badge-secondary ml-2">{d.nb_jours} jour{d.nb_jours > 1 ? 's' : ''}</span>
+                  {t('conges_extra.from')} <strong>{fmtDate(d.date_debut)}</strong> {t('conges_extra.to')} <strong>{fmtDate(d.date_fin)}</strong>
+                  <span className="badge badge-secondary ml-2">{d.nb_jours} {t('conges_extra.working_days', { count: d.nb_jours })}</span>
                 </div>
                 {d.motif && (
                   <div className="mt-2 text-muted" style={{ fontSize: 12, fontStyle: 'italic' }}>
@@ -122,16 +124,16 @@ export default function ValidationConge() {
               {/* Champ commentaire */}
               <div className="form-group">
                 <label className="font-weight-bold">
-                  Commentaire{' '}
+                  {t('conges.comment')}{' '}
                   {!isApprouver
                     ? <span className="text-danger">*</span>
-                    : <span className="text-muted font-weight-normal ml-1">(optionnel)</span>
+                    : <span className="text-muted font-weight-normal ml-1">({t('conges_extra.optional')})</span>
                   }
                 </label>
                 {!isApprouver && (
                   <p className="text-muted mb-2" style={{ fontSize: 12 }}>
                     <i className="fas fa-info-circle mr-1" />
-                    Précisez la raison du refus — l'employé sera informé.
+                    {t('conges_extra.rejection_reason_hint')}
                   </p>
                 )}
                 <textarea
@@ -141,8 +143,8 @@ export default function ValidationConge() {
                   onChange={e => setCommentaire(e.target.value)}
                   placeholder={
                     isApprouver
-                      ? 'Ajouter un commentaire pour l\'employé (optionnel)…'
-                      : 'Raison du refus (obligatoire)…'
+                      ? t('conges_extra.comment_optional_placeholder')
+                      : t('conges_extra.rejection_reason_placeholder')
                   }
                 />
               </div>
@@ -155,7 +157,7 @@ export default function ValidationConge() {
                 onClick={() => navigate('/manager/conges')}
                 disabled={saving}
               >
-                <i className="fas fa-arrow-left mr-1" />Retour
+                <i className="fas fa-arrow-left mr-1" />{t('common.back')}
               </button>
               <button
                 type="button"
@@ -164,11 +166,11 @@ export default function ValidationConge() {
                 onClick={handleConfirm}
               >
                 {saving ? (
-                  <><i className="fas fa-spinner fa-spin mr-1" />Traitement…</>
+                  <><i className="fas fa-spinner fa-spin mr-1" />{t('conges_extra.processing')}</>
                 ) : isApprouver ? (
-                  <><i className="fas fa-check mr-1" />Confirmer l'approbation</>
+                  <><i className="fas fa-check mr-1" />{t('conges_extra.confirm_approval')}</>
                 ) : (
-                  <><i className="fas fa-times mr-1" />Confirmer le refus</>
+                  <><i className="fas fa-times mr-1" />{t('conges_extra.confirm_rejection')}</>
                 )}
               </button>
             </div>
@@ -180,18 +182,18 @@ export default function ValidationConge() {
           <div className="card">
             <div className="card-header">
               <h3 className="card-title text-sm">
-                <i className="fas fa-clipboard-list mr-1 text-info" />Détails de la demande
+                <i className="fas fa-clipboard-list mr-1 text-info" />{t('conges_extra.request_details')}
               </h3>
             </div>
             <div className="card-body p-0">
               <table className="table table-sm table-borderless mb-0">
                 <tbody>
                   <tr>
-                    <td className="text-muted pl-3" style={{ fontSize: 12, width: '40%' }}>Employé</td>
+                    <td className="text-muted pl-3" style={{ fontSize: 12, width: '40%' }}>{t('conges.employee')}</td>
                     <td className="font-weight-bold pr-3" style={{ fontSize: 12 }}>{empNom}</td>
                   </tr>
                   <tr>
-                    <td className="text-muted pl-3" style={{ fontSize: 12 }}>Type de congé</td>
+                    <td className="text-muted pl-3" style={{ fontSize: 12 }}>{t('conges.type')}</td>
                     <td className="pr-3">
                       <span className="badge" style={{ background: couleur, color: '#fff', fontSize: 11 }}>
                         {typeNom}
@@ -199,30 +201,30 @@ export default function ValidationConge() {
                     </td>
                   </tr>
                   <tr>
-                    <td className="text-muted pl-3" style={{ fontSize: 12 }}>Début</td>
+                    <td className="text-muted pl-3" style={{ fontSize: 12 }}>{t('conges.start_date')}</td>
                     <td className="pr-3" style={{ fontSize: 12 }}>{fmtDate(d.date_debut)}</td>
                   </tr>
                   <tr>
-                    <td className="text-muted pl-3" style={{ fontSize: 12 }}>Fin</td>
+                    <td className="text-muted pl-3" style={{ fontSize: 12 }}>{t('conges.end_date')}</td>
                     <td className="pr-3" style={{ fontSize: 12 }}>{fmtDate(d.date_fin)}</td>
                   </tr>
                   <tr>
-                    <td className="text-muted pl-3" style={{ fontSize: 12 }}>Durée</td>
+                    <td className="text-muted pl-3" style={{ fontSize: 12 }}>{t('conges.duration')}</td>
                     <td className="font-weight-bold pr-3" style={{ fontSize: 12 }}>
-                      {d.nb_jours} jour{d.nb_jours > 1 ? 's' : ''} ouvrable{d.nb_jours > 1 ? 's' : ''}
+                      {d.nb_jours} {t('conges_extra.working_days', { count: d.nb_jours })}
                     </td>
                   </tr>
                   <tr>
-                    <td className="text-muted pl-3" style={{ fontSize: 12 }}>Statut</td>
+                    <td className="text-muted pl-3" style={{ fontSize: 12 }}>{t('conges.status')}</td>
                     <td className="pr-3">
                       <span className="badge badge-warning" style={{ fontSize: 11 }}>
-                        <i className="fas fa-hourglass-half mr-1" />En attente
+                        <i className="fas fa-hourglass-half mr-1" />{t('conges.pending')}
                       </span>
                     </td>
                   </tr>
                   {d.motif && (
                     <tr>
-                      <td className="text-muted pl-3" style={{ fontSize: 12, verticalAlign: 'top' }}>Motif</td>
+                      <td className="text-muted pl-3" style={{ fontSize: 12, verticalAlign: 'top' }}>{t('conges.reason')}</td>
                       <td className="text-muted pr-3" style={{ fontSize: 12, fontStyle: 'italic' }}>
                         {d.motif}
                       </td>
@@ -236,7 +238,7 @@ export default function ValidationConge() {
           {!isApprouver && (
             <div className="alert alert-warning py-2 mt-2" style={{ fontSize: 12 }}>
               <i className="fas fa-exclamation-triangle mr-1" />
-              <strong>Attention :</strong> Un refus est définitif. L'employé sera informé du motif saisi.
+              <strong>{t('common.warning')} :</strong> {t('conges_extra.rejection_warning')}
             </div>
           )}
         </div>
