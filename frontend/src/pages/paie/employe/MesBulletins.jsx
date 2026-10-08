@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import EmployeLayout from "../../../components/layout/EmployeLayout";
 import { getMesBulletins, telechargerPdf } from "../../../api/paie";
+import { useApercu, nomDepuisEntetes } from "../../../components/ui/useApercu";
 
 const STATUT_BADGE = {
   BROUILLON: "secondary",
@@ -10,12 +12,16 @@ const STATUT_BADGE = {
   PAYE:      "success",
 };
 
-const MOIS_LABELS = [
-  "", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
-  "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
-];
-
 export default function MesBulletins() {
+  const { t, i18n } = useTranslation();
+  const { voirFichier, apercuModal } = useApercu();
+  const locale = i18n.language === 'en' ? 'en-US' : 'fr-FR';
+  const MOIS_LABELS = [
+    "", t('common.months.1'), t('common.months.2'), t('common.months.3'), t('common.months.4'),
+    t('common.months.5'), t('common.months.6'), t('common.months.7'), t('common.months.8'),
+    t('common.months.9'), t('common.months.10'), t('common.months.11'), t('common.months.12'),
+  ];
+
   const [bulletins, setBulletins] = useState([]);
   const [loading,   setLoading]   = useState(true);
   const [dlId,      setDlId]      = useState(null);
@@ -23,7 +29,7 @@ export default function MesBulletins() {
   useEffect(() => {
     getMesBulletins()
       .then(r => setBulletins(r.data.results ?? r.data))
-      .catch(() => toast.error("Erreur lors du chargement des bulletins"))
+      .catch(() => toast.error(t("paie.load_error")))
       .finally(() => setLoading(false));
   }, []);
 
@@ -31,14 +37,9 @@ export default function MesBulletins() {
     setDlId(id);
     try {
       const r = await telechargerPdf(id);
-      const url = window.URL.createObjectURL(new Blob([r.data]));
-      const a   = document.createElement("a");
-      a.href    = url;
-      a.download = r.headers["content-disposition"]?.split('filename="')[1]?.replace('"', "") || `bulletin_${id}.pdf`;
-      a.click();
-      window.URL.revokeObjectURL(url);
+      voirFichier(r.data, nomDepuisEntetes(r.headers, `bulletin_${id}.pdf`));
     } catch {
-      toast.error("Erreur lors du téléchargement");
+      toast.error(t("paie.download_error"));
     } finally {
       setDlId(null);
     }
@@ -47,15 +48,15 @@ export default function MesBulletins() {
   const dernier = bulletins[0];
 
   return (
-    <EmployeLayout pageTitle="Mes bulletins de paie">
+    <EmployeLayout pageTitle={t("nav.mes_bulletins")}>
       {/* Récap dernier bulletin */}
       {dernier && (
         <div className="row mb-3">
           {[
-            { label: "Salaire brut", val: `${Number(dernier.salaire_brut).toLocaleString("fr-FR")} FCFA`, color: "#2E74B5", icon: "file-invoice" },
-            { label: "CNPS employé", val: `${Number(dernier.cnps_employe).toLocaleString("fr-FR")} FCFA`, color: "#fd7e14", icon: "shield-alt" },
-            { label: "IRPP",         val: `${Number(dernier.irpp).toLocaleString("fr-FR")} FCFA`,         color: "#6f42c1", icon: "landmark" },
-            { label: "Net à payer",  val: `${Number(dernier.salaire_net).toLocaleString("fr-FR")} FCFA`,  color: "#28a745", icon: "money-bill-wave" },
+            { label: t("paie.gross_salary"), val: `${Number(dernier.salaire_brut).toLocaleString(locale)} FCFA`, color: "#2E74B5", icon: "file-invoice" },
+            { label: t("paie.cnps_emp"),     val: `${Number(dernier.cnps_employe).toLocaleString(locale)} FCFA`, color: "#fd7e14", icon: "shield-alt" },
+            { label: t("paie.irpp"),         val: `${Number(dernier.irpp).toLocaleString(locale)} FCFA`,         color: "#6f42c1", icon: "landmark" },
+            { label: t("paie.net_to_pay"),   val: `${Number(dernier.salaire_net).toLocaleString(locale)} FCFA`,  color: "#28a745", icon: "money-bill-wave" },
           ].map(s => (
             <div key={s.label} className="col-lg-3 col-md-6 mb-2">
               <div className="card" style={{ background: "var(--card-bg)", borderLeft: `4px solid ${s.color}` }}>
@@ -80,7 +81,7 @@ export default function MesBulletins() {
              style={{ background: "var(--card-bg)", borderBottom: "1px solid var(--border-color)" }}>
           <h3 className="card-title m-0" style={{ color: "var(--page-title)", fontSize: 15 }}>
             <i className="fas fa-history mr-2" style={{ color: "var(--acerfi-blue)" }} />
-            Historique de mes bulletins
+            {t("paie.history")}
           </h3>
         </div>
         <div className="card-body p-0">
@@ -91,21 +92,21 @@ export default function MesBulletins() {
           ) : bulletins.length === 0 ? (
             <div className="text-center py-5 text-muted">
               <i className="fas fa-file-invoice fa-3x mb-3 d-block" style={{ opacity: 0.3 }} />
-              <strong>Aucun bulletin disponible</strong>
-              <p className="mt-1 mb-0" style={{ fontSize: 13 }}>Vos bulletins apparaîtront ici une fois générés par le service RH.</p>
+              <strong>{t("paie.no_bulletins")}</strong>
+              <p className="mt-1 mb-0" style={{ fontSize: 13 }}>{t("paie.no_bulletins_subtitle")}</p>
             </div>
           ) : (
             <div className="table-responsive">
               <table className="table table-hover mb-0">
                 <thead>
                   <tr style={{ background: "var(--card-bg)", color: "var(--text-muted)", fontSize: 12 }}>
-                    <th>Période</th>
-                    <th className="text-right">Salaire brut</th>
-                    <th className="text-right">CNPS</th>
-                    <th className="text-right">IRPP</th>
-                    <th className="text-right">Net à payer</th>
-                    <th>Statut</th>
-                    <th>Paiement</th>
+                    <th>{t("paie.period")}</th>
+                    <th className="text-right">{t("paie.gross_salary")}</th>
+                    <th className="text-right">{t("paie.cnps_emp")}</th>
+                    <th className="text-right">{t("paie.irpp")}</th>
+                    <th className="text-right">{t("paie.net_to_pay")}</th>
+                    <th>{t("common.status")}</th>
+                    <th>{t("paie.payment_date")}</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -115,15 +116,15 @@ export default function MesBulletins() {
                       <td className="font-weight-bold" style={{ color: "var(--page-title)" }}>
                         {MOIS_LABELS[b.mois]} {b.annee}
                       </td>
-                      <td className="text-right">{Number(b.salaire_brut).toLocaleString("fr-FR")}</td>
+                      <td className="text-right">{Number(b.salaire_brut).toLocaleString(locale)}</td>
                       <td className="text-right" style={{ color: "#fd7e14" }}>
-                        {Number(b.cnps_employe).toLocaleString("fr-FR")}
+                        {Number(b.cnps_employe).toLocaleString(locale)}
                       </td>
                       <td className="text-right" style={{ color: "#6f42c1" }}>
-                        {Number(b.irpp).toLocaleString("fr-FR")}
+                        {Number(b.irpp).toLocaleString(locale)}
                       </td>
                       <td className="text-right font-weight-bold" style={{ color: "#28a745" }}>
-                        {Number(b.salaire_net).toLocaleString("fr-FR")} FCFA
+                        {Number(b.salaire_net).toLocaleString(locale)} FCFA
                       </td>
                       <td>
                         <span className={`badge badge-${STATUT_BADGE[b.statut] || "secondary"}`}>
@@ -132,7 +133,7 @@ export default function MesBulletins() {
                       </td>
                       <td style={{ color: "var(--text-muted)", fontSize: 12 }}>
                         {b.date_paiement
-                          ? new Date(b.date_paiement).toLocaleDateString("fr-FR")
+                          ? new Date(b.date_paiement + 'T12:00:00').toLocaleDateString(locale)
                           : <span className="text-muted">—</span>}
                       </td>
                       <td>
@@ -140,11 +141,11 @@ export default function MesBulletins() {
                           className="btn btn-xs btn-outline-primary"
                           onClick={() => handleTelechargement(b.id)}
                           disabled={dlId === b.id}
-                          title="Télécharger le bulletin"
+                          title={t("apercu.preview")}
                         >
                           {dlId === b.id
                             ? <i className="fas fa-spinner fa-spin" />
-                            : <i className="fas fa-download" />}
+                            : <i className="fas fa-eye" />}
                         </button>
                       </td>
                     </tr>
@@ -155,6 +156,7 @@ export default function MesBulletins() {
           )}
         </div>
       </div>
+      {apercuModal}
     </EmployeLayout>
   );
 }

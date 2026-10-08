@@ -1,8 +1,6 @@
 """
-Services paie — Génération PDF des bulletins de paie.
-Utilise WeasyPrint si disponible, sinon retourne du HTML.
+Services paie — Génération PDF des bulletins de paie via fpdf2 (pur Python).
 """
-from io import BytesIO
 
 MOIS_LABELS = [
     "", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
@@ -10,96 +8,131 @@ MOIS_LABELS = [
 ]
 
 
-def _html_bulletin(bulletin):
-    b = bulletin
-    total_brut = int(b.salaire_brut + b.total_primes)
-    date_gen = b.updated_at.strftime("%d/%m/%Y") if b.updated_at else ""
-    primes_row = (
-        f"<tr><td>Primes & indemnités</td>"
-        f"<td class='amount'>{int(b.total_primes):,} FCFA</td></tr>"
-        if b.total_primes else ""
-    )
-    retenues_row = (
-        f"<tr><td>Autres retenues</td>"
-        f"<td class='amount retenue'>- {int(b.autres_retenues):,} FCFA</td></tr>"
-        if b.autres_retenues else ""
-    )
-    return f"""<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="utf-8">
-  <title>Bulletin de paie {b.mois:02d}/{b.annee}</title>
-  <style>
-    body {{ font-family: Arial, sans-serif; font-size: 12px; color: #222; margin: 30px; }}
-    h1   {{ color: #2E74B5; font-size: 18px; margin: 0 0 4px; }}
-    .header {{ display: flex; justify-content: space-between;
-               border-bottom: 2px solid #2E74B5; padding-bottom: 12px; margin-bottom: 20px; }}
-    .company {{ text-align: right; color: #555; }}
-    table {{ width: 100%; border-collapse: collapse; margin-bottom: 16px; }}
-    th {{ background: #2E74B5; color: #fff; padding: 7px 10px; text-align: left; font-size: 12px; }}
-    td {{ padding: 6px 10px; border-bottom: 1px solid #eee; }}
-    .amount {{ text-align: right; font-weight: bold; }}
-    .retenue {{ color: #dc3545; }}
-    .row-total {{ background: #f0f0f0; font-weight: bold; }}
-    .row-net   {{ background: #d4edda; font-weight: bold; font-size: 14px; color: #155724; }}
-    .footer    {{ text-align: center; color: #aaa; font-size: 10px; margin-top: 30px; }}
-  </style>
-</head>
-<body>
-  <div class="header">
-    <div>
-      <h1>Bulletin de paie</h1>
-      <p style="margin:4px 0"><strong>Période :</strong> {MOIS_LABELS[b.mois]} {b.annee}</p>
-      <p style="margin:4px 0"><strong>Statut :</strong> {b.get_statut_display()}</p>
-    </div>
-    <div class="company">
-      <strong>ACERFI SARL</strong><br>Yaoundé, Cameroun<br>
-      <small>Généré le {date_gen}</small>
-    </div>
-  </div>
+def _fmt(n):
+    """450 000 FCFA (séparateur espace)"""
+    return f"{int(n):,}".replace(",", " ") + " FCFA"
 
-  <table>
-    <tr><th colspan="2">Informations employé</th></tr>
-    <tr><td>Nom complet</td><td><strong>{b.employe.get_full_name()}</strong></td></tr>
-    <tr><td>Identifiant</td><td>{b.employe.username}</td></tr>
-    <tr><td>Email</td><td>{b.employe.email or "—"}</td></tr>
-  </table>
 
-  <table>
-    <tr><th>Libellé</th><th style="text-align:right">Montant</th></tr>
-    <tr><td>Salaire de base</td><td class="amount">{int(b.salaire_brut):,} FCFA</td></tr>
-    {primes_row}
-    <tr class="row-total">
-      <td>Total brut</td><td class="amount">{total_brut:,} FCFA</td>
-    </tr>
-    <tr><td>CNPS employé (2,8 %)</td>
-        <td class="amount retenue">- {int(b.cnps_employe):,} FCFA</td></tr>
-    <tr><td>IRPP</td>
-        <td class="amount retenue">- {int(b.irpp):,} FCFA</td></tr>
-    {retenues_row}
-    <tr class="row-net">
-      <td>Net à payer</td><td class="amount">{int(b.salaire_net):,} FCFA</td>
-    </tr>
-  </table>
+def _titre_section(pdf, texte):
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.set_text_color(46, 116, 181)
+    pdf.cell(0, 7, texte, new_x="LMARGIN", new_y="NEXT")
+    pdf.set_text_color(0, 0, 0)
 
-  <p class="footer">
-    Document généré automatiquement par le SIRH ACERFI — Cameroun
-  </p>
-</body>
-</html>"""
+
+def _ligne_info(pdf, label, valeur, W, bold_val=False):
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(W * 0.38, 6, label)
+    pdf.set_font("Helvetica", "B" if bold_val else "", 10)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 6, valeur, new_x="LMARGIN", new_y="NEXT")
+
+
+def _ligne_calcul(pdf, label, montant, W, retenue=False):
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_text_color(50, 50, 50)
+    pdf.cell(W * 0.7, 7, label)
+    pdf.set_font("Helvetica", "B", 10)
+    if retenue:
+        pdf.set_text_color(180, 30, 30)
+        pdf.cell(W * 0.3, 7, f"- {_fmt(montant)}", align="R", new_x="LMARGIN", new_y="NEXT")
+    else:
+        pdf.set_text_color(0, 0, 0)
+        pdf.cell(W * 0.3, 7, _fmt(montant), align="R", new_x="LMARGIN", new_y="NEXT")
 
 
 def generer_bulletin_pdf(bulletin):
     """
-    Génère le bulletin de paie en PDF (WeasyPrint) ou HTML en fallback.
-    Retourne un tuple (bytes, content_type, filename).
+    Génère le bulletin de paie en PDF.
+    Retourne (bytes, content_type, filename).
     """
-    html = _html_bulletin(bulletin)
-    filename_base = f"bulletin_{bulletin.employe.username}_{bulletin.mois:02d}_{bulletin.annee}"
-    try:
-        from weasyprint import HTML
-        buf = BytesIO()
-        HTML(string=html).write_pdf(buf)
-        return buf.getvalue(), "application/pdf", f"{filename_base}.pdf"
-    except Exception:
-        return html.encode("utf-8"), "text/html", f"{filename_base}.html"
+    from fpdf import FPDF
+
+    b = bulletin
+    total_brut = int(b.salaire_brut + b.total_primes)
+    mois_label = MOIS_LABELS[b.mois]
+    date_gen = b.updated_at.strftime("%d/%m/%Y") if b.updated_at else "—"
+
+    pdf = FPDF()
+    pdf.set_margins(20, 20, 20)
+    pdf.add_page()
+    W = pdf.epw  # largeur utile (170 mm sur A4 avec marges 20)
+
+    # ── En-tête ──────────────────────────────────────────────────
+    pdf.set_font("Helvetica", "B", 18)
+    pdf.set_text_color(46, 116, 181)
+    pdf.cell(W * 0.6, 10, "Bulletin de paie")
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.set_text_color(60, 60, 60)
+    pdf.cell(W * 0.4, 10, "ACERFI SARL", align="R", new_x="LMARGIN", new_y="NEXT")
+
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_text_color(80, 80, 80)
+    pdf.cell(W * 0.6, 6, f"Periode : {mois_label} {b.annee}")
+    pdf.cell(W * 0.4, 6, "Yaounde, Cameroun", align="R", new_x="LMARGIN", new_y="NEXT")
+
+    pdf.cell(W * 0.6, 6, f"Statut : {b.get_statut_display()}")
+    pdf.cell(W * 0.4, 6, f"Genere le {date_gen}", align="R", new_x="LMARGIN", new_y="NEXT")
+
+    pdf.ln(2)
+    pdf.set_draw_color(46, 116, 181)
+    pdf.set_line_width(0.5)
+    y = pdf.get_y()
+    pdf.line(pdf.l_margin, y, pdf.l_margin + W, y)
+    pdf.ln(6)
+
+    # ── Informations employé ─────────────────────────────────────
+    _titre_section(pdf, "Informations employe")
+    _ligne_info(pdf, "Nom complet", b.employe.get_full_name(), W, bold_val=True)
+    _ligne_info(pdf, "Identifiant", b.employe.username, W)
+    _ligne_info(pdf, "Email", b.employe.email or "—", W)
+    pdf.ln(6)
+
+    # ── Détail du calcul ─────────────────────────────────────────
+    _titre_section(pdf, "Detail du calcul")
+
+    # En-tête tableau
+    pdf.set_fill_color(46, 116, 181)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font("Helvetica", "B", 10)
+    pdf.cell(W * 0.7, 8, "Libelle", fill=True)
+    pdf.cell(W * 0.3, 8, "Montant", fill=True, align="R", new_x="LMARGIN", new_y="NEXT")
+
+    # Gains
+    _ligne_calcul(pdf, "Salaire de base", int(b.salaire_brut), W)
+    if b.total_primes:
+        _ligne_calcul(pdf, "  Primes & indemnites", int(b.total_primes), W)
+
+    # Total brut
+    pdf.set_fill_color(220, 220, 220)
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font("Helvetica", "B", 10)
+    pdf.cell(W * 0.7, 8, "Total brut", fill=True)
+    pdf.cell(W * 0.3, 8, _fmt(total_brut), fill=True, align="R", new_x="LMARGIN", new_y="NEXT")
+
+    # Cotisations
+    pdf.set_font("Helvetica", "I", 9)
+    pdf.set_text_color(180, 30, 30)
+    pdf.cell(0, 7, "COTISATIONS & IMPOTS", new_x="LMARGIN", new_y="NEXT")
+
+    _ligne_calcul(pdf, "CNPS employe (2,8 %)", int(b.cnps_employe), W, retenue=True)
+    _ligne_calcul(pdf, "IRPP", int(b.irpp), W, retenue=True)
+    if b.autres_retenues:
+        _ligne_calcul(pdf, "Autres retenues", int(b.autres_retenues), W, retenue=True)
+
+    # Net à payer
+    pdf.set_fill_color(212, 237, 218)
+    pdf.set_text_color(21, 87, 36)
+    pdf.set_font("Helvetica", "B", 13)
+    pdf.cell(W * 0.7, 10, "Net a payer", fill=True)
+    pdf.cell(W * 0.3, 10, _fmt(b.salaire_net), fill=True, align="R", new_x="LMARGIN", new_y="NEXT")
+
+    # ── Pied de page ─────────────────────────────────────────────
+    pdf.ln(20)
+    pdf.set_font("Helvetica", "", 8)
+    pdf.set_text_color(150, 150, 150)
+    pdf.cell(0, 5, "Document genere automatiquement par le SIRH ACERFI - Cameroun", align="C")
+
+    filename_base = f"bulletin_{b.employe.username}_{b.mois:02d}_{b.annee}"
+    return bytes(pdf.output()), "application/pdf", f"{filename_base}.pdf"

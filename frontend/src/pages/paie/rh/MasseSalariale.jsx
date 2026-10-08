@@ -1,19 +1,16 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
 import RHLayout from "../../../components/layout/RHLayout";
 import { useTheme } from "../../../context/ThemeContext";
-import { getStatsMasseSalariale, getBulletins } from "../../../api/paie";
-
-const MOIS_LABELS = [
-  "", "Jan", "Fév", "Mar", "Avr", "Mai", "Jun",
-  "Jul", "Aoû", "Sep", "Oct", "Nov", "Déc",
-];
+import { getStatsMasseSalariale } from "../../../api/paie";
 
 export default function MasseSalariale() {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const chartText = theme === "dark" ? "#A8C4D8" : "#555";
   const chartGrid = theme === "dark" ? "#2A4A64" : "#DDD";
@@ -24,10 +21,10 @@ export default function MasseSalariale() {
   };
 
   const now = new Date();
-  const [annee,     setAnnee]     = useState(String(now.getFullYear()));
-  const [stats,     setStats]     = useState(null);
-  const [chartData, setChartData] = useState([]);
-  const [loading,   setLoading]   = useState(true);
+  const [annee,   setAnnee]   = useState(String(now.getFullYear()));
+  const [stats,   setStats]   = useState(null);
+  const [rawData, setRawData] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
@@ -44,25 +41,35 @@ export default function MasseSalariale() {
     ])
       .then(([annuelRes, ...moisRes]) => {
         setStats(annuelRes.data);
-        setChartData(
-          moisRes.map((r, i) => ({
-            name:        MOIS_LABELS[i + 1],
-            brut:        Number(r.data?.masse_brute  || 0),
-            net:         Number(r.data?.masse_nette  || 0),
-            nb:          r.data?.nb_bulletins || 0,
+        setRawData(
+          moisRes.map(r => ({
+            brut: Number(r.data?.masse_brute || 0),
+            net:  Number(r.data?.masse_nette || 0),
+            nb:   r.data?.nb_bulletins || 0,
           }))
         );
       })
-      .catch(() => toast.error("Erreur lors du chargement"))
+      .catch(() => toast.error(t("paie_extra.error_generic")))
       .finally(() => setLoading(false));
-  }, [annee]);
+  }, [annee]); // eslint-disable-line
+
+  const chartData = rawData.map((d, i) => ({
+    ...d,
+    name: t(`common.months.${i + 1}`).slice(0, 3),
+  }));
+
+  const statCards = [
+    { label: t("paie_extra.annual_gross"),      val: `${Number(stats?.masse_brute || 0).toLocaleString("fr-FR")} F`, color: "#2E74B5", icon: "file-invoice-dollar" },
+    { label: t("paie_extra.annual_net"),        val: `${Number(stats?.masse_nette || 0).toLocaleString("fr-FR")} F`, color: "#28a745", icon: "money-bill-wave" },
+    { label: t("paie_extra.total_cnps"),        val: `${Number(stats?.total_cnps  || 0).toLocaleString("fr-FR")} F`, color: "#fd7e14", icon: "shield-alt" },
+    { label: t("paie_extra.total_irpp_label"),  val: `${Number(stats?.total_irpp  || 0).toLocaleString("fr-FR")} F`, color: "#6f42c1", icon: "landmark" },
+  ];
 
   return (
-    <RHLayout pageTitle="Masse salariale">
-      {/* Filtre */}
+    <RHLayout pageTitle={t("paie_extra.page_title_salary_mass")}>
       <div className="d-flex justify-content-between align-items-center mb-3">
         <div className="d-flex align-items-center" style={{ gap: 8 }}>
-          <label style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 0 }}>Année :</label>
+          <label style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 0 }}>{t("paie_extra.year_filter")}</label>
           <select className="form-control form-control-sm"
             style={{ width: 100, background: "var(--card-bg)", color: "var(--text-primary)" }}
             value={annee} onChange={e => setAnnee(e.target.value)}>
@@ -72,7 +79,7 @@ export default function MasseSalariale() {
           </select>
         </div>
         <Link to="/rh/paie" className="btn btn-outline-secondary btn-sm">
-          <i className="fas fa-arrow-left mr-1" />Retour
+          <i className="fas fa-arrow-left mr-1" />{t("paie_extra.back")}
         </Link>
       </div>
 
@@ -82,14 +89,8 @@ export default function MasseSalariale() {
         </div>
       ) : (
         <>
-          {/* Stat cards */}
           <div className="row mb-3">
-            {[
-              { label: "Masse brute annuelle",  val: `${Number(stats?.masse_brute || 0).toLocaleString("fr-FR")} F`,  color: "#2E74B5", icon: "file-invoice-dollar" },
-              { label: "Masse nette annuelle",  val: `${Number(stats?.masse_nette || 0).toLocaleString("fr-FR")} F`,  color: "#28a745", icon: "money-bill-wave" },
-              { label: "Total CNPS employés",   val: `${Number(stats?.total_cnps || 0).toLocaleString("fr-FR")} F`,   color: "#fd7e14", icon: "shield-alt" },
-              { label: "Total IRPP",            val: `${Number(stats?.total_irpp || 0).toLocaleString("fr-FR")} F`,   color: "#6f42c1", icon: "landmark" },
-            ].map(s => (
+            {statCards.map(s => (
               <div key={s.label} className="col-lg-3 col-md-6 mb-2">
                 <div className="card" style={{ background: "var(--card-bg)", borderLeft: `4px solid ${s.color}` }}>
                   <div className="card-body py-2 px-3 d-flex justify-content-between align-items-center">
@@ -104,7 +105,6 @@ export default function MasseSalariale() {
             ))}
           </div>
 
-          {/* Statuts */}
           {stats?.bulletins_par_statut && (
             <div className="row mb-3">
               {Object.entries(stats.bulletins_par_statut).map(([statut, nb]) => (
@@ -118,12 +118,11 @@ export default function MasseSalariale() {
             </div>
           )}
 
-          {/* Graphique mensuel */}
           <div className="card" style={{ background: "var(--card-bg)" }}>
             <div className="card-header" style={{ background: "var(--card-bg)", borderBottom: "1px solid var(--border-color)" }}>
               <h3 className="card-title" style={{ color: "var(--page-title)", fontSize: 14 }}>
                 <i className="fas fa-chart-bar mr-2" style={{ color: "var(--acerfi-blue)" }} />
-                Évolution mensuelle — {annee}
+                {t("paie_extra.monthly_evolution", { year: annee })}
               </h3>
             </div>
             <div className="card-body">
@@ -137,14 +136,14 @@ export default function MasseSalariale() {
                     <Tooltip contentStyle={tooltipStyle}
                       formatter={v => [Number(v).toLocaleString("fr-FR") + " FCFA"]} />
                     <Legend wrapperStyle={{ color: chartText, fontSize: 12 }} />
-                    <Bar dataKey="brut" name="Masse brute" fill="#2E74B5" radius={[3, 3, 0, 0]} />
-                    <Bar dataKey="net"  name="Masse nette" fill="#28a745" radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="brut" name={t("paie_extra.gross_bar")} fill="#2E74B5" radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="net"  name={t("paie_extra.net_bar")}   fill="#28a745" radius={[3, 3, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
                 <div className="text-center py-5 text-muted">
                   <i className="fas fa-chart-bar fa-3x mb-3 d-block" style={{ opacity: 0.3 }} />
-                  <strong>Aucune donnée pour {annee}</strong>
+                  <strong>{t("paie_extra.no_data_year", { year: annee })}</strong>
                 </div>
               )}
             </div>
