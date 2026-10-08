@@ -32,3 +32,9 @@ desktop.ini
 
 # Logs
 *.log
+
+# Export MySQL (données personnelles)
+docker/mysql-init/*.sql
+
+# Identifiants de test (contient des mots de passe)
+Comptes utilisateurs SIRH.txt
