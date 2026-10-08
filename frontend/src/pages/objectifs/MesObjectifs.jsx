@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import EmployeLayout from "../../components/layout/EmployeLayout";
 import BarreProgression from "../../components/ui/BarreProgression";
 import { getMesObjectifs, getPeriodesEnCours, majProgression } from "../../api/objectifs";
@@ -21,6 +22,7 @@ const COULEUR_STATUT = {
 };
 
 export default function MesObjectifs() {
+  const { t } = useTranslation();
   const [objectifs, setObjectifs] = useState([]);
   const [periodes, setPeriodes] = useState([]);
   const [periodeId, setPeriodeId] = useState("");
@@ -38,7 +40,7 @@ export default function MesObjectifs() {
     setLoading(true);
     getMesObjectifs(periodeId || null)
       .then((r) => setObjectifs(r.data))
-      .catch(() => toast.error("Erreur chargement objectifs"))
+      .catch(() => toast.error(t("objectifs.load_error")))
       .finally(() => setLoading(false));
   }, [periodeId]);
 
@@ -47,20 +49,23 @@ export default function MesObjectifs() {
       const r = await majProgression(id, { progression: nouvProg });
       setObjectifs((prev) => prev.map((o) => (o.id === id ? r.data : o)));
       setEditId(null);
-      toast.success("Progression mise à jour");
+      toast.success(t("objectifs.update_success"));
     } catch {
-      toast.error("Erreur mise à jour");
+      toast.error(t("objectifs.save_error"));
     }
   };
 
-  const stats = {
-    total: objectifs.length,
-    atteints: objectifs.filter((o) => ["ATTEINT", "DEPASSE"].includes(o.statut)).length,
-    enCours: objectifs.filter((o) => o.statut === "EN_COURS").length,
-    progMoyenne: objectifs.length
-      ? Math.round(objectifs.reduce((s, o) => s + o.progression, 0) / objectifs.length)
-      : 0,
-  };
+  const kpis = [
+    { label: t("objectifs.total"), valeur: objectifs.length, couleur: "primary", icone: "bullseye" },
+    { label: t("objectifs.achieved"), valeur: objectifs.filter((o) => ["ATTEINT", "DEPASSE"].includes(o.statut)).length, couleur: "success", icone: "check-circle" },
+    { label: t("objectifs.in_progress"), valeur: objectifs.filter((o) => o.statut === "EN_COURS").length, couleur: "info", icone: "spinner" },
+    {
+      label: t("objectifs.avg_progression"),
+      valeur: `${objectifs.length ? Math.round(objectifs.reduce((s, o) => s + o.progression, 0) / objectifs.length) : 0}%`,
+      couleur: "warning",
+      icone: "chart-line",
+    },
+  ];
 
   return (
     <EmployeLayout>
@@ -69,7 +74,7 @@ export default function MesObjectifs() {
           <div className="row mb-2">
             <div className="col-sm-6">
               <h1 className="m-0" style={{ color: "var(--page-title)" }}>
-                Mes Objectifs
+                {t("objectifs.my_objectives")}
               </h1>
             </div>
           </div>
@@ -80,12 +85,7 @@ export default function MesObjectifs() {
         <div className="container-fluid">
           {/* KPIs */}
           <div className="row mb-3">
-            {[
-              { label: "Total", valeur: stats.total, couleur: "primary", icone: "bullseye" },
-              { label: "Atteints", valeur: stats.atteints, couleur: "success", icone: "check-circle" },
-              { label: "En cours", valeur: stats.enCours, couleur: "info", icone: "spinner" },
-              { label: "Progression moy.", valeur: `${stats.progMoyenne}%`, couleur: "warning", icone: "chart-line" },
-            ].map((k) => (
+            {kpis.map((k) => (
               <div key={k.label} className="col-6 col-md-3">
                 <div className="small-box" style={{ background: "var(--card-bg)", border: "1px solid rgba(0,0,0,0.08)" }}>
                   <div className="inner">
@@ -105,7 +105,7 @@ export default function MesObjectifs() {
             <div className="card-header d-flex justify-content-between align-items-center">
               <h3 className="card-title" style={{ color: "var(--page-title)" }}>
                 <i className="fas fa-bullseye mr-2" style={{ color: "var(--acerfi-blue)" }} />
-                Liste des objectifs
+                {t("objectifs.objectives_list")}
               </h3>
               <select
                 className="form-control form-control-sm w-auto"
@@ -113,7 +113,7 @@ export default function MesObjectifs() {
                 onChange={(e) => setPeriodeId(e.target.value)}
                 style={{ background: "var(--card-bg)", color: "var(--text-primary)" }}
               >
-                <option value="">Toutes les périodes</option>
+                <option value="">{t("objectifs.all_periods")}</option>
                 {periodes.map((p) => (
                   <option key={p.id} value={p.id}>{p.nom}</option>
                 ))}
@@ -127,19 +127,19 @@ export default function MesObjectifs() {
               ) : objectifs.length === 0 ? (
                 <div className="text-center py-5" style={{ color: "var(--text-muted)" }}>
                   <i className="fas fa-inbox fa-3x mb-3 d-block" />
-                  Aucun objectif pour cette période
+                  {t("objectifs.no_objectives")}
                 </div>
               ) : (
                 <div className="table-responsive">
                   <table className="table table-hover mb-0">
                     <thead>
                       <tr style={{ background: "var(--card-bg)", color: "var(--text-muted)" }}>
-                        <th>Objectif</th>
-                        <th>Période</th>
-                        <th>Priorité</th>
-                        <th>Statut</th>
-                        <th style={{ minWidth: 160 }}>Progression</th>
-                        <th>Actions</th>
+                        <th>{t("objectifs.objective")}</th>
+                        <th>{t("objectifs.period")}</th>
+                        <th>{t("objectifs.priority")}</th>
+                        <th>{t("objectifs.status")}</th>
+                        <th style={{ minWidth: 160 }}>{t("objectifs.progression")}</th>
+                        <th>{t("common.actions")}</th>
                       </tr>
                     </thead>
                     <tbody>

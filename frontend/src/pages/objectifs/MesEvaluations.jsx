@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import EmployeLayout from "../../components/layout/EmployeLayout";
 import EtoilesNote from "../../components/ui/EtoilesNote";
 import NiveauPerformance from "../../components/ui/NiveauPerformance";
@@ -14,27 +15,28 @@ const COULEUR_STATUT = {
 };
 
 export default function MesEvaluations() {
-  const [evaluations, setEvaluations] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState(null);
-  const [commentaireContestation, setCommentaireContestation] = useState("");
+  const { t } = useTranslation();
+  const [evaluations,              setEvaluations]              = useState([]);
+  const [loading,                  setLoading]                  = useState(true);
+  const [selected,                 setSelected]                 = useState(null);
+  const [commentaireContestation,  setCommentaireContestation]  = useState("");
 
   useEffect(() => {
     getMesEvaluations()
-      .then((r) => setEvaluations(r.data))
-      .catch(() => toast.error("Erreur chargement évaluations"))
+      .then(r => setEvaluations(r.data))
+      .catch(() => toast.error(t("objectifs.load_error")))
       .finally(() => setLoading(false));
-  }, []);
+  }, []); // eslint-disable-line
 
   const handleContester = async (id) => {
     try {
       await contesterEvaluation(id, { commentaire_employe: commentaireContestation });
-      toast.success("Contestation enregistrée");
+      toast.success(t("objectifs.contest_success"));
       setSelected(null);
       const r = await getMesEvaluations();
       setEvaluations(r.data);
     } catch {
-      toast.error("Erreur contestation");
+      toast.error(t("objectifs.contest_error"));
     }
   };
 
@@ -43,7 +45,7 @@ export default function MesEvaluations() {
       <div className="content-header">
         <div className="container-fluid">
           <h1 className="m-0" style={{ color: "var(--page-title)" }}>
-            Mes Évaluations de performance
+            {t("objectifs.my_performance_evaluations")}
           </h1>
         </div>
       </div>
@@ -55,21 +57,17 @@ export default function MesEvaluations() {
               <i className="fas fa-spinner fa-spin fa-2x" style={{ color: "var(--acerfi-blue)" }} />
             </div>
           ) : evaluations.length === 0 ? (
-            <div
-              className="card card-outline text-center py-5"
-              style={{ borderColor: "var(--acerfi-blue)", background: "var(--card-bg)", color: "var(--text-muted)" }}
-            >
+            <div className="card card-outline text-center py-5"
+              style={{ borderColor: "var(--acerfi-blue)", background: "var(--card-bg)", color: "var(--text-muted)" }}>
               <i className="fas fa-chart-bar fa-3x mb-3 d-block" />
-              Aucune évaluation disponible
+              {t("objectifs.no_evaluations")}
             </div>
           ) : (
             <div className="row">
-              {evaluations.map((ev) => (
+              {evaluations.map(ev => (
                 <div key={ev.id} className="col-md-6 col-lg-4">
-                  <div
-                    className="card card-outline"
-                    style={{ borderColor: "var(--acerfi-blue)", background: "var(--card-bg)" }}
-                  >
+                  <div className="card card-outline"
+                    style={{ borderColor: "var(--acerfi-blue)", background: "var(--card-bg)" }}>
                     <div className="card-header">
                       <h3 className="card-title" style={{ color: "var(--page-title)" }}>
                         {ev.periode_detail?.nom}
@@ -85,7 +83,7 @@ export default function MesEvaluations() {
                         <div className="mb-2">
                           <EtoilesNote note={ev.note_globale} />
                           <span style={{ marginLeft: 8, color: "var(--text-muted)", fontSize: "0.85rem" }}>
-                            Note globale
+                            {t("objectifs.global_note")}
                           </span>
                         </div>
                       )}
@@ -97,28 +95,23 @@ export default function MesEvaluations() {
                       )}
                       {ev.points_forts && (
                         <p className="mt-2 mb-1" style={{ fontSize: "0.85rem", color: "var(--text-primary)" }}>
-                          <strong>Points forts :</strong> {ev.points_forts}
+                          <strong>{t("objectifs.strong_points")} :</strong> {ev.points_forts}
                         </p>
                       )}
                       {ev.evaluateur_detail && (
                         <p style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                          Évaluateur : {ev.evaluateur_detail.nom_complet}
+                          {t("objectifs.evaluator")} : {ev.evaluateur_detail.nom_complet}
                         </p>
                       )}
                     </div>
                     <div className="card-footer d-flex gap-2" style={{ background: "transparent" }}>
-                      <Link
-                        to={`/employe/evaluations/${ev.id}`}
-                        className="btn btn-sm btn-outline-primary"
-                      >
-                        <i className="fas fa-eye mr-1" /> Voir
+                      <Link to={`/employe/evaluations/${ev.id}`} className="btn btn-sm btn-outline-primary">
+                        <i className="fas fa-eye mr-1" /> {t("objectifs.see")}
                       </Link>
                       {ev.statut === "SIGNE" && (
-                        <button
-                          className="btn btn-sm btn-outline-danger"
-                          onClick={() => { setSelected(ev); setCommentaireContestation(""); }}
-                        >
-                          <i className="fas fa-flag mr-1" /> Contester
+                        <button className="btn btn-sm btn-outline-danger"
+                          onClick={() => { setSelected(ev); setCommentaireContestation(""); }}>
+                          <i className="fas fa-flag mr-1" /> {t("objectifs.contest")}
                         </button>
                       )}
                     </div>
@@ -128,47 +121,36 @@ export default function MesEvaluations() {
             </div>
           )}
 
-          {/* Modal contestation */}
           {selected && (
-            <div
-              className="modal fade show d-block"
-              style={{ background: "rgba(0,0,0,0.5)" }}
-              onClick={() => setSelected(null)}
-            >
-              <div
-                className="modal-dialog modal-dialog-centered"
-                onClick={(e) => e.stopPropagation()}
-              >
+            <div className="modal fade show d-block" style={{ background: "rgba(0,0,0,0.5)" }}
+              onClick={() => setSelected(null)}>
+              <div className="modal-dialog modal-dialog-scrollable modal-dialog-centered"
+                onClick={e => e.stopPropagation()}>
                 <div className="modal-content" style={{ background: "var(--card-bg)" }}>
                   <div className="modal-header">
                     <h5 className="modal-title" style={{ color: "var(--page-title)" }}>
-                      Contester l'évaluation — {selected.periode_detail?.nom}
+                      {t("objectifs.contest_evaluation_period", { period: selected.periode_detail?.nom })}
                     </h5>
                     <button className="close" onClick={() => setSelected(null)}>
                       <span>&times;</span>
                     </button>
                   </div>
                   <div className="modal-body">
-                    <label style={{ color: "var(--text-primary)" }}>Motif de contestation</label>
-                    <textarea
-                      className="form-control"
-                      rows={4}
+                    <label style={{ color: "var(--text-primary)" }}>{t("objectifs.contest_reason")}</label>
+                    <textarea className="form-control" rows={4}
                       value={commentaireContestation}
-                      onChange={(e) => setCommentaireContestation(e.target.value)}
-                      placeholder="Expliquez pourquoi vous contestez cette évaluation..."
-                      style={{ background: "var(--card-bg)", color: "var(--text-primary)" }}
-                    />
+                      onChange={e => setCommentaireContestation(e.target.value)}
+                      placeholder={t("objectifs.contest_placeholder")}
+                      style={{ background: "var(--card-bg)", color: "var(--text-primary)" }} />
                   </div>
                   <div className="modal-footer">
                     <button className="btn btn-secondary" onClick={() => setSelected(null)}>
-                      Annuler
+                      {t("common.cancel")}
                     </button>
-                    <button
-                      className="btn btn-danger"
+                    <button className="btn btn-danger"
                       onClick={() => handleContester(selected.id)}
-                      disabled={!commentaireContestation.trim()}
-                    >
-                      Confirmer la contestation
+                      disabled={!commentaireContestation.trim()}>
+                      {t("objectifs.contest_confirm")}
                     </button>
                   </div>
                 </div>

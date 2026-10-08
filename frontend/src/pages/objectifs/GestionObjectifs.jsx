@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import RHLayout from "../../components/layout/RHLayout";
 import BarreProgression from "../../components/ui/BarreProgression";
 import { getObjectifs, getPeriodes, updateObjectif, deleteObjectif } from "../../api/objectifs";
@@ -13,52 +14,53 @@ const COULEUR_STATUT = {
 };
 
 export default function GestionObjectifs() {
+  const { t } = useTranslation();
   const [objectifs, setObjectifs] = useState([]);
-  const [periodes, setPeriodes] = useState([]);
-  const [filtres, setFiltres] = useState({ periode: "", statut: "" });
-  const [loading, setLoading] = useState(true);
-  const [editId, setEditId] = useState(null);
+  const [periodes,  setPeriodes]  = useState([]);
+  const [filtres,   setFiltres]   = useState({ periode: "", statut: "" });
+  const [loading,   setLoading]   = useState(true);
+  const [editId,    setEditId]    = useState(null);
   const [editStatut, setEditStatut] = useState("");
 
   const charger = (params = {}) => {
     setLoading(true);
     getObjectifs(params)
-      .then((r) => setObjectifs(r.data.results ?? r.data))
-      .catch(() => toast.error("Erreur chargement"))
+      .then(r => setObjectifs(r.data.results ?? r.data))
+      .catch(() => toast.error(t("objectifs.load_error")))
       .finally(() => setLoading(false));
   };
 
   useEffect(() => {
-    getPeriodes().then((r) => setPeriodes(r.data.results ?? r.data)).catch(() => {});
+    getPeriodes().then(r => setPeriodes(r.data.results ?? r.data)).catch(() => {});
     charger();
-  }, []);
+  }, []); // eslint-disable-line
 
   const appliquerFiltres = () => {
     const params = {};
     if (filtres.periode) params.periode = filtres.periode;
-    if (filtres.statut) params.statut = filtres.statut;
+    if (filtres.statut)  params.statut  = filtres.statut;
     charger(params);
   };
 
   const handleMajStatut = async (id) => {
     try {
       const r = await updateObjectif(id, { statut: editStatut });
-      setObjectifs((prev) => prev.map((o) => (o.id === id ? r.data : o)));
+      setObjectifs(prev => prev.map(o => o.id === id ? r.data : o));
       setEditId(null);
-      toast.success("Statut mis à jour");
+      toast.success(t("objectifs.status_updated"));
     } catch {
-      toast.error("Erreur mise à jour");
+      toast.error(t("objectifs.status_update_error"));
     }
   };
 
   const handleSupprimer = async (id) => {
-    if (!window.confirm("Supprimer cet objectif ?")) return;
+    if (!window.confirm(t("objectifs.delete_confirm"))) return;
     try {
       await deleteObjectif(id);
-      setObjectifs((prev) => prev.filter((o) => o.id !== id));
-      toast.success("Objectif supprimé");
+      setObjectifs(prev => prev.filter(o => o.id !== id));
+      toast.success(t("objectifs.delete_success"));
     } catch {
-      toast.error("Erreur suppression");
+      toast.error(t("objectifs.delete_error"));
     }
   };
 
@@ -67,48 +69,41 @@ export default function GestionObjectifs() {
       <div className="content-header">
         <div className="container-fluid">
           <h1 className="m-0" style={{ color: "var(--page-title)" }}>
-            Gestion des Objectifs
+            {t("objectifs.manage_title")}
           </h1>
         </div>
       </div>
 
       <div className="content">
         <div className="container-fluid">
-          {/* Filtres */}
           <div className="card card-outline" style={{ borderColor: "var(--acerfi-blue)", background: "var(--card-bg)" }}>
             <div className="card-body">
               <div className="row align-items-end">
                 <div className="col-md-4 form-group mb-0">
-                  <label style={{ color: "var(--text-primary)" }}>Période</label>
-                  <select
-                    className="form-control"
-                    value={filtres.periode}
-                    onChange={(e) => setFiltres((f) => ({ ...f, periode: e.target.value }))}
-                    style={{ background: "var(--card-bg)", color: "var(--text-primary)" }}
-                  >
-                    <option value="">Toutes</option>
-                    {periodes.map((p) => (
+                  <label style={{ color: "var(--text-primary)" }}>{t("objectifs.period")}</label>
+                  <select className="form-control" value={filtres.periode}
+                    onChange={e => setFiltres(f => ({ ...f, periode: e.target.value }))}
+                    style={{ background: "var(--card-bg)", color: "var(--text-primary)" }}>
+                    <option value="">{t("objectifs.all_f")}</option>
+                    {periodes.map(p => (
                       <option key={p.id} value={p.id}>{p.nom}</option>
                     ))}
                   </select>
                 </div>
                 <div className="col-md-4 form-group mb-0">
-                  <label style={{ color: "var(--text-primary)" }}>Statut</label>
-                  <select
-                    className="form-control"
-                    value={filtres.statut}
-                    onChange={(e) => setFiltres((f) => ({ ...f, statut: e.target.value }))}
-                    style={{ background: "var(--card-bg)", color: "var(--text-primary)" }}
-                  >
-                    <option value="">Tous</option>
-                    {["NON_COMMENCE", "EN_COURS", "ATTEINT", "DEPASSE", "NON_ATTEINT", "ABANDONNE"].map((s) => (
+                  <label style={{ color: "var(--text-primary)" }}>{t("objectifs.status")}</label>
+                  <select className="form-control" value={filtres.statut}
+                    onChange={e => setFiltres(f => ({ ...f, statut: e.target.value }))}
+                    style={{ background: "var(--card-bg)", color: "var(--text-primary)" }}>
+                    <option value="">{t("common.all")}</option>
+                    {["NON_COMMENCE", "EN_COURS", "ATTEINT", "DEPASSE", "NON_ATTEINT", "ABANDONNE"].map(s => (
                       <option key={s} value={s}>{s.replace("_", " ")}</option>
                     ))}
                   </select>
                 </div>
                 <div className="col-md-4">
                   <button className="btn btn-primary" onClick={appliquerFiltres}>
-                    <i className="fas fa-filter mr-1" /> Filtrer
+                    <i className="fas fa-filter mr-1" /> {t("common.filter")}
                   </button>
                 </div>
               </div>
@@ -119,7 +114,7 @@ export default function GestionObjectifs() {
             <div className="card-header">
               <h3 className="card-title" style={{ color: "var(--page-title)" }}>
                 <i className="fas fa-bullseye mr-2" style={{ color: "var(--acerfi-blue)" }} />
-                Tous les objectifs ({objectifs.length})
+                {t("objectifs.all_objectives_count", { count: objectifs.length })}
               </h3>
             </div>
             <div className="card-body p-0">
@@ -130,24 +125,24 @@ export default function GestionObjectifs() {
               ) : objectifs.length === 0 ? (
                 <div className="text-center py-5" style={{ color: "var(--text-muted)" }}>
                   <i className="fas fa-inbox fa-3x mb-3 d-block" />
-                  Aucun objectif trouvé
+                  {t("objectifs.no_objectives")}
                 </div>
               ) : (
                 <div className="table-responsive">
                   <table className="table table-hover mb-0">
                     <thead>
                       <tr style={{ color: "var(--text-muted)" }}>
-                        <th>Employé</th>
-                        <th>Titre</th>
-                        <th>Période</th>
-                        <th>Priorité</th>
-                        <th>Statut</th>
-                        <th style={{ minWidth: 130 }}>Progression</th>
-                        <th>Actions</th>
+                        <th>{t("objectifs.employee")}</th>
+                        <th>{t("objectifs.col_title")}</th>
+                        <th>{t("objectifs.period")}</th>
+                        <th>{t("objectifs.priority")}</th>
+                        <th>{t("objectifs.status")}</th>
+                        <th style={{ minWidth: 130 }}>{t("objectifs.progression")}</th>
+                        <th>{t("common.actions")}</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {objectifs.map((o) => (
+                      {objectifs.map(o => (
                         <tr key={o.id} style={{ color: "var(--text-primary)" }}>
                           <td>{o.employe_detail?.nom_complet}</td>
                           <td>{o.titre}</td>
@@ -162,13 +157,11 @@ export default function GestionObjectifs() {
                           <td>
                             {editId === o.id ? (
                               <div className="d-flex align-items-center gap-1">
-                                <select
-                                  className="form-control form-control-sm"
+                                <select className="form-control form-control-sm"
                                   value={editStatut}
-                                  onChange={(e) => setEditStatut(e.target.value)}
-                                  style={{ background: "var(--card-bg)", color: "var(--text-primary)" }}
-                                >
-                                  {["NON_COMMENCE", "EN_COURS", "ATTEINT", "DEPASSE", "NON_ATTEINT", "ABANDONNE"].map((s) => (
+                                  onChange={e => setEditStatut(e.target.value)}
+                                  style={{ background: "var(--card-bg)", color: "var(--text-primary)" }}>
+                                  {["NON_COMMENCE", "EN_COURS", "ATTEINT", "DEPASSE", "NON_ATTEINT", "ABANDONNE"].map(s => (
                                     <option key={s} value={s}>{s.replace("_", " ")}</option>
                                   ))}
                                 </select>
@@ -188,18 +181,14 @@ export default function GestionObjectifs() {
                           <td><BarreProgression valeur={o.progression} /></td>
                           <td>
                             <div className="btn-group btn-group-sm">
-                              <button
-                                className="btn btn-outline-primary"
-                                title="Modifier statut"
-                                onClick={() => { setEditId(o.id); setEditStatut(o.statut); }}
-                              >
+                              <button className="btn btn-outline-primary"
+                                title={t("objectifs.edit_status")}
+                                onClick={() => { setEditId(o.id); setEditStatut(o.statut); }}>
                                 <i className="fas fa-edit" />
                               </button>
-                              <button
-                                className="btn btn-outline-danger"
-                                title="Supprimer"
-                                onClick={() => handleSupprimer(o.id)}
-                              >
+                              <button className="btn btn-outline-danger"
+                                title={t("common.delete")}
+                                onClick={() => handleSupprimer(o.id)}>
                                 <i className="fas fa-trash" />
                               </button>
                             </div>

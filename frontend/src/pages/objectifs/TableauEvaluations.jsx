@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import RHLayout from "../../components/layout/RHLayout";
 import EtoilesNote from "../../components/ui/EtoilesNote";
 import NiveauPerformance from "../../components/ui/NiveauPerformance";
@@ -17,6 +18,7 @@ const COULEUR_STATUT = {
 };
 
 export default function TableauEvaluations() {
+  const { t } = useTranslation();
   const [evaluations, setEvaluations] = useState([]);
   const [periodes, setPeriodes] = useState([]);
   const [periodeId, setPeriodeId] = useState("");
@@ -36,7 +38,7 @@ export default function TableauEvaluations() {
         setEvaluations(ev.data.results ?? ev.data);
         setStats(tb.data);
       })
-      .catch(() => toast.error("Erreur chargement"))
+      .catch(() => toast.error(t("objectifs.load_error")))
       .finally(() => setLoading(false));
   };
 
@@ -48,22 +50,28 @@ export default function TableauEvaluations() {
   const handleSigner = async (id) => {
     try {
       await signerEvaluation(id, { commentaire_rh: commentaireRH });
-      toast.success("Évaluation signée");
+      toast.success(t("objectifs.sign_success"));
       setSignatureModal(null);
       charger(periodeId);
     } catch {
-      toast.error("Erreur signature");
+      toast.error(t("objectifs.sign_error"));
     }
   };
 
   const handleRelancerIA = async (id) => {
     try {
       await relancerIA(id);
-      toast.success("Analyse IA relancée");
+      toast.success(t("objectifs.ia_relaunched"));
     } catch {
-      toast.error("Erreur relance IA");
+      toast.error(t("objectifs.ia_relaunch_error"));
     }
   };
+
+  const statsCards = stats ? [
+    { label: t("objectifs.total_evaluations"), valeur: stats.total, icone: "chart-bar" },
+    { label: t("objectifs.avg_note"), valeur: stats.note_moyenne ? Number(stats.note_moyenne).toFixed(2) + "/5" : "—", icone: "star" },
+    { label: t("objectifs.avg_score"), valeur: stats.score_ia_moyen ? Math.round(stats.score_ia_moyen) + "/100" : "—", icone: "robot" },
+  ] : [];
 
   return (
     <RHLayout>
@@ -72,7 +80,7 @@ export default function TableauEvaluations() {
           <div className="row mb-2">
             <div className="col-sm-6">
               <h1 className="m-0" style={{ color: "var(--page-title)" }}>
-                Tableau des Évaluations
+                {t("objectifs.evaluation_board")}
               </h1>
             </div>
             <div className="col-sm-6 text-right">
@@ -82,7 +90,7 @@ export default function TableauEvaluations() {
                 onChange={(e) => { setPeriodeId(e.target.value); charger(e.target.value); }}
                 style={{ background: "var(--card-bg)", color: "var(--text-primary)" }}
               >
-                <option value="">Toutes les périodes</option>
+                <option value="">{t("objectifs.all_periods")}</option>
                 {periodes.map((p) => (
                   <option key={p.id} value={p.id}>{p.nom}</option>
                 ))}
@@ -97,11 +105,7 @@ export default function TableauEvaluations() {
           {/* Stats */}
           {stats && (
             <div className="row mb-3">
-              {[
-                { label: "Total", valeur: stats.total, icone: "chart-bar" },
-                { label: "Note moyenne", valeur: stats.note_moyenne ? Number(stats.note_moyenne).toFixed(2) + "/5" : "—", icone: "star" },
-                { label: "Score IA moyen", valeur: stats.score_ia_moyen ? Math.round(stats.score_ia_moyen) + "/100" : "—", icone: "robot" },
-              ].map((k) => (
+              {statsCards.map((k) => (
                 <div key={k.label} className="col-md-4">
                   <div className="info-box" style={{ background: "var(--card-bg)" }}>
                     <span className="info-box-icon bg-primary">
@@ -121,7 +125,7 @@ export default function TableauEvaluations() {
             <div className="card-header">
               <h3 className="card-title" style={{ color: "var(--page-title)" }}>
                 <i className="fas fa-list-alt mr-2" style={{ color: "var(--acerfi-blue)" }} />
-                Évaluations ({evaluations.length})
+                {t("objectifs.evaluations")} ({evaluations.length})
               </h3>
             </div>
             <div className="card-body p-0">
@@ -132,19 +136,19 @@ export default function TableauEvaluations() {
               ) : evaluations.length === 0 ? (
                 <div className="text-center py-5" style={{ color: "var(--text-muted)" }}>
                   <i className="fas fa-inbox fa-3x mb-3 d-block" />
-                  Aucune évaluation
+                  {t("objectifs.no_evaluations")}
                 </div>
               ) : (
                 <div className="table-responsive">
                   <table className="table table-hover mb-0">
                     <thead>
                       <tr style={{ color: "var(--text-muted)" }}>
-                        <th>Employé</th>
-                        <th>Période</th>
-                        <th>Note globale</th>
-                        <th>Niveau IA</th>
-                        <th>Statut</th>
-                        <th>Actions</th>
+                        <th>{t("objectifs.employee")}</th>
+                        <th>{t("objectifs.period")}</th>
+                        <th>{t("objectifs.global_note")}</th>
+                        <th>{t("objectifs.ia_level")}</th>
+                        <th>{t("objectifs.status")}</th>
+                        <th>{t("common.actions")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -166,7 +170,7 @@ export default function TableauEvaluations() {
                                 score={ev.score_ia}
                               />
                             ) : (
-                              <span className="badge badge-secondary">En attente</span>
+                              <span className="badge badge-secondary">{t("objectifs.pending_ia")}</span>
                             )}
                           </td>
                           <td>
@@ -179,14 +183,14 @@ export default function TableauEvaluations() {
                               <Link
                                 to={`/rh/evaluations/${ev.id}`}
                                 className="btn btn-outline-primary"
-                                title="Voir"
+                                title={t("objectifs.see")}
                               >
                                 <i className="fas fa-eye" />
                               </Link>
                               {ev.statut === "EN_ATTENTE" && (
                                 <button
                                   className="btn btn-outline-success"
-                                  title="Signer"
+                                  title={t("objectifs.sign_evaluation")}
                                   onClick={() => { setSignatureModal(ev); setCommentaireRH(""); }}
                                 >
                                   <i className="fas fa-signature" />
@@ -194,7 +198,7 @@ export default function TableauEvaluations() {
                               )}
                               <button
                                 className="btn btn-outline-secondary"
-                                title="Relancer IA"
+                                title={t("objectifs.relaunch_ia")}
                                 onClick={() => handleRelancerIA(ev.id)}
                               >
                                 <i className="fas fa-robot" />
@@ -220,20 +224,20 @@ export default function TableauEvaluations() {
           onClick={() => setSignatureModal(null)}
         >
           <div
-            className="modal-dialog modal-dialog-centered"
+            className="modal-dialog modal-dialog-scrollable modal-dialog-centered"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-content" style={{ background: "var(--card-bg)" }}>
               <div className="modal-header">
                 <h5 className="modal-title" style={{ color: "var(--page-title)" }}>
-                  Signer l'évaluation — {signatureModal.employe_detail?.nom_complet}
+                  {t("objectifs.sign_evaluation")} — {signatureModal.employe_detail?.nom_complet}
                 </h5>
                 <button className="close" onClick={() => setSignatureModal(null)}>
                   <span>&times;</span>
                 </button>
               </div>
               <div className="modal-body">
-                <label style={{ color: "var(--text-primary)" }}>Commentaire RH (optionnel)</label>
+                <label style={{ color: "var(--text-primary)" }}>{t("objectifs.rh_comment")}</label>
                 <textarea
                   className="form-control"
                   rows={3}
@@ -244,13 +248,13 @@ export default function TableauEvaluations() {
               </div>
               <div className="modal-footer">
                 <button className="btn btn-secondary" onClick={() => setSignatureModal(null)}>
-                  Annuler
+                  {t("common.cancel")}
                 </button>
                 <button
                   className="btn btn-success"
                   onClick={() => handleSigner(signatureModal.id)}
                 >
-                  <i className="fas fa-signature mr-1" /> Confirmer la signature
+                  <i className="fas fa-signature mr-1" /> {t("objectifs.confirm_signature")}
                 </button>
               </div>
             </div>

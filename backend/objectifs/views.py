@@ -38,15 +38,17 @@ class ObjectifViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        entreprise = getattr(user, "entreprise", None)
         qs = Objectif.objects.select_related("employe", "assigne_par", "periode")
+        if entreprise:
+            qs = qs.filter(employe__entreprise=entreprise)
 
         if user.role in ["RH", "ADMIN"]:
-            return qs.all()
+            return qs
         if user.role == "MANAGER":
-            # Ses propres objectifs + ceux de son équipe
             subordonnes = User.objects.filter(
-                Q(departement=user.departement) & ~Q(pk=user.pk)
-            ).values_list("id", flat=True)
+                departement__in=user.departements_diriges.all()
+            ).exclude(pk=user.pk).values_list("id", flat=True)
             return qs.filter(Q(employe=user) | Q(employe__in=subordonnes))
         return qs.filter(employe=user)
 
@@ -97,15 +99,19 @@ class EvaluationPerformanceViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        entreprise = getattr(user, "entreprise", None)
         qs = EvaluationPerformance.objects.select_related(
             "employe", "evaluateur", "periode"
         )
+        if entreprise:
+            qs = qs.filter(employe__entreprise=entreprise)
+
         if user.role in ["RH", "ADMIN"]:
-            return qs.all()
+            return qs
         if user.role == "MANAGER":
             subordonnes = User.objects.filter(
-                Q(departement=user.departement) & ~Q(pk=user.pk)
-            ).values_list("id", flat=True)
+                departement__in=user.departements_diriges.all()
+            ).exclude(pk=user.pk).values_list("id", flat=True)
             return qs.filter(Q(employe=user) | Q(employe__in=subordonnes))
         return qs.filter(employe=user)
 

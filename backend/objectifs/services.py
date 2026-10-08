@@ -1,7 +1,8 @@
-import json
+import logging
 import threading
-from groq import Groq
-from django.conf import settings
+from ia.client import appeler_ia, parser_json
+
+logger = logging.getLogger(__name__)
 
 
 def _construire_prompt(evaluation):
@@ -9,12 +10,12 @@ def _construire_prompt(evaluation):
     periode = evaluation.periode
 
     notes = {
-        "Compétences techniques": evaluation.note_competences,
-        "Atteinte des objectifs": evaluation.note_objectifs,
-        "Comportement professionnel": evaluation.note_comportement,
-        "Initiative & proactivité": evaluation.note_initiative,
-        "Travail en équipe": evaluation.note_travail_equipe,
-        "Communication": evaluation.note_communication,
+        "Compétences techniques":      evaluation.note_competences,
+        "Atteinte des objectifs":      evaluation.note_objectifs,
+        "Comportement professionnel":  evaluation.note_comportement,
+        "Initiative & proactivité":    evaluation.note_initiative,
+        "Travail en équipe":           evaluation.note_travail_equipe,
+        "Communication":               evaluation.note_communication,
     }
     notes_str = "\n".join(
         f"- {label}: {note}/5" for label, note in notes.items() if note is not None
@@ -49,11 +50,7 @@ Réponds UNIQUEMENT avec un JSON valide (sans markdown) ayant exactement ces cl�
 
 
 def analyser_evaluation_async(evaluation_id):
-    thread = threading.Thread(
-        target=_run_analyse,
-        args=(evaluation_id,),
-        daemon=True,
-    )
+    thread = threading.Thread(target=_run_analyse, args=(evaluation_id,), daemon=True)
     thread.start()
 
 
@@ -66,28 +63,17 @@ def _run_analyse(evaluation_id):
         return
 
     try:
-        client = Groq(api_key=settings.GROQ_API_KEY)
         prompt = _construire_prompt(evaluation)
-
-        response = client.chat.completions.create(
-            model=settings.GROQ_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
-            max_tokens=1024,
-        )
-
-        content = response.choices[0].message.content.strip()
-        # Retirer éventuel bloc markdown
-        if content.startswith("```"):
-            content = content.split("```")[1]
-            if content.startswith("json"):
-                content = content[4:]
-
-        data = json.loads(content)
+        raw    = appeler_ia(prompt, temperature=0.3)
+        data   = parser_json(raw)
 
         EvaluationPerformance.objects.filter(pk=evaluation_id).update(
             analyse_ia=data,
             score_ia=data.get("score_global_100"),
         )
-    except Exception:
-        pass
+        logger.info(
+            "Analyse IA évaluation #%d — score %s/100",
+            evaluation_id, data.get("score_global_100"),
+        )
+    except Exception as exc:
+        logger.error("Analyse IA abandonnée évaluation #%d : %s", evaluation_id, exc)
