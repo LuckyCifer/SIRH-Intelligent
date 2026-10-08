@@ -50,13 +50,15 @@ class Pointage(models.Model):
     hs_jour_20  = models.DecimalField(max_digits=5, decimal_places=2, default=0,
         help_text="HS de jour — 8 premières heures sup/semaine (+20%)")
     hs_jour_30  = models.DecimalField(max_digits=5, decimal_places=2, default=0,
-        help_text="HS de jour — au-delà de 8h sup/semaine (+30%)")
+        help_text="HS de jour — heures sup 9 à 16 de la semaine (+30%)")
+    hs_jour_40  = models.DecimalField(max_digits=5, decimal_places=2, default=0,
+        help_text="HS de jour — heures sup 17 à 20 de la semaine (+40%)")
     hs_nuit     = models.DecimalField(max_digits=5, decimal_places=2, default=0,
         help_text="HS de nuit 22h–6h (+50%)")
     hs_dimanche = models.DecimalField(max_digits=5, decimal_places=2, default=0,
         help_text="Travail un dimanche (+40%)")
     hs_ferie    = models.DecimalField(max_digits=5, decimal_places=2, default=0,
-        help_text="Travail un jour férié officiel (+100%)")
+        help_text="Travail un jour férié officiel (taux conventionnel, non fixé par le décret)")
     montant_hs_total = models.DecimalField(max_digits=10, decimal_places=2, default=0,
         help_text="Montant total des majorations HS (FCFA)")
 
@@ -152,18 +154,21 @@ class Pointage(models.Model):
             self.hs_nuit     = 0
             self.hs_jour_20  = 0
             self.hs_jour_30  = 0
+            self.hs_jour_40  = 0
         elif self.est_dimanche:
             self.hs_ferie    = 0
             self.hs_dimanche = heures
             self.hs_nuit     = 0
             self.hs_jour_20  = 0
             self.hs_jour_30  = 0
+            self.hs_jour_40  = 0
         elif self.est_nuit:
             self.hs_ferie    = 0
             self.hs_dimanche = 0
             self.hs_nuit     = heures
             self.hs_jour_20  = 0
             self.hs_jour_30  = 0
+            self.hs_jour_40  = 0
         else:
             self.hs_ferie    = 0
             self.hs_dimanche = 0
@@ -171,7 +176,8 @@ class Pointage(models.Model):
             # HS de jour — approximation quotidienne (recalculée à la semaine par calculateur_hs)
             hs_brutes       = max(0.0, heures - 8)
             self.hs_jour_20 = round(min(hs_brutes, 8), 2)
-            self.hs_jour_30 = round(max(0.0, hs_brutes - 8), 2)
+            self.hs_jour_30 = round(min(max(0.0, hs_brutes - 8), 8), 2)
+            self.hs_jour_40 = round(max(0.0, hs_brutes - 16), 2)
 
         super().save(*args, **kwargs)
 

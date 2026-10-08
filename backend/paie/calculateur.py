@@ -85,6 +85,12 @@ class CalculateurPaie:
     # ── Divers ────────────────────────────────────────────────────────────────
     # SMIG secteur privé non agricole (décret n° 2023/00338/PM du 21 mars 2023)
     SMIG               = Decimal("60000")
+
+    # Heures supplémentaires — décret n° 95/677/PM, art. 12 et 14
+    # (heure payée + majoration ; diviseur 173 h 1/3 pour 40 h/semaine)
+    MAJORATIONS_HS = {"20": Decimal("1.20"), "30": Decimal("1.30"),
+                      "40": Decimal("1.40"), "50": Decimal("1.50")}
+    HEURES_MENSUELLES = Decimal("520") / Decimal("3")
     TAUX_ANCIENNETE_AN = Decimal("0.02")
     ANCIENNETE_MIN_ANS = 2   # prime due à partir de 2 ans : 4 %, puis +2 %/an
 
@@ -117,18 +123,24 @@ class CalculateurPaie:
             return Decimal("0")
         return self._round(self._D(salaire_categoriel) * self.TAUX_ANCIENNETE_AN * annees)
 
-    def calculer_heures_sup(self, nb_h25, nb_h40, taux_horaire) -> dict:
-        th  = self._D(taux_horaire)
-        h25 = self._round(self._D(nb_h25) * th * Decimal("1.25"))
-        h40 = self._round(self._D(nb_h40) * th * Decimal("1.40"))
-        return {"h25": h25, "h40": h40, "total": h25 + h40}
+    def calculer_taux_horaire(self, salaire_mensuel) -> Decimal:
+        """Salaire effectif / 173 h 1/3 (art. 14)."""
+        return (self._D(salaire_mensuel) / self.HEURES_MENSUELLES).quantize(Decimal("0.01"))
+
+    def calculer_heures_sup(self, nb_h20, nb_h30, nb_h40, nb_h50, taux_horaire) -> dict:
+        th = self._D(taux_horaire)
+        nb = {"20": nb_h20, "30": nb_h30, "40": nb_h40, "50": nb_h50}
+        res = {f"h{k}": self._round(self._D(nb[k]) * th * m) for k, m in self.MAJORATIONS_HS.items()}
+        res["total"] = sum(res.values(), Decimal("0"))
+        return res
 
     def calculer_brut(self, b) -> dict:
         """
         Éléments imposables/cotisables → SBT.
         Éléments non cotisables (transport, logement, représentation, alloc.) → total_brut.
         """
-        hs = self.calculer_heures_sup(b.nb_heures_sup_25, b.nb_heures_sup_40, b.taux_horaire)
+        hs = self.calculer_heures_sup(b.nb_heures_sup_20, b.nb_heures_sup_30,
+                                      b.nb_heures_sup_40, b.nb_heures_sup_50, b.taux_horaire)
         sbt = (self._D(b.salaire_categoriel)
                + self._D(b.sursalaire)
                + self._D(b.prime_anciennete)
@@ -146,8 +158,7 @@ class CalculateurPaie:
             "sbt":           self._round(sbt),
             "non_imposable": self._round(non_imposable),
             "total_brut":    self._round(sbt + non_imposable),
-            "heures_sup_25": hs["h25"],
-            "heures_sup_40": hs["h40"],
+            "heures_sup":    {k: hs[f"h{k}"] for k in self.MAJORATIONS_HS},
         }
 
     def calculer_cnps(self, sbt: Decimal) -> dict:
@@ -272,6 +283,5 @@ class CalculateurPaie:
             "cfc_salarie":    str(cfc_d["salarie"]),
             "rav":            str(rav),
             "tdl":            str(tdl),
-            "heures_sup_25":  str(brut_d["heures_sup_25"]),
-            "heures_sup_40":  str(brut_d["heures_sup_40"]),
+            **{f"heures_sup_{k}": str(v) for k, v in brut_d["heures_sup"].items()},
         }

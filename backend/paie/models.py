@@ -128,8 +128,15 @@ class BulletinPaie(models.Model):
     indemnite_logement       = models.DecimalField(max_digits=12, decimal_places=0, default=0)
     indemnite_representation = models.DecimalField(max_digits=12, decimal_places=0, default=0)
     avantages_nature         = models.DecimalField(max_digits=12, decimal_places=0, default=0)
-    nb_heures_sup_25         = models.DecimalField(max_digits=6, decimal_places=2, default=0)
-    nb_heures_sup_40         = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+    # Heures supplémentaires — décret n° 95/677/PM, art. 12 (au-delà de 40 h/semaine)
+    nb_heures_sup_20         = models.DecimalField(max_digits=6, decimal_places=2, default=0,
+        help_text="Heures 1 à 8 de la semaine (+20 %)")
+    nb_heures_sup_30         = models.DecimalField(max_digits=6, decimal_places=2, default=0,
+        help_text="Heures 9 à 16 (+30 %)")
+    nb_heures_sup_40         = models.DecimalField(max_digits=6, decimal_places=2, default=0,
+        help_text="Heures 17 à 20 et heures sup. du dimanche (+40 %)")
+    nb_heures_sup_50         = models.DecimalField(max_digits=6, decimal_places=2, default=0,
+        help_text="Heures sup. de nuit, urgence/force majeure (+50 %)")
     taux_horaire             = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     allocations_familiales   = models.DecimalField(max_digits=12, decimal_places=0, default=0)
 

@@ -159,6 +159,8 @@ CFC salarié           : 1,0% | CFC patronal : 1,5% | FNE : 1,0% (assiette : bru
 IRPP                  : tranches progressives sur SNC + CAC 10%
 RAV                   : forfait 0 → 13 000 FCFA/mois selon le brut
 TDL                   : forfait 250 → 2 500 FCFA/mois selon le salaire de base (> 62 000)
+Heures sup.           : +20/30/40 % (tranches 8/8/4 au-delà de 40 h/sem.), dimanche +40 %, nuit +50 %
+                        décret 95/677/PM art. 12 ; taux horaire = salaire / (520/3)
 Tests                 : `python manage.py test paie` — cas de référence dans docs/BULLETIN_PAIE_PAS_A_PAS.md
 Exonération IRPP      : SNC < 500 000 FCFA/an (< 41 666 FCFA/mois)
 Note : Les constantes TAUX_CNPS_EMPLOYE=0.028 et TAUX_CNPS_EMPLOYEUR=0.077 dans

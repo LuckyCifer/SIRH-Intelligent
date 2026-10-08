@@ -342,7 +342,7 @@ export default function MesPresences() {
                       : h.est_dimanche
                         ? '#fff0e0'
                         : undefined
-                    const hsJour   = parseFloat(h.hs_jour_20 || 0) + parseFloat(h.hs_jour_30 || 0)
+                    const hsJour   = parseFloat(h.hs_jour_20 || 0) + parseFloat(h.hs_jour_30 || 0) + parseFloat(h.hs_jour_40 || 0)
                     const hsNuit   = parseFloat(h.hs_nuit || 0)
                     const hsWkFerie = parseFloat(h.hs_dimanche || 0) + parseFloat(h.hs_ferie || 0)
                     return (

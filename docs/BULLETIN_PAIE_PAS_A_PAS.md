@@ -115,12 +115,23 @@ Assiette : salaire brut taxable **sans plafond** (contrairement à la CNPS).
 ## Sources
 
 - DGI — [IRPP : ce que vous devez savoir](https://impots.cm/fr/document/impot-sur-le-revenu-des-personnes-physiques-irpp-ce-que-vous-devez-savoir) (barème 10/15/25/35 %, abattement 30 %, cotisations CNPS déductibles, abattement 500 000, CAC 10 %, pas de retenue sous 62 000)
+- [Décret n° 95/677/PM](https://www.droitsocialenpratique.com/decret-n-95-677-pm-du-18-decembre-1995-relatif-aux-derogations-a-la-duree-legale-du-travail-au-cameroun/) (heures supplémentaires, art. 12 à 14)
 - Loi de finances 2024 — [plafonnement de l'abattement à 4,8 M FCFA/an](https://www.investiraucameroun.com/gestion-publique/0401-20158-loi-de-finances-2024-ces-mesures-fiscales-qui-vont-baisser-les-salaires-de-certains-travailleurs-au-cameroun)
 
 - MINFI — [Les autres retenues sur les salaires](https://minfi.gov.cm/les-autres-retenues-sur-les-salaires/) (CFC 1 % / 1,5 %, FNE 1 %, seuil IRPP 62 000)
 - [Barème TDL Cameroun](https://lefisk.cm/outils/bareme-tdl) · [IRPP — barème](https://lefisk.cm/fiscalite/irpp)
 - [Tout savoir sur les retenues salariales appliquées au Cameroun](https://fiscafinance.com/tout-savoir-sur-les-retenues-salariales-appliquees-au-cameroun/) (barème RAV)
 
-Points encore à confirmer sur les textes officiels (non modifiés dans le calculateur) :
-taux de majoration des heures supplémentaires, caractère imposable de l'indemnité
-de logement versée en numéraire.
+## Heures supplémentaires
+
+Décret n° 95/677/PM du 18 décembre 1995 : au-delà de 40 h/semaine (art. 13), l'heure
+est payée au taux horaire majoré de **20 %** (heures 1 à 8), **30 %** (9 à 16),
+**40 %** (17 à 20, et heures sup. du dimanche), **50 %** (nuit, urgence) — art. 12.
+Taux horaire = salaire / 173 h 1/3 (art. 14). Exemple : 300 000 / 173,33 = 1 730,77 ;
+une heure à +20 % = 2 077 FCFA.
+
+Non réglés par le décret (paramètres à faire valider) : cumul nuit + dimanche,
+majoration des jours fériés (fixée par la convention collective).
+
+Point encore à confirmer sur les textes officiels : caractère imposable de
+l'indemnité de logement versée en numéraire (traitée comme non imposable).

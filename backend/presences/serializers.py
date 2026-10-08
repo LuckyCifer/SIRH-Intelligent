@@ -16,7 +16,7 @@ class PointageSerializer(serializers.ModelSerializer):
             "est_jour_ferie", "est_dimanche", "est_nuit",
             "est_retard", "minutes_retard",
             # HS catégorielles calculées
-            "hs_jour_20", "hs_jour_30", "hs_nuit", "hs_dimanche", "hs_ferie",
+            "hs_jour_20", "hs_jour_30", "hs_jour_40", "hs_nuit", "hs_dimanche", "hs_ferie",
             "montant_hs_total",
             "created_at", "updated_at",
         ]

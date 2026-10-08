@@ -20,7 +20,8 @@ def bulletin(**champs):
         salaire_categoriel=0, sursalaire=0, prime_anciennete=0,
         prime_responsabilite=0, prime_assiduite=0, prime_rendement=0,
         gratification=0, avantages_nature=0,
-        nb_heures_sup_25=0, nb_heures_sup_40=0, taux_horaire=0,
+        nb_heures_sup_20=0, nb_heures_sup_30=0, nb_heures_sup_40=0,
+        nb_heures_sup_50=0, taux_horaire=0,
         indemnite_transport=0, indemnite_logement=0,
         indemnite_representation=0, allocations_familiales=0,
         avances_salaire=0, autres_retenues=0,
@@ -173,11 +174,26 @@ class ElementsDuBrutTests(SimpleTestCase):
             with self.subTest(annees=annees):
                 self.assertEqual(self.calc.calculer_prime_anciennete(300_000, annees), D(attendu))
 
-    def test_heures_supplementaires(self):
-        hs = self.calc.calculer_heures_sup(2, 1, 2_000)
-        self.assertEqual(hs["h25"], D("5000"))   # 2 h × 2 000 × 1,25
-        self.assertEqual(hs["h40"], D("2800"))   # 1 h × 2 000 × 1,40
-        self.assertEqual(hs["total"], D("7800"))
+    def test_heures_supplementaires_decret_95_677(self):
+        # Art. 12 : heure payée + 20 / 30 / 40 / 50 %
+        hs = self.calc.calculer_heures_sup(8, 8, 4, 2, 2_000)
+        self.assertEqual(hs["h20"], D("19200"))   # 8 h × 2 000 × 1,20
+        self.assertEqual(hs["h30"], D("20800"))   # 8 h × 2 000 × 1,30
+        self.assertEqual(hs["h40"], D("11200"))   # 4 h × 2 000 × 1,40
+        self.assertEqual(hs["h50"], D("6000"))    # 2 h × 2 000 × 1,50
+        self.assertEqual(hs["total"], D("57200"))
+
+    def test_taux_horaire_diviseur_173_un_tiers(self):
+        # Art. 14 : 300 000 / (520/3) = 1 730,77 ; 1 h à +20 % = 2 076,92 → 2 077
+        th = self.calc.calculer_taux_horaire(300_000)
+        self.assertEqual(th, D("1730.77"))
+        self.assertEqual(self.calc.calculer_heures_sup(1, 0, 0, 0, th)["h20"], D("2077"))
+
+    def test_heures_sup_dans_le_brut_cotisable(self):
+        b = bulletin(salaire_categoriel=200_000, nb_heures_sup_20=8, taux_horaire=1_000)
+        self.calc.calculer(b)
+        self.assertEqual(b.salaire_brut_imposable, D("209600"))   # + 8 × 1 000 × 1,20
+        self.assertEqual(b.details["heures_sup_20"], "9600")
 
     def test_indemnites_non_imposables_hors_cotisations(self):
         b = bulletin(salaire_categoriel=200_000, indemnite_transport=30_000,

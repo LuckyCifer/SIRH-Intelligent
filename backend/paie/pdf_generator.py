@@ -184,12 +184,19 @@ def generer_bulletin_pdf(bulletin):
         ligne_gain("Prime de rendement",      b.prime_rendement,          alt); alt = not alt
         ligne_gain("Gratification",           b.gratification,            alt); alt = not alt
         # Heures supplémentaires
-        hs25 = int(b.details.get("heures_sup_25", 0)) if b.details else 0
-        hs40 = int(b.details.get("heures_sup_40", 0)) if b.details else 0
-        if hs25 > 0:
-            ligne_gain(f"Heures sup. 25% ({b.nb_heures_sup_25}h)", hs25, alt); alt = not alt
-        if hs40 > 0:
-            ligne_gain(f"Heures sup. 40% ({b.nb_heures_sup_40}h)", hs40, alt); alt = not alt
+        det = b.details or {}
+        # Anciens bulletins : montant stocké sous « heures_sup_25 »
+        montants_hs = {
+            "20": det.get("heures_sup_20", det.get("heures_sup_25", 0)),
+            "30": det.get("heures_sup_30", 0),
+            "40": det.get("heures_sup_40", 0),
+            "50": det.get("heures_sup_50", 0),
+        }
+        for taux, montant in montants_hs.items():
+            montant = int(float(montant or 0))
+            if montant > 0:
+                nb_h = getattr(b, f"nb_heures_sup_{taux}")
+                ligne_gain(f"Heures sup. +{taux}% ({nb_h}h)", montant, alt); alt = not alt
         ligne_gain("Avantages en nature",     b.avantages_nature,         alt); alt = not alt
         ligne_gain("Indemnité transport  (NI)",     b.indemnite_transport,      alt); alt = not alt
         ligne_gain("Indemnité logement  (NI)",      b.indemnite_logement,       alt); alt = not alt
