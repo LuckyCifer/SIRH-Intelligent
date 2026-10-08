@@ -1,5 +1,7 @@
+import os
 from django.db import models as db_models
-from rest_framework import viewsets, permissions
+from django.http import FileResponse
+from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import CategorieDocument, DocumentRH
@@ -63,9 +65,25 @@ class DocumentRHViewSet(viewsets.ModelViewSet):
             return [IsManagerOrRH()]
         return [permissions.IsAuthenticated()]
 
-    @action(detail=False, methods=["get"])
+    @action(detail=False, methods=["get"], url_path="mes-documents")
     def mes_documents(self, request):
         docs = DocumentRH.objects.filter(
             employe=request.user
         ).select_related("categorie")
-        return Response(DocumentRHSerializer(docs, many=True).data)
+        return Response(
+            DocumentRHSerializer(docs, many=True, context={"request": request}).data
+        )
+
+    @action(detail=True, methods=["get"], url_path="telecharger")
+    def telecharger(self, request, pk=None):
+        doc = self.get_object()
+        if not doc.fichier:
+            return Response({"detail": "Fichier introuvable."}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            return FileResponse(
+                doc.fichier.open("rb"),
+                as_attachment=True,
+                filename=os.path.basename(doc.fichier.name),
+            )
+        except FileNotFoundError:
+            return Response({"detail": "Fichier introuvable sur le disque."}, status=status.HTTP_404_NOT_FOUND)

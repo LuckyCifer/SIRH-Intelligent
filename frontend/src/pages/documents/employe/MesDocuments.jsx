@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
 import EmployeLayout from '../../../components/layout/EmployeLayout'
 import Spinner from '../../../components/Spinner'
-import { getMesDocuments } from '../../../api/documents'
+import { getMesDocuments, telechargerDocument } from '../../../api/documents'
+import { useApercu } from '../../../components/ui/useApercu'
 
 function fmtDate(d) {
   if (!d) return null
@@ -11,10 +13,24 @@ function fmtDate(d) {
   })
 }
 
-function DocumentCard({ doc }) {
-  const ext    = doc.fichier?.split('.').pop()?.toUpperCase() || 'DOC'
-  const isImg  = ['JPG','JPEG','PNG','GIF'].includes(ext)
-  const expire = doc.expire_bientot
+function DocumentCard({ doc, onApercu }) {
+  const { t }   = useTranslation()
+  const ext     = doc.fichier?.split('.').pop()?.toUpperCase() || 'DOC'
+  const expire  = doc.expire_bientot
+  const [busy, setBusy] = useState(false)
+
+  async function handleApercu() {
+    if (busy) return
+    setBusy(true)
+    try {
+      const res = await telechargerDocument(doc.id)
+      onApercu(res.data, doc.fichier ? doc.fichier.split('/').pop() : `document-${doc.id}.pdf`, doc.titre)
+    } catch {
+      toast.error(t('documents.download_error', 'Échec du téléchargement'), { id: 'dl-err' })
+    } finally {
+      setBusy(false)
+    }
+  }
 
   return (
     <div className="d-flex align-items-center justify-content-between py-2 border-bottom">
@@ -32,51 +48,54 @@ function DocumentCard({ doc }) {
             {doc.titre}
             {expire && (
               <span className="badge badge-warning ml-2" style={{ fontSize: 10 }}>
-                Expire bientôt
+                {t('documents.expires_soon')}
               </span>
             )}
           </div>
           <small className="text-muted">
             {doc.taille_lisible}
             {doc.date_expiration && (
-              <span className="ml-2">· Expire le {fmtDate(doc.date_expiration)}</span>
+              <span className="ml-2">{t('documents.expires_on', { date: fmtDate(doc.date_expiration) })}</span>
             )}
           </small>
         </div>
       </div>
-      <a
-        href={doc.fichier}
-        target="_blank"
-        rel="noopener noreferrer"
+      <button
         className="btn btn-xs btn-outline-primary ml-2"
-        title="Télécharger"
+        title={t('apercu.preview')}
+        onClick={handleApercu}
+        disabled={busy}
       >
-        <i className="fas fa-download" />
-      </a>
+        {busy
+          ? <i className="fas fa-spinner fa-spin" />
+          : <i className="fas fa-eye" />
+        }
+      </button>
     </div>
   )
 }
 
 export default function MesDocuments() {
+  const { t } = useTranslation()
   const [docs,    setDocs]    = useState([])
   const [loading, setLoading] = useState(true)
+  const { voirFichier, apercuModal } = useApercu()
 
   useEffect(() => {
     getMesDocuments()
       .then(r => setDocs(r.data.results ?? r.data))
-      .catch(() => toast.error('Impossible de charger vos documents.'))
+      .catch(() => toast.error(t('documents.load_error'), { id: 'docs-load-error' }))
       .finally(() => setLoading(false))
-  }, [])
+  }, []) // eslint-disable-line
 
   if (loading) {
     return (
-      <EmployeLayout pageTitle="Mes documents">
-        <Spinner message="Chargement de vos documents…" />
+      <EmployeLayout pageTitle={t('documents.page_title_my')}>
+        <Spinner message={t('documents.load_error')} />
       </EmployeLayout>
     )
   }
 
-  // Grouper par catégorie
   const parCategorie = {}
   docs.forEach(d => {
     const cat = d.categorie_detail?.nom || 'Autre'
@@ -87,14 +106,13 @@ export default function MesDocuments() {
   const categories = Object.entries(parCategorie)
 
   return (
-    <EmployeLayout pageTitle="Mes documents">
-
+    <EmployeLayout pageTitle={t('documents.page_title_my')}>
       {categories.length === 0 ? (
         <div className="card">
           <div className="card-body text-center py-5 text-muted">
             <i className="fas fa-folder-open fa-3x mb-3 d-block" />
-            <h5>Aucun document disponible.</h5>
-            <p>Contactez le service RH pour obtenir vos documents.</p>
+            <h5>{t('documents.no_docs')}</h5>
+            <p>{t('documents.no_docs_hint')}</p>
           </div>
         </div>
       ) : (
@@ -112,7 +130,7 @@ export default function MesDocuments() {
                 </div>
                 <div className="card-body py-1 px-3">
                   {catData.docs.map(doc => (
-                    <DocumentCard key={doc.id} doc={doc} />
+                    <DocumentCard key={doc.id} doc={doc} onApercu={voirFichier} />
                   ))}
                 </div>
               </div>
@@ -120,7 +138,7 @@ export default function MesDocuments() {
           ))}
         </div>
       )}
-
+      {apercuModal}
     </EmployeLayout>
   )
 }

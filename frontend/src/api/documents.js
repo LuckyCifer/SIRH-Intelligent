@@ -9,3 +9,4 @@ export const uploadDocument  = (data)   => api.post('/documents/', data, {
 export const updateDocument  = (id, data) => api.patch(`/documents/${id}/`, data)
 export const deleteDocument  = (id)     => api.delete(`/documents/${id}/`)
 export const getCategories   = ()       => api.get('/documents/categories/')
+export const telechargerDocument = (id) => api.get(`/documents/${id}/telecharger/`, { responseType: 'blob' })
