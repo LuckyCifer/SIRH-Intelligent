@@ -12,6 +12,12 @@ class PointageSerializer(serializers.ModelSerializer):
         fields = "__all__"
         read_only_fields = [
             "heures_travaillees", "heures_supplementaires",
+            # Drapeaux automatiques
+            "est_jour_ferie", "est_dimanche", "est_nuit",
+            "est_retard", "minutes_retard",
+            # HS catégorielles calculées
+            "hs_jour_20", "hs_jour_30", "hs_nuit", "hs_dimanche", "hs_ferie",
+            "montant_hs_total",
             "created_at", "updated_at",
         ]
 

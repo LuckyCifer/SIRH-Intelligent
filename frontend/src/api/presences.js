@@ -8,3 +8,4 @@ export const pointerDepart            = ()       => api.post('/presences/pointer
 export const getMonPointageAujourdhui = ()       => api.get('/presences/mon-pointage-aujourd-hui/')
 export const getStatsMensuel          = ()       => api.get('/presences/stats-mensuel/')
 export const getRapportEquipe         = (mois)   => api.get('/presences/rapport-equipe/', { params: { mois } })
+export const getJoursFeries           = (annee)  => api.get(`/presences/jours-feries/${annee}/`)

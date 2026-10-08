@@ -1,20 +1,12 @@
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
 import EmployeLayout from '../../../components/layout/EmployeLayout'
 import Spinner from '../../../components/Spinner'
 import {
   getPointages, getMonPointageAujourdhui,
   getStatsMensuel, pointerArrivee, pointerDepart,
 } from '../../../api/presences'
-
-const STATUT_CONFIG = {
-  PRESENT: { cls: 'badge-success',   label: 'Présent',    color: '#28A745' },
-  ABSENT:  { cls: 'badge-danger',    label: 'Absent',     color: '#DC3545' },
-  RETARD:  { cls: 'badge-warning',   label: 'En retard',  color: '#FD7E14' },
-  CONGE:   { cls: 'badge-primary',   label: 'En congé',   color: '#2E74B5' },
-  FERIE:   { cls: 'badge-secondary', label: 'Jour férié', color: '#6C757D' },
-  WEEKEND: { cls: 'badge-light',     label: 'Week-end',   color: '#ADB5BD' },
-}
 
 function fmtHeure(t) {
   if (!t) return '—'
@@ -33,6 +25,7 @@ function getMoisParam(annee, mois) {
 }
 
 export default function MesPresences() {
+  const { t } = useTranslation()
   const today = new Date()
   const [annee, setAnnee] = useState(today.getFullYear())
   const [mois,  setMois]  = useState(today.getMonth())
@@ -43,8 +36,20 @@ export default function MesPresences() {
   const [loading,  setLoading]  = useState(true)
   const [actioning, setActioning] = useState(null)
 
-  const MONTH_NAMES = ['Janvier','Février','Mars','Avril','Mai','Juin',
-    'Juillet','Août','Septembre','Octobre','Novembre','Décembre']
+  const STATUT_CONFIG = {
+    PRESENT: { cls: 'badge-success',   label: t('presences.present'),  color: '#28A745' },
+    ABSENT:  { cls: 'badge-danger',    label: t('presences.absent'),   color: '#DC3545' },
+    RETARD:  { cls: 'badge-warning',   label: t('presences.late'),     color: '#FD7E14' },
+    CONGE:   { cls: 'badge-primary',   label: t('nav.conges'),         color: '#2E74B5' },
+    FERIE:   { cls: 'badge-secondary', label: t('presences.holiday'),  color: '#6C757D' },
+    WEEKEND: { cls: 'badge-light',     label: t('presences.weekend'),  color: '#ADB5BD' },
+  }
+
+  const MONTH_NAMES = [
+    t('common.months.1'), t('common.months.2'), t('common.months.3'), t('common.months.4'),
+    t('common.months.5'), t('common.months.6'), t('common.months.7'), t('common.months.8'),
+    t('common.months.9'), t('common.months.10'), t('common.months.11'), t('common.months.12'),
+  ]
 
   async function loadAll() {
     setLoading(true)
@@ -111,28 +116,28 @@ export default function MesPresences() {
 
   if (loading) {
     return (
-      <EmployeLayout pageTitle="Mes présences">
-        <Spinner message="Chargement…" />
+      <EmployeLayout pageTitle={t('presences.my_presences')}>
+        <Spinner message={t('common.loading')} />
       </EmployeLayout>
     )
   }
 
   return (
-    <EmployeLayout pageTitle="Mes présences">
+    <EmployeLayout pageTitle={t('presences.my_presences')}>
 
       {/* ── Widget pointage du jour ── */}
       <div className="card card-primary card-outline mb-3">
         <div className="card-header">
           <h3 className="card-title">
             <i className="fas fa-fingerprint mr-2" />
-            Pointage du jour — <em style={{ fontWeight: 400 }}>{todayLabel}</em>
+            {t('presences.title')} — <em style={{ fontWeight: 400 }}>{todayLabel}</em>
           </h3>
         </div>
         <div className="card-body">
           {p && p.id ? (
             <div className="row align-items-center">
               <div className="col-md-4 text-center border-right">
-                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>Arrivée</div>
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>{t('presences.arrival')}</div>
                 {p.heure_arrivee ? (
                   <div>
                     <i className="fas fa-check-circle text-success mr-2" />
@@ -151,7 +156,7 @@ export default function MesPresences() {
                 )}
               </div>
               <div className="col-md-4 text-center border-right">
-                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>Départ</div>
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>{t('presences.departure')}</div>
                 {p.heure_depart ? (
                   <div>
                     <i className="fas fa-check-circle text-danger mr-2" />
@@ -170,7 +175,7 @@ export default function MesPresences() {
                 )}
               </div>
               <div className="col-md-4 text-center">
-                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>Heures travaillées</div>
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>{t('presences.hours')}</div>
                 <strong style={{ fontSize: 20, color: 'var(--acerfi-blue)' }}>
                   {p.heures_travaillees ? `${parseFloat(p.heures_travaillees).toFixed(2)}h` : '—'}
                 </strong>
@@ -185,7 +190,7 @@ export default function MesPresences() {
             <div className="row align-items-center">
               <div className="col-md-8">
                 <div className="text-muted mb-2" style={{ fontSize: 13 }}>
-                  <i className="fas fa-info-circle mr-1" />Vous n'avez pas encore pointé aujourd'hui.
+                  <i className="fas fa-info-circle mr-1" />{t('presences.no_presences')}
                 </div>
                 <div className="btn-group">
                   <button
@@ -194,8 +199,8 @@ export default function MesPresences() {
                     onClick={handleArrivee}
                   >
                     {actioning === 'arrivee'
-                      ? <><i className="fas fa-spinner fa-spin mr-1" />Enregistrement…</>
-                      : <><i className="fas fa-sign-in-alt mr-2" />Pointer mon arrivée</>}
+                      ? <><i className="fas fa-spinner fa-spin mr-1" />{t('presences.saving')}</>
+                      : <><i className="fas fa-sign-in-alt mr-2" />{t('presences.mark_arrival')}</>}
                   </button>
                 </div>
               </div>
@@ -216,7 +221,7 @@ export default function MesPresences() {
                 <i className="fas fa-user-check" />
               </span>
               <div className="info-box-content">
-                <span className="info-box-text">Présents</span>
+                <span className="info-box-text">{t('presences.days_present')}</span>
                 <span className="info-box-number font-weight-bold">{stats.jours_presents}</span>
               </div>
             </div>
@@ -227,7 +232,7 @@ export default function MesPresences() {
                 <i className="fas fa-user-times" />
               </span>
               <div className="info-box-content">
-                <span className="info-box-text">Absents</span>
+                <span className="info-box-text">{t('presences.days_absent')}</span>
                 <span className="info-box-number font-weight-bold">{stats.jours_absents}</span>
               </div>
             </div>
@@ -238,7 +243,7 @@ export default function MesPresences() {
                 <i className="fas fa-exclamation-circle" />
               </span>
               <div className="info-box-content">
-                <span className="info-box-text">Retards</span>
+                <span className="info-box-text">{t('presences.days_late')}</span>
                 <span className="info-box-number font-weight-bold">{stats.jours_retard}</span>
               </div>
             </div>
@@ -249,11 +254,45 @@ export default function MesPresences() {
                 <i className="fas fa-clock" />
               </span>
               <div className="info-box-content">
-                <span className="info-box-text">Heures total</span>
+                <span className="info-box-text">{t('presences.total_hours')}</span>
                 <span className="info-box-number font-weight-bold">{stats.total_heures}h</span>
               </div>
             </div>
           </div>
+          {(stats.hs_jour > 0 || stats.hs_nuit > 0 || stats.hs_weekend_ferie > 0) && (
+            <div className="col-12">
+              <div className="card card-outline card-purple mb-0">
+                <div className="card-body py-2">
+                  <div className="d-flex flex-wrap align-items-center" style={{ gap: '16px' }}>
+                    <small className="font-weight-bold text-muted mr-2">
+                      <i className="fas fa-clock mr-1" />Heures supplémentaires du mois :
+                    </small>
+                    {stats.hs_jour > 0 && (
+                      <span className="badge badge-info p-2">
+                        Jour&nbsp;<strong>{stats.hs_jour}h</strong>&nbsp;<small>(+20%/+30%)</small>
+                      </span>
+                    )}
+                    {stats.hs_nuit > 0 && (
+                      <span className="badge badge-dark p-2">
+                        Nuit&nbsp;<strong>{stats.hs_nuit}h</strong>&nbsp;<small>(+50%)</small>
+                      </span>
+                    )}
+                    {stats.hs_weekend_ferie > 0 && (
+                      <span className="badge badge-warning p-2">
+                        W-E/Fériés&nbsp;<strong>{stats.hs_weekend_ferie}h</strong>&nbsp;<small>(+40%/+100%)</small>
+                      </span>
+                    )}
+                    {stats.montant_hs > 0 && (
+                      <span className="badge badge-success p-2 ml-auto">
+                        <i className="fas fa-money-bill-wave mr-1" />
+                        <strong>{Number(stats.montant_hs).toLocaleString('fr-FR')} FCFA</strong>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -261,7 +300,7 @@ export default function MesPresences() {
       <div className="card">
         <div className="card-header d-flex justify-content-between align-items-center">
           <h3 className="card-title">
-            <i className="fas fa-history mr-2" />Historique
+            <i className="fas fa-history mr-2" />{t('common.details')}
           </h3>
           <div className="d-flex align-items-center">
             <button className="btn btn-sm btn-outline-secondary mr-2" onClick={prevMois}>
@@ -286,20 +325,34 @@ export default function MesPresences() {
               <table className="table table-bordered table-hover table-sm mb-0">
                 <thead>
                   <tr>
-                    <th>Date</th>
-                    <th className="text-center">Arrivée</th>
-                    <th className="text-center">Départ</th>
-                    <th className="text-center">Heures</th>
-                    <th>Statut</th>
+                    <th>{t('common.date')}</th>
+                    <th className="text-center">{t('presences.arrival')}</th>
+                    <th className="text-center">{t('presences.departure')}</th>
+                    <th className="text-center">{t('presences.hours')}</th>
+                    <th className="text-center" title={t('presences.overtime')}>{t('presences.overtime')}</th>
+                    <th>{t('common.status')}</th>
                     <th>Note</th>
                   </tr>
                 </thead>
                 <tbody>
                   {historique.map(h => {
                     const cfg = STATUT_CONFIG[h.statut] || STATUT_CONFIG.PRESENT
+                    const rowBg = h.est_jour_ferie
+                      ? '#fff8cc'
+                      : h.est_dimanche
+                        ? '#fff0e0'
+                        : undefined
+                    const hsJour   = parseFloat(h.hs_jour_20 || 0) + parseFloat(h.hs_jour_30 || 0)
+                    const hsNuit   = parseFloat(h.hs_nuit || 0)
+                    const hsWkFerie = parseFloat(h.hs_dimanche || 0) + parseFloat(h.hs_ferie || 0)
                     return (
-                      <tr key={h.id}>
-                        <td style={{ fontSize: 12 }}>{fmtDate(h.date)}</td>
+                      <tr key={h.id} style={rowBg ? { background: rowBg } : {}}>
+                        <td style={{ fontSize: 12 }}>
+                          {fmtDate(h.date)}
+                          {h.est_jour_ferie && (
+                            <span className="badge badge-warning ml-1" style={{ fontSize: 9 }}>{t('presences.holiday')}</span>
+                          )}
+                        </td>
                         <td className="text-center font-weight-bold" style={{ color: '#28A745', fontSize: 12 }}>
                           {fmtHeure(h.heure_arrivee)}
                         </td>
@@ -307,19 +360,35 @@ export default function MesPresences() {
                           {fmtHeure(h.heure_depart)}
                         </td>
                         <td className="text-center" style={{ fontSize: 12 }}>
-                          {h.heures_travaillees ? (
-                            <span>
-                              {parseFloat(h.heures_travaillees).toFixed(2)}h
-                              {parseFloat(h.heures_supplementaires || 0) > 0 && (
-                                <span className="text-muted ml-1" style={{ fontSize: 10 }}>
-                                  +{parseFloat(h.heures_supplementaires).toFixed(1)}sup
-                                </span>
-                              )}
-                            </span>
-                          ) : '—'}
+                          {h.heures_travaillees
+                            ? `${parseFloat(h.heures_travaillees).toFixed(2)}h`
+                            : '—'}
+                        </td>
+                        <td className="text-center" style={{ fontSize: 11 }}>
+                          {hsJour > 0 && (
+                            <span className="badge badge-info mr-1" title="HS jour">{hsJour.toFixed(1)}h</span>
+                          )}
+                          {hsNuit > 0 && (
+                            <span className="badge badge-dark mr-1" title="HS nuit">{hsNuit.toFixed(1)}h</span>
+                          )}
+                          {hsWkFerie > 0 && (
+                            <span className="badge badge-warning" title="HS W-E/Fériés">{hsWkFerie.toFixed(1)}h</span>
+                          )}
+                          {hsJour === 0 && hsNuit === 0 && hsWkFerie === 0 && (
+                            parseFloat(h.heures_supplementaires || 0) > 0
+                              ? <span className="badge badge-info" title="HS (approx.)">{parseFloat(h.heures_supplementaires).toFixed(1)}h</span>
+                              : h.heure_depart
+                                ? <span className="text-muted" style={{ fontSize: 11 }}>0</span>
+                                : <span className="text-muted">—</span>
+                          )}
                         </td>
                         <td>
                           <span className={`badge ${cfg.cls}`} style={{ fontSize: 10 }}>{cfg.label}</span>
+                          {h.est_retard && h.minutes_retard > 0 && (
+                            <div style={{ fontSize: 9, color: '#856404', marginTop: 1 }}>
+                              {h.minutes_retard} min
+                            </div>
+                          )}
                         </td>
                         <td style={{ fontSize: 11 }}>
                           <span className="text-muted">{h.note || '—'}</span>

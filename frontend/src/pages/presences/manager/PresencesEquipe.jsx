@@ -1,20 +1,9 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import ManagerLayout from '../../../components/layout/ManagerLayout'
 import Spinner from '../../../components/Spinner'
 import { getRapportEquipe, getPointages } from '../../../api/presences'
-
-const MONTH_NAMES = ['Janvier','Février','Mars','Avril','Mai','Juin',
-  'Juillet','Août','Septembre','Octobre','Novembre','Décembre']
-
-const STATUT_CONFIG = {
-  PRESENT: { cls: 'badge-success',   label: 'Présent' },
-  ABSENT:  { cls: 'badge-danger',    label: 'Absent' },
-  RETARD:  { cls: 'badge-warning',   label: 'Retard' },
-  CONGE:   { cls: 'badge-primary',   label: 'Congé' },
-  FERIE:   { cls: 'badge-secondary', label: 'Férié' },
-  WEEKEND: { cls: 'badge-light',     label: 'WE' },
-}
 
 function TauxBadge({ taux }) {
   const color = taux >= 90 ? '#28A745' : taux >= 75 ? '#FD7E14' : '#DC3545'
@@ -35,6 +24,24 @@ function fmtHeure(t) {
 }
 
 export default function PresencesEquipe() {
+  const { t } = useTranslation()
+
+  const MONTH_NAMES = [
+    t('common.months.1'), t('common.months.2'), t('common.months.3'),
+    t('common.months.4'), t('common.months.5'), t('common.months.6'),
+    t('common.months.7'), t('common.months.8'), t('common.months.9'),
+    t('common.months.10'), t('common.months.11'), t('common.months.12'),
+  ]
+
+  const STATUT_CONFIG = {
+    PRESENT: { cls: 'badge-success',   label: t('presences.present') },
+    ABSENT:  { cls: 'badge-danger',    label: t('presences.absent') },
+    RETARD:  { cls: 'badge-warning',   label: t('presences.retard') },
+    CONGE:   { cls: 'badge-primary',   label: t('presences.conge') },
+    FERIE:   { cls: 'badge-secondary', label: t('presences.ferie') },
+    WEEKEND: { cls: 'badge-light',     label: t('presences.weekend_short') },
+  }
+
   const today = new Date()
   const [annee, setAnnee] = useState(today.getFullYear())
   const [mois,  setMois]  = useState(today.getMonth())
@@ -53,7 +60,7 @@ export default function PresencesEquipe() {
       const res = await getRapportEquipe(moisParam)
       setRapport(res.data.employes || [])
     } catch {
-      toast.error('Impossible de charger le rapport de présences.', { id: 'presences-equipe-error' })
+      toast.error(t('presences.load_error'), { id: 'presences-equipe-error' })
     } finally {
       setLoading(false)
     }
@@ -68,7 +75,7 @@ export default function PresencesEquipe() {
       const res = await getPointages({ employe: emp.employe_id, mois: moisParam })
       setDetail(res.data.results ?? res.data)
     } catch {
-      toast.error('Impossible de charger le détail.')
+      toast.error(t('presences.detail_load_error'))
     } finally {
       setLoadingDetail(false)
     }
@@ -85,14 +92,14 @@ export default function PresencesEquipe() {
 
   if (loading) {
     return (
-      <ManagerLayout pageTitle="Présences équipe">
-        <Spinner message="Chargement du rapport…" />
+      <ManagerLayout pageTitle={t('presences.team_presences')}>
+        <Spinner message={t('presences.loading_report')} />
       </ManagerLayout>
     )
   }
 
   return (
-    <ManagerLayout pageTitle="Présences équipe">
+    <ManagerLayout pageTitle={t('presences.team_presences')}>
 
       {/* Sélecteur de mois */}
       <div className="d-flex align-items-center justify-content-between mb-3">
@@ -107,7 +114,11 @@ export default function PresencesEquipe() {
             <i className="fas fa-chevron-right" />
           </button>
         </div>
-        <span className="badge badge-info">{rapport.length} employé{rapport.length !== 1 ? 's' : ''}</span>
+        <span className="badge badge-info">
+          {rapport.length !== 1
+            ? t('presences.n_employees_plural', { count: rapport.length })
+            : t('presences.n_employees', { count: rapport.length })}
+        </span>
       </div>
 
       {/* Tableau récapitulatif */}
@@ -116,20 +127,20 @@ export default function PresencesEquipe() {
           {rapport.length === 0 ? (
             <div className="text-center py-4 text-muted">
               <i className="fas fa-users-slash fa-2x mb-2 d-block" />
-              Aucun employé dans votre équipe ce mois.
+              {t('presences.no_team_employees')}
             </div>
           ) : (
             <div className="table-responsive">
               <table className="table table-bordered table-hover mb-0">
                 <thead>
                   <tr>
-                    <th>Employé</th>
-                    <th>Département</th>
-                    <th className="text-center">Présents</th>
-                    <th className="text-center">Absents</th>
-                    <th className="text-center">Retards</th>
-                    <th className="text-center">Heures</th>
-                    <th className="text-center">Taux</th>
+                    <th>{t('presences.employee_col')}</th>
+                    <th>{t('presences.dept_col')}</th>
+                    <th className="text-center">{t('presences.present_col')}</th>
+                    <th className="text-center">{t('presences.absent_col')}</th>
+                    <th className="text-center">{t('presences.late_col')}</th>
+                    <th className="text-center">{t('presences.hours_col')}</th>
+                    <th className="text-center">{t('presences.rate_col')}</th>
                     <th className="text-center"></th>
                   </tr>
                 </thead>
@@ -184,7 +195,7 @@ export default function PresencesEquipe() {
           style={{ background: 'rgba(0,0,0,.5)' }}
           onClick={e => { if (e.target === e.currentTarget) setSelected(null) }}
         >
-          <div className="modal-dialog modal-lg">
+          <div className="modal-dialog modal-lg modal-dialog-scrollable">
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">
@@ -201,18 +212,18 @@ export default function PresencesEquipe() {
                     <i className="fas fa-spinner fa-spin fa-2x" style={{ color: 'var(--acerfi-blue)' }} />
                   </div>
                 ) : detail.length === 0 ? (
-                  <div className="text-center py-4 text-muted">Aucun pointage ce mois.</div>
+                  <div className="text-center py-4 text-muted">{t('presences.no_pointages')}</div>
                 ) : (
                   <div className="table-responsive">
                     <table className="table table-sm table-bordered mb-0">
                       <thead>
                         <tr>
-                          <th>Date</th>
-                          <th className="text-center">Arrivée</th>
-                          <th className="text-center">Départ</th>
-                          <th className="text-center">Heures</th>
-                          <th>Statut</th>
-                          <th>Note</th>
+                          <th>{t('presences.date_col')}</th>
+                          <th className="text-center">{t('presences.arrival')}</th>
+                          <th className="text-center">{t('presences.departure')}</th>
+                          <th className="text-center">{t('presences.hours_col')}</th>
+                          <th>{t('presences.status_col')}</th>
+                          <th>{t('presences.note_col')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -252,23 +263,23 @@ export default function PresencesEquipe() {
                 <div className="row text-center w-100 mx-0">
                   <div className="col">
                     <strong className="text-success">{selected.jours_presents}</strong>
-                    <div style={{ fontSize: 11 }} className="text-muted">Présents</div>
+                    <div style={{ fontSize: 11 }} className="text-muted">{t('presences.present_col')}</div>
                   </div>
                   <div className="col">
                     <strong className="text-danger">{selected.jours_absents}</strong>
-                    <div style={{ fontSize: 11 }} className="text-muted">Absents</div>
+                    <div style={{ fontSize: 11 }} className="text-muted">{t('presences.absent_col')}</div>
                   </div>
                   <div className="col">
                     <strong className="text-warning">{selected.jours_retard}</strong>
-                    <div style={{ fontSize: 11 }} className="text-muted">Retards</div>
+                    <div style={{ fontSize: 11 }} className="text-muted">{t('presences.late_col')}</div>
                   </div>
                   <div className="col">
                     <strong style={{ color: 'var(--acerfi-blue)' }}>{selected.total_heures}h</strong>
-                    <div style={{ fontSize: 11 }} className="text-muted">Heures</div>
+                    <div style={{ fontSize: 11 }} className="text-muted">{t('presences.hours_col')}</div>
                   </div>
                   <div className="col">
                     <TauxBadge taux={selected.taux_presence} />
-                    <div style={{ fontSize: 11 }} className="text-muted">Taux</div>
+                    <div style={{ fontSize: 11 }} className="text-muted">{t('presences.rate_col')}</div>
                   </div>
                 </div>
               </div>
