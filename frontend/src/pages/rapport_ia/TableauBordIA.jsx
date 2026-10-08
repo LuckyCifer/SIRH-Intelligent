@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import RHLayout from '../../components/layout/RHLayout'
 import Spinner from '../../components/Spinner'
@@ -10,9 +11,8 @@ const NIVEAU_CLS = { CRITIQUE: 'badge-danger', IMPORTANT: 'badge-warning', INFO:
 const PRIO_CLS   = { HAUTE: 'text-danger', MOYENNE: 'text-warning', BASSE: 'text-success' }
 const TENDANCE_ICON = { HAUSSE: 'fas fa-arrow-up text-success', STABLE: 'fas fa-minus text-info', BAISSE: 'fas fa-arrow-down text-danger' }
 
-function ScoreGauge({ score }) {
+function ScoreGauge({ score, label, sublabel }) {
   const color = score >= 85 ? '#28A745' : score >= 70 ? '#5ba3d9' : score >= 55 ? '#FD7E14' : '#DC3545'
-  const label = score >= 85 ? 'Excellent' : score >= 70 ? 'Bon' : score >= 55 ? 'Correct' : 'Fragile'
   return (
     <div className="text-center py-3">
       <div style={{
@@ -26,13 +26,14 @@ function ScoreGauge({ score }) {
         <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>/100</span>
       </div>
       <div className="mt-2" style={{ fontWeight: 600, color, fontSize: 14 }}>{label}</div>
-      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Score santé RH</div>
+      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{sublabel}</div>
     </div>
   )
 }
 
 export default function TableauBordIA() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [dernier,   setDernier]   = useState(null)
   const [historique, setHistorique] = useState([])
   const [loading,   setLoading]   = useState(true)
@@ -58,8 +59,8 @@ export default function TableauBordIA() {
 
   if (loading) {
     return (
-      <RHLayout pageTitle="Rapport IA — Santé RH">
-        <Spinner message="Chargement…" />
+      <RHLayout pageTitle={t('rapport_ia.title')}>
+        <Spinner message={t('common.loading')} />
       </RHLayout>
     )
   }
@@ -68,16 +69,27 @@ export default function TableauBordIA() {
     .sort((a, b) => a.annee !== b.annee ? a.annee - b.annee : a.mois - b.mois)
     .map(r => ({ name: `${r.annee}-${String(r.mois).padStart(2, '0')}`, score: r.score_sante_rh }))
 
+  const getScoreLabel = (score) =>
+    score >= 85 ? t('rapport_ia.score_labels.excellent')
+    : score >= 70 ? t('rapport_ia.score_labels.bon')
+    : score >= 55 ? t('rapport_ia.score_labels.correct')
+    : t('rapport_ia.score_labels.fragile')
+
+  const getNiveauLabel = (niveau) => {
+    const map = { CRITIQUE: t('rapport_ia.level_critical'), IMPORTANT: t('rapport_ia.level_important'), INFO: t('rapport_ia.level_info') }
+    return map[niveau] || niveau
+  }
+
   return (
-    <RHLayout pageTitle="Rapport IA — Santé RH">
+    <RHLayout pageTitle={t('rapport_ia.title')}>
 
       {/* En-tête actions */}
       <div className="d-flex justify-content-between align-items-center mb-3">
         <p className="mb-0" style={{ color: 'var(--text-muted)', fontSize: 13 }}>
-          Analyse IA mensuelle des indicateurs RH
+          {t('rapport_ia.subtitle')}
         </p>
         <Link to="/rh/rapport-ia/generer" className="btn btn-primary btn-sm">
-          <i className="fas fa-robot mr-1" />Générer un rapport
+          <i className="fas fa-robot mr-1" />{t('rapport_ia.generate')}
         </Link>
       </div>
 
@@ -85,10 +97,10 @@ export default function TableauBordIA() {
         <div className="card">
           <div className="card-body text-center py-5">
             <i className="fas fa-chart-line fa-3x mb-3" style={{ color: 'var(--acerfi-blue)' }} />
-            <h5 style={{ color: 'var(--text-primary)' }}>Aucun rapport disponible</h5>
-            <p style={{ color: 'var(--text-muted)' }}>Générez votre premier rapport IA mensuel.</p>
+            <h5 style={{ color: 'var(--text-primary)' }}>{t('rapport_ia.no_report')}</h5>
+            <p style={{ color: 'var(--text-muted)' }}>{t('rapport_ia.generate_first')}</p>
             <Link to="/rh/rapport-ia/generer" className="btn btn-primary">
-              <i className="fas fa-robot mr-1" />Générer maintenant
+              <i className="fas fa-robot mr-1" />{t('rapport_ia.generate')}
             </Link>
           </div>
         </div>
@@ -99,10 +111,14 @@ export default function TableauBordIA() {
             <div className="col-lg-3 col-md-4">
               <div className="card">
                 <div className="card-body">
-                  <ScoreGauge score={Math.round(dernier.score_sante_rh)} />
+                  <ScoreGauge
+                    score={Math.round(dernier.score_sante_rh)}
+                    label={getScoreLabel(Math.round(dernier.score_sante_rh))}
+                    sublabel={t('rapport_ia.score_sante')}
+                  />
                   <hr style={{ borderColor: 'var(--border-color)' }} />
                   <div className="text-center" style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                    Rapport {dernier.periode}
+                    {t('rapport_ia.report_prefix')} {dernier.periode}
                   </div>
                 </div>
               </div>
@@ -113,7 +129,7 @@ export default function TableauBordIA() {
                 <div className="card-header">
                   <h3 className="card-title" style={{ color: 'var(--text-primary)' }}>
                     <i className="fas fa-file-alt mr-2" style={{ color: 'var(--acerfi-blue)' }} />
-                    Résumé exécutif
+                    {t('rapport_ia.executive_summary')}
                   </h3>
                   <div className="card-tools">
                     {dernier.indicateurs_cles?.tendance && (
@@ -123,19 +139,19 @@ export default function TableauBordIA() {
                 </div>
                 <div className="card-body">
                   <p style={{ color: 'var(--text-primary)', fontSize: 13, lineHeight: 1.7 }}>
-                    {dernier.resume_executif || 'Résumé non disponible.'}
+                    {dernier.resume_executif || t('common.no_data')}
                   </p>
                   {dernier.indicateurs_cles && (
                     <div className="row mt-2">
                       <div className="col-6">
                         <div className="p-2 rounded" style={{ background: 'rgba(40,167,69,.1)', border: '1px solid rgba(40,167,69,.3)' }}>
-                          <div style={{ fontSize: 10, color: '#28A745', fontWeight: 700, textTransform: 'uppercase' }}>Point fort</div>
+                          <div style={{ fontSize: 10, color: '#28A745', fontWeight: 700, textTransform: 'uppercase' }}>{t('rapport_ia.strength')}</div>
                           <div style={{ fontSize: 12, color: 'var(--text-primary)' }}>{dernier.indicateurs_cles.point_fort}</div>
                         </div>
                       </div>
                       <div className="col-6">
                         <div className="p-2 rounded" style={{ background: 'rgba(253,126,20,.1)', border: '1px solid rgba(253,126,20,.3)' }}>
-                          <div style={{ fontSize: 10, color: '#FD7E14', fontWeight: 700, textTransform: 'uppercase' }}>Vigilance</div>
+                          <div style={{ fontSize: 10, color: '#FD7E14', fontWeight: 700, textTransform: 'uppercase' }}>{t('rapport_ia.vigilance')}</div>
                           <div style={{ fontSize: 12, color: 'var(--text-primary)' }}>{dernier.indicateurs_cles.point_vigilance}</div>
                         </div>
                       </div>
@@ -143,7 +159,7 @@ export default function TableauBordIA() {
                   )}
                   <div className="mt-2 text-right">
                     <Link to={`/rh/rapport-ia/${dernier.id}`} className="btn btn-xs btn-outline-primary">
-                      <i className="fas fa-eye mr-1" />Voir le rapport complet
+                      <i className="fas fa-eye mr-1" />{t('rapport_ia.view_full')}
                     </Link>
                   </div>
                 </div>
@@ -158,20 +174,22 @@ export default function TableauBordIA() {
                 <div className="card-header">
                   <h3 className="card-title" style={{ color: 'var(--text-primary)' }}>
                     <i className="fas fa-exclamation-triangle mr-2 text-warning" />
-                    Alertes IA ({(dernier.alertes_ia || []).length})
+                    {t('rapport_ia.ia_alerts')} ({(dernier.alertes_ia || []).length})
                   </h3>
                 </div>
                 <div className="card-body p-0">
                   {(dernier.alertes_ia || []).length === 0 ? (
                     <div className="text-center py-3 text-muted" style={{ fontSize: 13 }}>
-                      <i className="fas fa-check-circle mr-1 text-success" />Aucune alerte
+                      <i className="fas fa-check-circle mr-1 text-success" />{t('rapport_ia.no_alerts')}
                     </div>
                   ) : (
                     <ul className="list-group list-group-flush">
                       {(dernier.alertes_ia || []).map((a, i) => (
                         <li key={i} className="list-group-item" style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
                           <div className="d-flex align-items-start">
-                            <span className={`badge ${NIVEAU_CLS[a.niveau] || 'badge-secondary'} mr-2 mt-1`}>{a.niveau}</span>
+                            <span className={`badge ${NIVEAU_CLS[a.niveau] || 'badge-secondary'} mr-2 mt-1`}>
+                              {getNiveauLabel(a.niveau)}
+                            </span>
                             <div>
                               <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 13 }}>{a.titre}</div>
                               <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{a.detail}</div>
@@ -190,13 +208,13 @@ export default function TableauBordIA() {
                 <div className="card-header">
                   <h3 className="card-title" style={{ color: 'var(--text-primary)' }}>
                     <i className="fas fa-lightbulb mr-2" style={{ color: 'var(--acerfi-blue)' }} />
-                    Recommandations ({(dernier.recommandations || []).length})
+                    {t('rapport_ia.recommendations')} ({(dernier.recommandations || []).length})
                   </h3>
                 </div>
                 <div className="card-body p-0">
                   {(dernier.recommandations || []).length === 0 ? (
                     <div className="text-center py-3 text-muted" style={{ fontSize: 13 }}>
-                      Aucune recommandation
+                      {t('rapport_ia.no_recommendations')}
                     </div>
                   ) : (
                     <ul className="list-group list-group-flush">
@@ -226,7 +244,7 @@ export default function TableauBordIA() {
           <div className="card-header">
             <h3 className="card-title" style={{ color: 'var(--text-primary)' }}>
               <i className="fas fa-chart-line mr-2" style={{ color: 'var(--acerfi-blue)' }} />
-              Évolution du score santé RH
+              {t('rapport_ia.score_evolution')}
             </h3>
           </div>
           <div className="card-body">
@@ -250,7 +268,7 @@ export default function TableauBordIA() {
         <div className="card">
           <div className="card-header">
             <h3 className="card-title" style={{ color: 'var(--text-primary)' }}>
-              <i className="fas fa-history mr-2" />Historique des rapports
+              <i className="fas fa-history mr-2" />{t('rapport_ia.history')}
             </h3>
           </div>
           <div className="card-body p-0">
@@ -258,12 +276,12 @@ export default function TableauBordIA() {
               <table className="table table-hover table-bordered mb-0">
                 <thead>
                   <tr>
-                    <th>Période</th>
-                    <th>Type</th>
-                    <th className="text-center">Score</th>
-                    <th>Tendance</th>
-                    <th className="text-center">Alertes</th>
-                    <th className="text-center">Actions</th>
+                    <th>{t('rapport_ia.col_period')}</th>
+                    <th>{t('rapport_ia.col_type')}</th>
+                    <th className="text-center">{t('rapport_ia.col_score')}</th>
+                    <th>{t('rapport_ia.col_trend')}</th>
+                    <th className="text-center">{t('rapport_ia.col_alerts')}</th>
+                    <th className="text-center">{t('common.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>

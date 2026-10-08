@@ -2,7 +2,7 @@
 Services Rapport IA Mensuel
 - collecter_donnees_rh : collecte les métriques de tous les modules RH
 - calculer_score_sans_ia : score santé RH sans IA (moyenne pondérée)
-- generer_rapport_ia : appel Groq + fallback sans clé
+- generer_rapport_ia : appel IA (Gemini → Groq) + fallback sans clé
 """
 import json
 import logging
@@ -10,6 +10,8 @@ import threading
 from datetime import date
 from django.conf import settings
 from django.db.models import Sum
+
+from ia.client import appeler_ia, parser_json
 
 logger = logging.getLogger(__name__)
 
@@ -230,46 +232,6 @@ def calculer_score_sans_ia(donnees):
     return round(score, 1)
 
 
-def _parse_groq_response(raw: str) -> dict:
-    if raw.startswith("```"):
-        parts = raw.split("```")
-        raw = parts[1] if len(parts) > 1 else raw
-        if raw.startswith("json"):
-            raw = raw[4:]
-    return json.loads(raw.strip())
-
-
-def _appel_groq(donnees: dict) -> dict:
-    from groq import Groq
-    import time
-
-    client = Groq(api_key=settings.GROQ_API_KEY)
-    prompt = f"Données RH du mois {donnees['periode']} :\n\n{json.dumps(donnees, ensure_ascii=False, indent=2)}"
-
-    delays = [0, 3, 8]
-    last_err = None
-    for attempt, delay in enumerate(delays, start=1):
-        if delay:
-            time.sleep(delay)
-        try:
-            completion = client.chat.completions.create(
-                model=settings.GROQ_MODEL,
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT_RH},
-                    {"role": "user",   "content": prompt},
-                ],
-                temperature=0.3,
-                max_tokens=1200,
-            )
-            raw = completion.choices[0].message.content.strip()
-            return _parse_groq_response(raw)
-        except Exception as exc:
-            last_err = exc
-            logger.warning("Groq rapport IA tentative %d: %s", attempt, exc)
-
-    raise RuntimeError(f"Groq échec après {len(delays)} tentatives : {last_err}")
-
-
 def generer_rapport_ia(rapport_id: int) -> None:
     from .models import RapportIAMensuel
 
@@ -288,27 +250,37 @@ def generer_rapport_ia(rapport_id: int) -> None:
         )
         rapport.donnees_collectees = donnees
 
-        if not settings.GROQ_API_KEY:
-            logger.warning("GROQ_API_KEY non configurée — rapport sans IA")
+        gemini_key     = getattr(settings, "GEMINI_API_KEY", "")
+        openrouter_key = getattr(settings, "OPENROUTER_API_KEY", "")
+        aucune_cle     = not gemini_key and not openrouter_key
+
+        if aucune_cle:
+            logger.warning("Aucune clé IA configurée — rapport sans IA")
             score = calculer_score_sans_ia(donnees)
-            rapport.score_sante_rh  = score
-            rapport.resume_executif = "Rapport généré sans IA (clé non configurée)"
-            rapport.recommandations = []
-            rapport.alertes_ia      = []
+            rapport.score_sante_rh   = score
+            rapport.resume_executif  = "Rapport généré sans IA (aucune clé configurée)"
+            rapport.recommandations  = []
+            rapport.alertes_ia       = []
             rapport.indicateurs_cles = {
-                "point_fort": "Données collectées avec succès",
+                "point_fort":      "Données collectées avec succès",
                 "point_vigilance": "Analyse IA non disponible",
-                "tendance": "STABLE",
+                "tendance":        "STABLE",
             }
             rapport.contenu_rapport = (
                 f"# Rapport RH — {donnees['periode']}\n\n"
                 f"**Score santé RH : {score}/100**\n\n"
-                "Ce rapport a été généré sans analyse IA (GROQ_API_KEY non configurée). "
+                "Ce rapport a été généré sans analyse IA (aucune clé configurée). "
                 "Les données brutes sont disponibles ci-dessous.\n\n"
                 f"```json\n{json.dumps(donnees, ensure_ascii=False, indent=2)}\n```"
             )
         else:
-            ia_result = _appel_groq(donnees)
+            prompt = (
+                f"Données RH du mois {donnees['periode']} :\n\n"
+                + json.dumps(donnees, ensure_ascii=False, indent=2)
+            )
+            raw = appeler_ia(prompt, system=SYSTEM_PROMPT_RH, temperature=0.3)
+            ia_result = parser_json(raw)
+
             rapport.score_sante_rh   = float(ia_result.get("score_sante_rh", calculer_score_sans_ia(donnees)))
             rapport.resume_executif  = ia_result.get("resume_executif", "")
             rapport.indicateurs_cles = ia_result.get("indicateurs_cles", {})

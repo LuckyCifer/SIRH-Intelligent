@@ -8,9 +8,8 @@ from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
 
-load_dotenv()
-
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / '.env', override=True)
 
 # ─── Sécurité ────────────────────────────────────────────────
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-insecure")
@@ -126,10 +125,33 @@ SIMPLE_JWT = {
 # ─── CORS ─────────────────────────────────────────────────────
 CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173").split(",")
 CORS_ALLOW_CREDENTIALS = True
+CORS_EXPOSE_HEADERS = ["Content-Disposition"]
 
-# ─── Groq IA ─────────────────────────────────────────────────
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+# ─── Agents IA ───────────────────────────────────────────────
+# Gemini (principal)
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_MODEL   = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
+# OpenRouter (secondaire / fallback)
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+OPENROUTER_MODEL   = os.getenv("OPENROUTER_MODEL", "google/gemma-4-26b-a4b-it:free")
+
+# ─── Mobile Money ─────────────────────────────────────────────
+# MTN MoMo Disbursement (https://momodeveloper.mtn.com)
+MTN_MOMO_SUBSCRIPTION_KEY = os.getenv("MTN_MOMO_SUBSCRIPTION_KEY", "")
+MTN_MOMO_API_USER         = os.getenv("MTN_MOMO_API_USER",         "")
+MTN_MOMO_API_KEY          = os.getenv("MTN_MOMO_API_KEY",          "")
+MTN_MOMO_ENVIRONMENT      = os.getenv("MTN_MOMO_ENVIRONMENT",      "sandbox")
+MTN_MOMO_BASE_URL         = os.getenv("MTN_MOMO_BASE_URL",
+                                       "https://sandbox.momodeveloper.mtn.com")
+# Orange Money Business (https://developer.orange.com)
+ORANGE_MONEY_CLIENT_ID     = os.getenv("ORANGE_MONEY_CLIENT_ID",     "")
+ORANGE_MONEY_CLIENT_SECRET = os.getenv("ORANGE_MONEY_CLIENT_SECRET", "")
+ORANGE_MONEY_MERCHANT_KEY  = os.getenv("ORANGE_MONEY_MERCHANT_KEY",  "")
+ORANGE_MONEY_BASE_URL      = os.getenv("ORANGE_MONEY_BASE_URL",      "https://api.orange.com")
+
+# ─── Notch Pay (agrégateur MTN + Orange — prioritaire) ───────────────────────
+NOTCHPAY_API_KEY  = os.getenv("NOTCHPAY_API_KEY",  "")
+NOTCHPAY_BASE_URL = os.getenv("NOTCHPAY_BASE_URL", "https://api.notchpay.co")
 
 # ─── Internationalisation ─────────────────────────────────────
 LANGUAGE_CODE = "fr-fr"

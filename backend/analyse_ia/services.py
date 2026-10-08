@@ -1,11 +1,10 @@
 """
-Service d'analyse IA — Groq / Llama 3.3-70b-versatile
-Appele automatiquement a la soumission d'un rapport.
+Service d'analyse IA — stagiaires ACERFI
+Utilise ia.client (Gemini principal, Groq fallback).
 """
-import json
 import logging
-import time
 from django.conf import settings
+from ia.client import appeler_ia_complet, parser_json
 
 logger = logging.getLogger(__name__)
 
@@ -59,26 +58,17 @@ AUCUNE  : Rapport satisfaisant au regard du niveau attendu
 """
 
 
-def _parse_groq_response(raw: str) -> dict:
-    """Nettoie et parse la réponse JSON de Groq."""
-    if raw.startswith("```"):
-        parts = raw.split("```")
-        raw = parts[1] if len(parts) > 1 else raw
-        if raw.startswith("json"):
-            raw = raw[4:]
-    return json.loads(raw.strip())
-
-
 def analyser_rapport(rapport) -> None:
     """
-    Analyse un rapport hebdomadaire via l'API Groq et enregistre le résultat.
-    Retry automatique jusqu'à 3 tentatives (délais : 0s, 2s, 5s).
+    Analyse un rapport hebdomadaire via l'agent IA (Gemini ou Groq).
     Ne bloque jamais la soumission en cas d'échec.
     """
     from .models import AnalyseIA
 
-    if not settings.GROQ_API_KEY:
-        logger.warning("GROQ_API_KEY non configurée — analyse IA ignorée.")
+    gemini_key     = getattr(settings, "GEMINI_API_KEY", "")
+    openrouter_key = getattr(settings, "OPENROUTER_API_KEY", "")
+    if not gemini_key and not openrouter_key:
+        logger.warning("Aucune clé IA configurée — analyse ignorée.")
         return
 
     contenu = f"""
@@ -99,59 +89,28 @@ Période   : {rapport.date_debut_semaine} → {rapport.date_fin_semaine}
 {rapport.objectifs_semaine_suiv or "Non renseigné"}
     """.strip()
 
-    delays = [0, 2, 5]
-    last_error = None
-
-    for attempt, delay in enumerate(delays, start=1):
-        if delay:
-            time.sleep(delay)
-        try:
-            from groq import Groq
-            client = Groq(api_key=settings.GROQ_API_KEY)
-            completion = client.chat.completions.create(
-                model=settings.GROQ_MODEL,
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user",   "content": f"Analyse ce rapport :\n\n{contenu}"},
-                ],
-                temperature=0.3,
-                max_tokens=900,
-            )
-
-            raw  = completion.choices[0].message.content.strip()
-            data = _parse_groq_response(raw)
-
-            AnalyseIA.objects.update_or_create(
-                rapport=rapport,
-                defaults={
-                    "score_engagement":     int(data.get("score_engagement", 50)),
-                    "points_forts":         data.get("points_forts", []),
-                    "points_amelioration":  data.get("points_amelioration", []),
-                    "synthese":             data.get("synthese", ""),
-                    "recommandation":       data.get("recommandation", ""),
-                    "niveau_alerte":        data.get("niveau_alerte", "AUCUNE"),
-                    "motif_alerte":         data.get("motif_alerte", ""),
-                    "competences_detectees": data.get("competences_detectees", []),
-                    "progression_estimee":  data.get("progression_estimee", "MOYENNE"),
-                    "modele_utilise":       settings.GROQ_MODEL,
-                    "tokens_utilises":      completion.usage.total_tokens if completion.usage else 0,
-                },
-            )
-            logger.info(
-                f"Analyse IA créée rapport #{rapport.pk} — "
-                f"score {data.get('score_engagement')}/100 "
-                f"(tentative {attempt})"
-            )
-            return
-
-        except json.JSONDecodeError as e:
-            last_error = e
-            logger.warning(f"Parsing JSON Groq rapport #{rapport.pk} tentative {attempt}: {e}")
-        except Exception as e:
-            last_error = e
-            logger.warning(f"Erreur Groq rapport #{rapport.pk} tentative {attempt}: {e}")
-
-    logger.error(
-        f"Analyse IA abandonnée rapport #{rapport.pk} après {len(delays)} tentatives. "
-        f"Dernière erreur : {last_error}"
-    )
+    try:
+        raw, modele = appeler_ia_complet(f"Analyse ce rapport :\n\n{contenu}", system=SYSTEM_PROMPT, temperature=0.3)
+        data = parser_json(raw)
+        AnalyseIA.objects.update_or_create(
+            rapport=rapport,
+            defaults={
+                "score_engagement":      int(data.get("score_engagement", 50)),
+                "points_forts":          data.get("points_forts", []),
+                "points_amelioration":   data.get("points_amelioration", []),
+                "synthese":              data.get("synthese", ""),
+                "recommandation":        data.get("recommandation", ""),
+                "niveau_alerte":         data.get("niveau_alerte", "AUCUNE"),
+                "motif_alerte":          data.get("motif_alerte", ""),
+                "competences_detectees": data.get("competences_detectees", []),
+                "progression_estimee":   data.get("progression_estimee", "MOYENNE"),
+                "modele_utilise":        modele,
+                "tokens_utilises":       0,
+            },
+        )
+        logger.info(
+            "Analyse IA rapport #%d — score %s/100",
+            rapport.pk, data.get("score_engagement"),
+        )
+    except Exception as exc:
+        logger.error("Analyse IA abandonnée rapport #%d : %s", rapport.pk, exc)
