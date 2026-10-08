@@ -1,32 +1,21 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
 import EncadreurLayout from '../../components/layout/EncadreurLayout'
 import Spinner from '../../components/Spinner'
 import { getMonDashboard } from '../../api/encadreur'
 import FiliereBadge from '../../components/ui/FiliereBadge'
 import { getFiliere } from '../../constants/filieres'
 
-const ALERTE_CONFIG = {
-  AUCUNE:  { cls: 'badge-success',  icon: '🟢', label: 'Aucune alerte',  pulse: false },
-  FAIBLE:  { cls: 'badge-success',  icon: '🟡', label: 'Faible',          pulse: false },
-  MOYENNE: { cls: 'badge-warning',  icon: '🟠', label: 'Moyenne',         pulse: true  },
-  ELEVEE:  { cls: 'badge-danger',   icon: '🔴', label: 'Élevée',          pulse: true  },
-}
-
-const STATUT_PERIODE = {
-  EN_COURS:  { cls: 'badge-primary', label: 'En cours' },
-  TERMINE:   { cls: 'badge-secondary', label: 'Terminé' },
-  ABANDONNE: { cls: 'badge-danger',    label: 'Abandonné' },
-}
-
 function ScoreBar({ score }) {
+  const { t } = useTranslation()
   if (score == null) return <span className="text-muted" style={{ fontSize: 12 }}>—</span>
   const color = score >= 80 ? '#28a745' : score >= 60 ? '#2E74B5' : score >= 40 ? '#fd7e14' : '#dc3545'
   return (
     <div>
       <div className="d-flex justify-content-between" style={{ fontSize: 12, marginBottom: 2 }}>
-        <span style={{ color }}>Score IA moyen : <strong>{score}/100</strong></span>
+        <span style={{ color }}>{t('encadreur.ia_score_bar')} <strong>{score}/100</strong></span>
       </div>
       <div className="progress" style={{ height: 6 }}>
         <div className="progress-bar" role="progressbar"
@@ -36,14 +25,28 @@ function ScoreBar({ score }) {
   )
 }
 
-function fmtDate(d) {
-  if (!d) return '—'
-  const [y, m, j] = d.split('-')
-  const mois = ['jan.', 'fév.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sep.', 'oct.', 'nov.', 'déc.']
-  return `${parseInt(j)} ${mois[parseInt(m) - 1]} ${y}`
-}
-
 export default function MesStagiaires() {
+  const { t, i18n } = useTranslation()
+  const locale = i18n.language === 'en' ? 'en-US' : 'fr-FR'
+
+  const ALERTE_CONFIG = {
+    AUCUNE:  { cls: 'badge-success',  icon: 'fas fa-circle text-success',             label: t('encadreur.alert_none_full'), pulse: false },
+    FAIBLE:  { cls: 'badge-success',  icon: 'fas fa-circle text-success',             label: t('encadreur.alert_low'),       pulse: false },
+    MOYENNE: { cls: 'badge-warning',  icon: 'fas fa-exclamation-circle text-warning', label: t('encadreur.alert_medium'),    pulse: true  },
+    ELEVEE:  { cls: 'badge-danger',   icon: 'fas fa-exclamation-triangle text-danger',label: t('encadreur.alert_high'),      pulse: true  },
+  }
+
+  const STATUT_PERIODE = {
+    EN_COURS:  { cls: 'badge-primary',   label: t('encadreur.period_ongoing') },
+    TERMINE:   { cls: 'badge-secondary', label: t('encadreur.period_done') },
+    ABANDONNE: { cls: 'badge-danger',    label: t('encadreur.period_abandoned') },
+  }
+
+  function fmtDate(d) {
+    if (!d) return '—'
+    return new Date(d + 'T12:00:00').toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })
+  }
+
   const [stagiaires, setStagiaires] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -52,14 +55,14 @@ export default function MesStagiaires() {
   useEffect(() => {
     getMonDashboard()
       .then(r => setStagiaires(r.data.stagiaires || []))
-      .catch(() => toast.error('Impossible de charger les stagiaires.'))
+      .catch(() => toast.error(t('encadreur.load_error_interns')))
       .finally(() => setLoading(false))
   }, [])
 
   if (loading) {
     return (
-      <EncadreurLayout pageTitle="Mes stagiaires">
-        <Spinner message="Chargement des stagiaires…" />
+      <EncadreurLayout pageTitle={t('encadreur.stagiaires_page')}>
+        <Spinner message={t('encadreur.loading_interns')} />
       </EncadreurLayout>
     )
   }
@@ -74,7 +77,7 @@ export default function MesStagiaires() {
   })
 
   return (
-    <EncadreurLayout pageTitle="Mes stagiaires">
+    <EncadreurLayout pageTitle={t('encadreur.stagiaires_page')}>
       <style>{`
         @keyframes pulse-ring {
           0%   { box-shadow: 0 0 0 0 rgba(220,53,69,.4); }
@@ -84,7 +87,7 @@ export default function MesStagiaires() {
         .alerte-pulse { animation: pulse-ring 1.8s ease-in-out infinite; }
       `}</style>
 
-      {/* ── Filtres ── */}
+      {/* Filtres */}
       <div className="row mb-3">
         <div className="col-md-6">
           <div className="input-group input-group-sm">
@@ -94,7 +97,7 @@ export default function MesStagiaires() {
             <input
               type="text"
               className="form-control"
-              placeholder="Rechercher par nom ou username…"
+              placeholder={t('encadreur.search_placeholder')}
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
@@ -102,7 +105,7 @@ export default function MesStagiaires() {
         </div>
         <div className="col-md-3">
           <select className="form-control form-control-sm" value={filtreFiliere} onChange={e => setFiltreFiliere(e.target.value)}>
-            <option value="">Toutes les filières</option>
+            <option value="">{t('encadreur.all_filieres')}</option>
             {filieres.map(f => <option key={f} value={f}>{f}</option>)}
           </select>
         </div>
@@ -116,7 +119,7 @@ export default function MesStagiaires() {
       {filtered.length === 0 ? (
         <div className="text-center py-5 text-muted">
           <i className="fas fa-user-slash fa-3x mb-3 d-block" />
-          <p>Aucun stagiaire ne correspond à ces critères.</p>
+          <p>{t('encadreur.no_match')}</p>
         </div>
       ) : (
         <div className="row">
@@ -135,7 +138,7 @@ export default function MesStagiaires() {
                 >
                   <div className="card-body pb-2">
 
-                    {/* ── Ligne 1 : Avatar + Nom ── */}
+                    {/* Ligne 1 : Avatar + Nom */}
                     <div className="d-flex align-items-center mb-3">
                       <div style={{
                         width: 48, height: 48, borderRadius: '50%', flexShrink: 0,
@@ -156,11 +159,11 @@ export default function MesStagiaires() {
                       </div>
                     </div>
 
-                    {/* ── Période ── */}
+                    {/* Période */}
                     <div className="mb-2" style={{ fontSize: 12 }}>
                       <i className="fas fa-calendar-alt mr-1" style={{ color: 'var(--acerfi-blue)' }} />
                       <span style={{ color: 'var(--text-secondary)' }}>
-                        Stage : <strong>{fmtDate(s.periode?.date_debut)}</strong> → <strong>{fmtDate(s.periode?.date_fin)}</strong>
+                        {t('encadreur.period_label')} <strong>{fmtDate(s.periode?.date_debut)}</strong> → <strong>{fmtDate(s.periode?.date_fin)}</strong>
                       </span>
                       <span className={`badge ${periodeCfg.cls} ml-2`} style={{ fontSize: 10 }}>
                         {periodeCfg.label}
@@ -169,40 +172,40 @@ export default function MesStagiaires() {
 
                     <hr className="my-2" style={{ borderColor: 'var(--border-color)' }} />
 
-                    {/* ── Rapports ── */}
+                    {/* Rapports */}
                     <div className="d-flex flex-wrap mb-2" style={{ gap: 4 }}>
                       <span className="badge badge-secondary">
                         <i className="fas fa-file-alt mr-1" />{s.rapports.total} rapports
                       </span>
                       {s.rapports.valides > 0 && (
                         <span className="badge badge-success">
-                          <i className="fas fa-check mr-1" />{s.rapports.valides} validé{s.rapports.valides > 1 ? 's' : ''}
+                          <i className="fas fa-check mr-1" />{s.rapports.valides} {t('encadreur.status_validated').toLowerCase()}{s.rapports.valides > 1 ? 's' : ''}
                         </span>
                       )}
                       {s.rapports.en_attente_validation > 0 && (
                         <span className="badge badge-warning">
-                          <i className="fas fa-hourglass-half mr-1" />{s.rapports.en_attente_validation} en attente
+                          <i className="fas fa-hourglass-half mr-1" />{s.rapports.en_attente_validation} {t('encadreur.pending_reports').toLowerCase()}
                         </span>
                       )}
                       {s.rapports.brouillons > 0 && (
                         <span className="badge badge-secondary">
-                          <i className="fas fa-pencil-alt mr-1" />{s.rapports.brouillons} brouillon{s.rapports.brouillons > 1 ? 's' : ''}
+                          <i className="fas fa-pencil-alt mr-1" />{s.rapports.brouillons} {t('encadreur.status_draft').toLowerCase()}{s.rapports.brouillons > 1 ? 's' : ''}
                         </span>
                       )}
                     </div>
 
                     <hr className="my-2" style={{ borderColor: 'var(--border-color)' }} />
 
-                    {/* ── Score IA ── */}
+                    {/* Score IA */}
                     <div className="mb-2">
                       <ScoreBar score={s.ia?.score_moyen} />
                       <div className="mt-1" style={{ fontSize: 12 }}>
-                        {alerteCfg.icon}
+                        <i className={alerteCfg.icon} />
                         <span className={`badge ${alerteCfg.cls} ml-1`}>{alerteCfg.label}</span>
                       </div>
                     </div>
 
-                    {/* ── Projet ── */}
+                    {/* Projet */}
                     {s.projet && (
                       <>
                         <hr className="my-2" style={{ borderColor: 'var(--border-color)' }} />
@@ -217,14 +220,14 @@ export default function MesStagiaires() {
                     )}
                   </div>
 
-                  {/* ── Actions ── */}
+                  {/* Actions */}
                   <div className="card-footer py-2" style={{ background: 'transparent', border: 'none' }}>
                     <div className="btn-group btn-group-sm w-100">
-                      <Link to={`/encadreur/stagiaires/${s.id}`} className="btn btn-outline-primary">
-                        <i className="fas fa-user mr-1" />Voir le profil
+                      <Link to={`/manager/employes/${s.id}`} className="btn btn-outline-primary">
+                        <i className="fas fa-user mr-1" />{t('encadreur.view_profile')}
                       </Link>
-                      <Link to={`/encadreur/rapports-a-valider`} className="btn btn-outline-secondary">
-                        <i className="fas fa-clipboard-list mr-1" />Rapports
+                      <Link to="/manager/rapports-a-valider" className="btn btn-outline-secondary">
+                        <i className="fas fa-clipboard-list mr-1" />{t('encadreur.reports_btn')}
                       </Link>
                     </div>
                   </div>

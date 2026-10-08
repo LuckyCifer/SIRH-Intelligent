@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
 import StagiaireLayout from '../../components/layout/StagiaireLayout'
 import FiliereBadge    from '../../components/ui/FiliereBadge'
 import FiliereCard     from '../../components/ui/FiliereCard'
@@ -8,6 +9,7 @@ import useAuthStore from '../../store/authStore'
 import api from '../../api/axios'
 
 export default function MonProfil() {
+  const { t } = useTranslation()
   const { user, refreshUser } = useAuthStore()
   const [editing, setEditing] = useState(false)
   const [saving, setSaving]   = useState(false)
@@ -18,6 +20,8 @@ export default function MonProfil() {
     telephone:  user?.telephone  || '',
     bio:        user?.bio        || '',
   })
+  const [editingFiliere, setEditingFiliere] = useState(false)
+  const [newFiliere, setNewFiliere] = useState(user?.filiere || 'AUTRE')
 
   function handleChange(e) {
     setForm(f => ({ ...f, [e.target.name]: e.target.value }))
@@ -28,10 +32,10 @@ export default function MonProfil() {
     try {
       await api.put('/accounts/me/', { filiere: newFiliere })
       await refreshUser()
-      toast.success('Filière mise à jour.')
+      toast.success(t('stagiaire.filiere_updated'))
       setEditingFiliere(false)
     } catch {
-      toast.error('Erreur lors de la mise à jour.')
+      toast.error(t('stagiaire.update_error'))
     } finally {
       setSaving(false)
     }
@@ -42,30 +46,26 @@ export default function MonProfil() {
     try {
       await api.put('/accounts/me/', form)
       await refreshUser()
-      toast.success('Profil mis à jour.')
+      toast.success(t('stagiaire.profile_updated'))
       setEditing(false)
     } catch (err) {
-      toast.error(err.response?.data ? JSON.stringify(err.response.data) : 'Erreur lors de la mise à jour.')
+      toast.error(err.response?.data ? JSON.stringify(err.response.data) : t('stagiaire.update_error'))
     } finally {
       setSaving(false)
     }
   }
 
-  const [editingFiliere, setEditingFiliere] = useState(false)
-  const [newFiliere, setNewFiliere] = useState(user?.filiere || 'AUTRE')
-
   const initial = (user?.first_name?.[0] || user?.username?.[0] || '?').toUpperCase()
   const filiereColor = getFiliere(user?.filiere).couleur
 
   return (
-    <StagiaireLayout pageTitle="Mon Profil">
+    <StagiaireLayout pageTitle={t('stagiaire.my_profile_title')}>
       <div className="row">
 
         {/* Carte profil */}
         <div className="col-md-4">
           <div className="card card-primary card-outline">
             <div className="card-body text-center py-4">
-              {/* Avatar */}
               <div style={{
                 width: 90, height: 90, borderRadius: '50%',
                 background: filiereColor, color: '#fff',
@@ -100,17 +100,17 @@ export default function MonProfil() {
                     </div>
                     <div className="d-flex mt-2" style={{ gap: 8 }}>
                       <button className="btn btn-sm btn-primary flex-fill" onClick={handleSaveFiliere} disabled={saving}>
-                        <i className="fas fa-save mr-1" />Enregistrer
+                        <i className="fas fa-save mr-1" />{t('stagiaire.save_btn')}
                       </button>
                       <button className="btn btn-sm btn-outline-secondary" onClick={() => setEditingFiliere(false)}>
-                        Annuler
+                        {t('stagiaire.cancel_btn')}
                       </button>
                     </div>
                   </div>
                 ) : (
                   <button className="btn btn-xs btn-outline-secondary mt-2" style={{ fontSize: 11 }}
                     onClick={() => { setNewFiliere(user?.filiere || 'AUTRE'); setEditingFiliere(true) }}>
-                    <i className="fas fa-exchange-alt mr-1" />Changer de filière
+                    <i className="fas fa-exchange-alt mr-1" />{t('stagiaire.change_filiere')}
                   </button>
                 )}
               </div>
@@ -118,7 +118,7 @@ export default function MonProfil() {
               <div className="mt-2">
                 <span className="badge badge-secondary p-2">
                   <i className="fas fa-user-graduate mr-1" />
-                  Stagiaire ACERFI
+                  {t('stagiaire.intern_badge')}
                 </span>
               </div>
 
@@ -130,12 +130,12 @@ export default function MonProfil() {
             </div>
           </div>
 
-          {/* Informations de contact */}
+          {/* Contact */}
           <div className="card">
             <div className="card-header">
               <h3 className="card-title text-sm">
                 <i className="fas fa-address-card mr-1" />
-                Contact
+                {t('stagiaire.contact_section')}
               </h3>
             </div>
             <div className="card-body p-0">
@@ -143,7 +143,7 @@ export default function MonProfil() {
                 <tbody>
                   <tr>
                     <td className="text-muted" style={{ width: 100, fontSize: 12 }}>
-                      <i className="fas fa-envelope mr-1" />Email
+                      <i className="fas fa-envelope mr-1" />{t('stagiaire.field_email')}
                     </td>
                     <td style={{ fontSize: 13, color: 'var(--text-primary)' }}>
                       {user?.email || <span className="text-muted">—</span>}
@@ -151,7 +151,7 @@ export default function MonProfil() {
                   </tr>
                   <tr>
                     <td className="text-muted" style={{ fontSize: 12 }}>
-                      <i className="fas fa-phone mr-1" />Tél.
+                      <i className="fas fa-phone mr-1" />{t('stagiaire.field_phone')}
                     </td>
                     <td style={{ fontSize: 13, color: 'var(--text-primary)' }}>
                       {user?.telephone || <span className="text-muted">—</span>}
@@ -159,7 +159,7 @@ export default function MonProfil() {
                   </tr>
                   <tr>
                     <td className="text-muted" style={{ fontSize: 12 }}>
-                      <i className="fas fa-calendar-alt mr-1" />Inscrit
+                      <i className="fas fa-calendar-alt mr-1" />{t('stagiaire.field_joined')}
                     </td>
                     <td style={{ fontSize: 13, color: 'var(--text-primary)' }}>
                       {user?.date_joined?.slice(0, 10) || '—'}
@@ -171,19 +171,19 @@ export default function MonProfil() {
           </div>
         </div>
 
-        {/* Formulaire d'édition */}
+        {/* Formulaire */}
         <div className="col-md-8">
           <div className="card">
             <div className="card-header d-flex justify-content-between align-items-center">
               <h3 className="card-title">
                 <i className="fas fa-user-edit mr-2" />
-                {editing ? 'Modifier mon profil' : 'Informations personnelles'}
+                {editing ? t('stagiaire.personal_info_edit') : t('stagiaire.personal_info_view')}
               </h3>
               {!editing && (
                 <button className="btn btn-sm btn-outline-primary"
                   onClick={() => setEditing(true)}>
                   <i className="fas fa-edit mr-1" />
-                  Modifier
+                  {t('stagiaire.edit_btn')}
                 </button>
               )}
             </div>
@@ -192,53 +192,53 @@ export default function MonProfil() {
                 <>
                   <div className="form-row">
                     <div className="form-group col-md-6">
-                      <label className="font-weight-bold">Prénom</label>
+                      <label className="font-weight-bold">{t('stagiaire.field_firstname')}</label>
                       <input type="text" className="form-control" name="first_name"
                         value={form.first_name} onChange={handleChange} />
                     </div>
                     <div className="form-group col-md-6">
-                      <label className="font-weight-bold">Nom</label>
+                      <label className="font-weight-bold">{t('stagiaire.field_lastname')}</label>
                       <input type="text" className="form-control" name="last_name"
                         value={form.last_name} onChange={handleChange} />
                     </div>
                   </div>
                   <div className="form-row">
                     <div className="form-group col-md-6">
-                      <label className="font-weight-bold">Email</label>
+                      <label className="font-weight-bold">{t('stagiaire.field_email')}</label>
                       <input type="email" className="form-control" name="email"
                         value={form.email} onChange={handleChange} />
                     </div>
                     <div className="form-group col-md-6">
-                      <label className="font-weight-bold">Téléphone</label>
+                      <label className="font-weight-bold">{t('stagiaire.field_phone')}</label>
                       <input type="text" className="form-control" name="telephone"
                         value={form.telephone} onChange={handleChange}
                         placeholder="Ex: 699 000 001" />
                     </div>
                   </div>
                   <div className="form-group">
-                    <label className="font-weight-bold">Bio / Présentation</label>
+                    <label className="font-weight-bold">{t('stagiaire.field_bio')}</label>
                     <textarea className="form-control" name="bio" rows={3}
-                      placeholder="Parlez brièvement de vous, de vos compétences, de vos objectifs…"
+                      placeholder={t('stagiaire.bio_placeholder')}
                       value={form.bio} onChange={handleChange} />
                   </div>
                 </>
               ) : (
                 <dl className="row">
                   {[
-                    { label: 'Prénom',    value: user?.first_name },
-                    { label: 'Nom',       value: user?.last_name },
-                    { label: 'Identifiant', value: user?.username },
-                    { label: 'Email',     value: user?.email },
-                    { label: 'Téléphone', value: user?.telephone },
-                    { label: 'Filière',   value: getFiliere(user?.filiere)?.label },
-                    { label: 'Bio',       value: user?.bio },
+                    { label: t('stagiaire.field_firstname'),  value: user?.first_name },
+                    { label: t('stagiaire.field_lastname'),   value: user?.last_name },
+                    { label: t('stagiaire.field_username'),   value: user?.username },
+                    { label: t('stagiaire.field_email'),      value: user?.email },
+                    { label: t('stagiaire.field_phone'),      value: user?.telephone },
+                    { label: t('stagiaire.field_filiere'),    value: getFiliere(user?.filiere)?.label },
+                    { label: t('stagiaire.field_bio'),        value: user?.bio },
                   ].map(({ label, value }) => (
                     <div key={label} className="col-sm-6 mb-2">
                       <dt className="text-muted" style={{ fontSize: 11, textTransform: 'uppercase' }}>
                         {label}
                       </dt>
                       <dd style={{ color: 'var(--text-primary)' }}>
-                        {value || <span className="text-muted">Non renseigné</span>}
+                        {value || <span className="text-muted">{t('stagiaire.not_filled')}</span>}
                       </dd>
                     </div>
                   ))}
@@ -258,20 +258,19 @@ export default function MonProfil() {
                       bio:        user?.bio        || '',
                     })
                   }}>
-                  <i className="fas fa-times mr-1" />Annuler
+                  <i className="fas fa-times mr-1" />{t('stagiaire.cancel_btn')}
                 </button>
                 <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
                   <i className="fas fa-save mr-1" />
-                  {saving ? 'Enregistrement…' : 'Enregistrer'}
+                  {saving ? t('stagiaire.saving') : t('stagiaire.save_btn')}
                 </button>
               </div>
             )}
           </div>
 
-          {/* Note sécurité */}
           <div className="alert alert-secondary" style={{ fontSize: 12 }}>
             <i className="fas fa-shield-alt mr-2" />
-            Pour changer votre mot de passe, contactez un administrateur ACERFI.
+            {t('stagiaire.password_note')}
           </div>
         </div>
       </div>

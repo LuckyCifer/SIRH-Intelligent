@@ -1,14 +1,8 @@
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
 import EncadreurLayout from '../../components/layout/EncadreurLayout'
 import api from '../../api/axios'
-
-const ALERTE_CONFIG = {
-  AUCUNE:  { badge: 'badge-success',  icon: 'fas fa-check-circle text-success',  label: 'OK' },
-  FAIBLE:  { badge: 'badge-success',  icon: 'fas fa-check-circle text-success',  label: 'Faible' },
-  MOYENNE: { badge: 'badge-warning',  icon: 'fas fa-exclamation-circle text-warning', label: 'Moyenne' },
-  ELEVEE:  { badge: 'badge-danger',   icon: 'fas fa-times-circle text-danger',   label: 'Élevée' },
-}
 
 const STATUT_BADGE = {
   BROUILLON: 'badge-secondary',
@@ -20,11 +14,26 @@ const STATUT_BADGE = {
 const FILIERE_COLORS = { ISA: '#2E74B5', IT: '#1F3864', GRAPHISME: '#5ba3d9', AUTRE: '#8ba7c0' }
 
 function StatutBadge({ value }) {
-  const LABELS = { BROUILLON: 'Brouillon', SOUMIS: 'Soumis', VALIDE: 'Validé', REJETE: 'Rejeté' }
+  const { t } = useTranslation()
+  const LABELS = {
+    BROUILLON: t('encadreur.status_draft'),
+    SOUMIS:    t('encadreur.status_submitted'),
+    VALIDE:    t('encadreur.status_validated'),
+    REJETE:    t('encadreur.status_rejected'),
+  }
   return <span className={`badge ${STATUT_BADGE[value] || 'badge-secondary'}`}>{LABELS[value] || value}</span>
 }
 
 export default function DashboardEncadreur() {
+  const { t } = useTranslation()
+
+  const ALERTE_CONFIG = {
+    AUCUNE:  { badge: 'badge-success',  icon: 'fas fa-check-circle text-success',  label: t('encadreur.alert_none') },
+    FAIBLE:  { badge: 'badge-success',  icon: 'fas fa-check-circle text-success',  label: t('encadreur.alert_low') },
+    MOYENNE: { badge: 'badge-warning',  icon: 'fas fa-exclamation-circle text-warning', label: t('encadreur.alert_medium') },
+    ELEVEE:  { badge: 'badge-danger',   icon: 'fas fa-times-circle text-danger',   label: t('encadreur.alert_high') },
+  }
+
   const [stagiaires, setStagiaires] = useState([])
   const [selected, setSelected]     = useState(null)
   const [rapports, setRapports]     = useState([])
@@ -36,7 +45,7 @@ export default function DashboardEncadreur() {
   useEffect(() => {
     api.get('/stagiaires/dashboard/')
       .then(r => setStagiaires(r.data.results ?? r.data))
-      .catch(() => toast.error('Impossible de charger les stagiaires.'))
+      .catch(() => toast.error(t('encadreur.load_error_interns')))
       .finally(() => setLoadingMain(false))
   }, [])
 
@@ -48,7 +57,7 @@ export default function DashboardEncadreur() {
       const r = await api.get(`/rapports/?stagiaire=${s.id}`)
       setRapports(r.data.results ?? r.data)
     } catch {
-      toast.error('Erreur lors du chargement des rapports.')
+      toast.error(t('encadreur.load_error_reports'))
     } finally {
       setLoadingRapports(false)
     }
@@ -61,12 +70,12 @@ export default function DashboardEncadreur() {
         action,
         commentaire: commentaires[rapportId] || '',
       })
-      toast.success(action === 'valider' ? '✓ Rapport validé.' : 'Rapport rejeté.')
+      toast.success(action === 'valider' ? t('encadreur.report_validated_msg') : t('encadreur.report_rejected_msg'))
       const updated = await api.get(`/rapports/?stagiaire=${selected.id}`)
       setRapports(updated.data.results ?? updated.data)
       setCommentaires(c => { const n = { ...c }; delete n[rapportId]; return n })
     } catch {
-      toast.error('Erreur lors de la validation.')
+      toast.error(t('encadreur.validation_error'))
     } finally {
       setValidating(null)
     }
@@ -76,30 +85,30 @@ export default function DashboardEncadreur() {
 
   if (loadingMain) {
     return (
-      <EncadreurLayout pageTitle="Tableau de bord">
+      <EncadreurLayout pageTitle={t('encadreur.dashboard_title')}>
         <div className="text-center py-5">
           <i className="fas fa-spinner fa-spin fa-2x" style={{ color: 'var(--acerfi-blue)' }} />
-          <p className="mt-2 text-muted">Chargement des données…</p>
+          <p className="mt-2 text-muted">{t('encadreur.loading')}</p>
         </div>
       </EncadreurLayout>
     )
   }
 
   return (
-    <EncadreurLayout pageTitle="Tableau de bord Encadreur">
+    <EncadreurLayout pageTitle={t('encadreur.dashboard_title')}>
 
-      {/* ── Small Boxes ── */}
+      {/* Small Boxes */}
       <div className="row">
         <div className="col-lg-4 col-6">
           <div className="small-box bg-info">
             <div className="inner">
               <h3>{stagiaires.length}</h3>
-              <p>Stagiaires encadrés</p>
+              <p>{t('encadreur.supervised_interns')}</p>
             </div>
             <div className="icon"><i className="fas fa-users" /></div>
             <span className="small-box-footer">
               <i className="fas fa-user-graduate mr-1" />
-              En cours de stage
+              {t('encadreur.internship_ongoing')}
             </span>
           </div>
         </div>
@@ -108,12 +117,12 @@ export default function DashboardEncadreur() {
           <div className="small-box bg-danger">
             <div className="inner">
               <h3>{nbAlertes}</h3>
-              <p>Alertes actives</p>
+              <p>{t('encadreur.active_alerts')}</p>
             </div>
             <div className="icon"><i className="fas fa-exclamation-triangle" /></div>
             <span className="small-box-footer">
               <i className="fas fa-eye mr-1" />
-              Nécessitent un suivi
+              {t('encadreur.need_followup')}
             </span>
           </div>
         </div>
@@ -131,25 +140,25 @@ export default function DashboardEncadreur() {
                     )
                   : '—'}
               </h3>
-              <p>Score IA moyen / 100</p>
+              <p>{t('encadreur.avg_ia_score')}</p>
             </div>
             <div className="icon"><i className="fas fa-chart-line" /></div>
             <span className="small-box-footer">
               <i className="fas fa-robot mr-1" />
-              Dernière analyse IA
+              {t('encadreur.last_ia_analysis')}
             </span>
           </div>
         </div>
       </div>
 
-      {/* ── Grille des stagiaires ── */}
+      {/* Grille des stagiaires */}
       <div className="row">
         <div className="col-12">
           <div className="card">
             <div className="card-header">
               <h3 className="card-title">
                 <i className="fas fa-id-card mr-2" />
-                Mes Stagiaires
+                {t('encadreur.my_interns_title')}
               </h3>
               <div className="card-tools">
                 <button className="btn btn-tool" data-card-widget="collapse">
@@ -161,7 +170,7 @@ export default function DashboardEncadreur() {
               {stagiaires.length === 0 ? (
                 <div className="text-center py-4 text-muted">
                   <i className="fas fa-user-slash fa-2x mb-2 d-block" />
-                  Aucun stagiaire assigné.
+                  {t('encadreur.no_interns')}
                 </div>
               ) : (
                 <div className="row">
@@ -180,7 +189,6 @@ export default function DashboardEncadreur() {
                           onClick={() => selectStagiaire(s)}
                         >
                           <div className="card-body pb-2">
-                            {/* Avatar + nom */}
                             <div className="d-flex align-items-center mb-2">
                               <div className="mr-3" style={{
                                 width: 42, height: 42, borderRadius: '50%',
@@ -199,18 +207,14 @@ export default function DashboardEncadreur() {
                               </div>
                             </div>
 
-                            {/* Filière badge */}
                             <span className="badge badge-info mr-1">{s.filiere}</span>
-
-                            {/* Rapport count */}
                             <span className="badge badge-secondary">
                               {s.nb_rapports} rapport{s.nb_rapports !== 1 ? 's' : ''}
                             </span>
 
-                            {/* Score + alerte */}
                             <div className="d-flex justify-content-between align-items-center mt-2">
                               <span style={{ fontSize: 12, color: isSelected ? '#cde' : 'var(--text-secondary)' }}>
-                                Score IA :{' '}
+                                {t('encadreur.ia_score_label')}{' '}
                                 <strong style={{ color: isSelected ? '#fff' : 'var(--text-primary)' }}>
                                   {s.dernier_score_ia != null ? `${s.dernier_score_ia}/100` : '—'}
                                 </strong>
@@ -232,7 +236,7 @@ export default function DashboardEncadreur() {
         </div>
       </div>
 
-      {/* ── Rapports du stagiaire sélectionné ── */}
+      {/* Rapports du stagiaire sélectionné */}
       {selected && (
         <div className="row">
           <div className="col-12">
@@ -240,7 +244,7 @@ export default function DashboardEncadreur() {
               <div className="card-header">
                 <h3 className="card-title">
                   <i className="fas fa-file-alt mr-2" />
-                  Rapports de <strong>{selected.nom}</strong>
+                  {t('encadreur.reports_of')} <strong>{selected.nom}</strong>
                   <span className="badge badge-info ml-2">{selected.filiere}</span>
                 </h3>
                 <div className="card-tools">
@@ -257,19 +261,19 @@ export default function DashboardEncadreur() {
                 ) : rapports.length === 0 ? (
                   <div className="text-center py-4 text-muted">
                     <i className="fas fa-inbox fa-2x mb-2 d-block" />
-                    Aucun rapport soumis.
+                    {t('encadreur.no_reports')}
                   </div>
                 ) : (
                   <div className="table-responsive">
                     <table className="table table-bordered table-hover mb-0">
                       <thead>
                         <tr>
-                          <th>Semaine</th>
-                          <th>Période</th>
-                          <th>Statut</th>
-                          <th>Score IA</th>
-                          <th>Synthèse IA</th>
-                          <th style={{ minWidth: 280 }}>Action encadreur</th>
+                          <th>{t('encadreur.col_week')}</th>
+                          <th>{t('encadreur.col_period')}</th>
+                          <th>{t('encadreur.col_status')}</th>
+                          <th>{t('encadreur.col_ia_score')}</th>
+                          <th>{t('encadreur.col_ia_synthesis')}</th>
+                          <th style={{ minWidth: 280 }}>{t('encadreur.col_action')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -312,7 +316,7 @@ export default function DashboardEncadreur() {
                                 <div>
                                   <textarea
                                     className="form-control form-control-sm mb-2"
-                                    placeholder="Commentaire (optionnel)"
+                                    placeholder={t('encadreur.comment_placeholder')}
                                     rows={2}
                                     value={commentaires[r.id] || ''}
                                     onChange={e => setCommentaires(c => ({ ...c, [r.id]: e.target.value }))}
@@ -324,7 +328,7 @@ export default function DashboardEncadreur() {
                                       onClick={() => handleValider(r.id, 'valider')}
                                     >
                                       <i className="fas fa-check mr-1" />
-                                      Valider
+                                      {t('encadreur.validate_btn')}
                                     </button>
                                     <button
                                       className="btn btn-danger"
@@ -332,15 +336,15 @@ export default function DashboardEncadreur() {
                                       onClick={() => handleValider(r.id, 'rejeter')}
                                     >
                                       <i className="fas fa-times mr-1" />
-                                      Rejeter
+                                      {t('encadreur.reject_btn')}
                                     </button>
                                   </div>
                                 </div>
                               ) : (
                                 <span className="text-muted text-sm">
-                                  {r.statut === 'VALIDE' && <><i className="fas fa-check-circle text-success mr-1" />Validé</>}
-                                  {r.statut === 'REJETE' && <><i className="fas fa-times-circle text-danger mr-1" />Rejeté</>}
-                                  {r.statut === 'BROUILLON' && <><i className="fas fa-pencil-alt text-secondary mr-1" />Brouillon</>}
+                                  {r.statut === 'VALIDE' && <><i className="fas fa-check-circle text-success mr-1" />{t('encadreur.status_validated')}</>}
+                                  {r.statut === 'REJETE' && <><i className="fas fa-times-circle text-danger mr-1" />{t('encadreur.status_rejected')}</>}
+                                  {r.statut === 'BROUILLON' && <><i className="fas fa-pencil-alt text-secondary mr-1" />{t('encadreur.status_draft')}</>}
                                 </span>
                               )}
                             </td>

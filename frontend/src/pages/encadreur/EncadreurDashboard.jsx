@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
 import EncadreurLayout from '../../components/layout/EncadreurLayout'
 import Spinner from '../../components/Spinner'
 import { getMonDashboard } from '../../api/encadreur'
@@ -11,13 +12,6 @@ import { getRapportEquipe } from '../../api/presences'
 import { getObjectifsEquipe } from '../../api/objectifs'
 import { getInscriptions } from '../../api/formations'
 
-const ALERTE_CONFIG = {
-  AUCUNE:  { cls: 'badge-success',  dot: '#28a745', label: 'Aucune alerte' },
-  FAIBLE:  { cls: 'badge-success',  dot: '#28a745', label: 'Faible' },
-  MOYENNE: { cls: 'badge-warning',  dot: '#fd7e14', label: 'Moyenne' },
-  ELEVEE:  { cls: 'badge-danger',   dot: '#dc3545', label: 'Élevée' },
-}
-
 const STATUT_CONFIG = {
   BROUILLON: 'badge-secondary',
   SOUMIS:    'badge-primary',
@@ -25,18 +19,35 @@ const STATUT_CONFIG = {
   REJETE:    'badge-danger',
 }
 
+const ALERTE_DOT = {
+  AUCUNE:  '#28a745',
+  FAIBLE:  '#28a745',
+  MOYENNE: '#fd7e14',
+  ELEVEE:  '#dc3545',
+}
+
 function AlerteDot({ niveau }) {
-  const cfg = ALERTE_CONFIG[niveau] || ALERTE_CONFIG.AUCUNE
+  const dot = ALERTE_DOT[niveau] || '#28a745'
   return (
     <span style={{
       display: 'inline-block', width: 10, height: 10, borderRadius: '50%',
-      background: cfg.dot, marginRight: 5,
+      background: dot, marginRight: 5,
       animation: ['MOYENNE', 'ELEVEE'].includes(niveau) ? 'pulse-alerte 1.5s ease-in-out infinite' : 'none',
     }} />
   )
 }
 
 export default function EncadreurDashboard() {
+  const { t, i18n } = useTranslation()
+  const locale = i18n.language === 'en' ? 'en-US' : 'fr-FR'
+
+  const ALERTE_CONFIG = {
+    AUCUNE:  { cls: 'badge-success',  dot: '#28a745', label: t('encadreur.alert_none_full') },
+    FAIBLE:  { cls: 'badge-success',  dot: '#28a745', label: t('encadreur.alert_low') },
+    MOYENNE: { cls: 'badge-warning',  dot: '#fd7e14', label: t('encadreur.alert_medium') },
+    ELEVEE:  { cls: 'badge-danger',   dot: '#dc3545', label: t('encadreur.alert_high') },
+  }
+
   const [dashboard,        setDashboard]        = useState(null)
   const [statsConges,      setStatsConges]      = useState(null)
   const [rapportPresences, setRapportPresences] = useState(null)
@@ -61,33 +72,28 @@ export default function EncadreurDashboard() {
         setObjectifsEquipe(Array.isArray(allObj) ? allObj.slice(0, 5) : [])
         const allInsc = inscRes.data.results ?? inscRes.data
         if (Array.isArray(allInsc)) {
-          const now = new Date()
-          const moisDebut = new Date(now.getFullYear(), now.getMonth(), 1)
-          const inscrits = allInsc.filter(i => i.statut === 'INSCRIT' || i.statut === 'EN_ATTENTE')
           const presents = allInsc.filter(i => i.statut === 'PRESENT').length
-          const total = allInsc.filter(i => i.statut !== 'ANNULE').length
+          const inscrits = allInsc.filter(i => i.statut === 'INSCRIT' || i.statut === 'EN_ATTENTE')
+          const total    = allInsc.filter(i => i.statut !== 'ANNULE').length
           setStatsFormations({ inscrits: inscrits.length, presents, total, taux: total > 0 ? Math.round((presents / total) * 100) : 0 })
         }
       })
-      .catch(() => toast.error('Erreur lors du chargement du tableau de bord.'))
+      .catch(() => toast.error(t('encadreur.load_error_dashboard')))
       .finally(() => setLoading(false))
   }, [])
 
   if (loading) {
     return (
-      <EncadreurLayout pageTitle="Tableau de bord">
-        <Spinner message="Chargement des données…" />
+      <EncadreurLayout pageTitle={t('encadreur.dashboard_title')}>
+        <Spinner message={t('encadreur.loading')} />
       </EncadreurLayout>
     )
   }
 
   const { stagiaires = [], resume = {} } = dashboard || {}
-  const rapportsEnAttente = stagiaires
-    .flatMap(s => Array(s.rapports.en_attente_validation).fill(s))
-    .slice(0, 10)
 
   return (
-    <EncadreurLayout pageTitle="Tableau de bord Encadreur">
+    <EncadreurLayout pageTitle={t('encadreur.dashboard_title')}>
       <style>{`
         @keyframes pulse-alerte {
           0%, 100% { opacity: 1; transform: scale(1); }
@@ -99,24 +105,21 @@ export default function EncadreurDashboard() {
         }
       `}</style>
 
-      {/* ── 4 Small Boxes ── */}
+      {/* 4 Small Boxes */}
       <div className="row">
-
-        {/* Total stagiaires */}
         <div className="col-lg-3 col-6">
           <div className="small-box" style={{ background: '#2E74B5', color: '#fff' }}>
             <div className="inner">
               <h3>{resume.total_stagiaires ?? 0}</h3>
-              <p>Stagiaires encadrés</p>
+              <p>{t('encadreur.supervised_interns')}</p>
             </div>
             <div className="icon"><i className="fas fa-users" /></div>
-            <Link to="/encadreur/stagiaires" className="small-box-footer" style={{ color: 'rgba(255,255,255,.85)' }}>
-              Voir tous <i className="fas fa-arrow-circle-right" />
+            <Link to="/manager/employes" className="small-box-footer" style={{ color: 'rgba(255,255,255,.85)' }}>
+              {t('encadreur.see_all')} <i className="fas fa-arrow-circle-right" />
             </Link>
           </div>
         </div>
 
-        {/* Rapports en attente */}
         <div className="col-lg-3 col-6">
           <div className="small-box" style={{
             background: '#fd7e14', color: '#fff',
@@ -124,30 +127,28 @@ export default function EncadreurDashboard() {
           }}>
             <div className="inner">
               <h3>{resume.rapports_en_attente ?? 0}</h3>
-              <p>Rapports en attente</p>
+              <p>{t('encadreur.pending_reports')}</p>
             </div>
             <div className="icon"><i className="fas fa-hourglass-half" /></div>
-            <Link to="/encadreur/rapports-a-valider" className="small-box-footer" style={{ color: 'rgba(255,255,255,.85)' }}>
-              Valider <i className="fas fa-arrow-circle-right" />
+            <Link to="/manager/rapports-a-valider" className="small-box-footer" style={{ color: 'rgba(255,255,255,.85)' }}>
+              {t('encadreur.validate_btn')} <i className="fas fa-arrow-circle-right" />
             </Link>
           </div>
         </div>
 
-        {/* Score IA moyen */}
         <div className="col-lg-3 col-6">
           <div className="small-box" style={{ background: '#6f42c1', color: '#fff' }}>
             <div className="inner">
               <h3>{resume.score_moyen_global != null ? `${resume.score_moyen_global}` : '—'}</h3>
-              <p>Score IA moyen / 100</p>
+              <p>{t('encadreur.avg_ia_score')}</p>
             </div>
             <div className="icon"><i className="fas fa-robot" /></div>
             <span className="small-box-footer" style={{ color: 'rgba(255,255,255,.85)' }}>
-              <i className="fas fa-chart-line mr-1" />Analyse IA Groq
+              <i className="fas fa-chart-line mr-1" />{t('encadreur.ia_groq_label')}
             </span>
           </div>
         </div>
 
-        {/* Alertes actives */}
         <div className="col-lg-3 col-6">
           <div className="small-box" style={{
             background: (resume.alertes_actives ?? 0) > 0 ? '#dc3545' : '#28a745',
@@ -155,48 +156,48 @@ export default function EncadreurDashboard() {
           }}>
             <div className="inner">
               <h3>{resume.alertes_actives ?? 0}</h3>
-              <p>Alertes actives</p>
+              <p>{t('encadreur.active_alerts')}</p>
             </div>
             <div className="icon">
               <i className={(resume.alertes_actives ?? 0) > 0 ? 'fas fa-exclamation-triangle' : 'fas fa-check-circle'} />
             </div>
             <span className="small-box-footer" style={{ color: 'rgba(255,255,255,.85)' }}>
-              {(resume.alertes_actives ?? 0) > 0 ? 'Nécessitent un suivi' : 'Tout est normal'}
+              {(resume.alertes_actives ?? 0) > 0 ? t('encadreur.need_followup') : t('encadreur.all_normal')}
             </span>
           </div>
         </div>
       </div>
 
-      {/* ── Deux colonnes ── */}
+      {/* Deux colonnes */}
       <div className="row">
 
-        {/* ── Colonne gauche 65% — Liste des stagiaires ── */}
+        {/* Colonne gauche 65% — Liste des stagiaires */}
         <div className="col-lg-8">
           <div className="card">
             <div className="card-header d-flex justify-content-between align-items-center">
               <h3 className="card-title">
                 <i className="fas fa-id-card mr-2" />
-                Mes stagiaires
+                {t('encadreur.my_interns_title')}
               </h3>
-              <Link to="/encadreur/stagiaires" className="btn btn-sm btn-outline-primary">
-                Voir tout
+              <Link to="/manager/employes" className="btn btn-sm btn-outline-primary">
+                {t('encadreur.see_all_short')}
               </Link>
             </div>
             <div className="card-body p-0">
               {stagiaires.length === 0 ? (
                 <div className="text-center py-4 text-muted">
                   <i className="fas fa-user-slash fa-2x mb-2 d-block" />
-                  Aucun stagiaire assigné.
+                  {t('encadreur.no_interns')}
                 </div>
               ) : (
                 <div className="table-responsive">
                   <table className="table table-hover table-sm mb-0">
                     <thead>
                       <tr>
-                        <th>Stagiaire</th>
+                        <th>{t('encadreur.col_emp')}</th>
                         <th>Filière</th>
                         <th>Rapports</th>
-                        <th>Score IA</th>
+                        <th>{t('encadreur.col_ia_score')}</th>
                         <th>Alerte</th>
                         <th></th>
                       </tr>
@@ -224,9 +225,9 @@ export default function EncadreurDashboard() {
                             </td>
                             <td><FiliereBadge code={s.filiere} size="sm" /></td>
                             <td>
-                              <span className="badge badge-secondary mr-1">{s.rapports.total} total</span>
+                              <span className="badge badge-secondary mr-1">{s.rapports.total} {t('encadreur.total_label')}</span>
                               {s.rapports.en_attente_validation > 0 && (
-                                <span className="badge badge-warning">{s.rapports.en_attente_validation} att.</span>
+                                <span className="badge badge-warning">{s.rapports.en_attente_validation} {t('encadreur.att_label')}</span>
                               )}
                             </td>
                             <td className="font-weight-bold" style={{ fontSize: 13 }}>
@@ -237,9 +238,9 @@ export default function EncadreurDashboard() {
                               <span className={`badge ${cfg.cls}`}>{cfg.label}</span>
                             </td>
                             <td>
-                              <Link to={`/encadreur/stagiaires/${s.id}`}
+                              <Link to={`/manager/employes/${s.id}`}
                                 className="btn btn-xs btn-outline-primary" style={{ fontSize: 11 }}>
-                                <i className="fas fa-eye mr-1" />Fiche
+                                <i className="fas fa-eye mr-1" />{t('encadreur.fiche_btn')}
                               </Link>
                             </td>
                           </tr>
@@ -253,13 +254,13 @@ export default function EncadreurDashboard() {
           </div>
         </div>
 
-        {/* ── Colonne droite 35% — Rapports en attente ── */}
+        {/* Colonne droite 35% — Rapports en attente */}
         <div className="col-lg-4">
           <div className="card card-warning card-outline">
             <div className="card-header">
               <h3 className="card-title">
                 <i className="fas fa-clipboard-check mr-2" />
-                Rapports à valider
+                {t('encadreur.reports_to_validate')}
                 {(resume.rapports_en_attente ?? 0) > 0 && (
                   <span className="badge badge-danger ml-2">{resume.rapports_en_attente}</span>
                 )}
@@ -270,7 +271,7 @@ export default function EncadreurDashboard() {
                 <div className="text-center py-4">
                   <i className="fas fa-check-circle fa-2x mb-2 text-success d-block" />
                   <p className="text-muted mb-0" style={{ fontSize: 13 }}>
-                    Tous les rapports sont traités !
+                    {t('encadreur.all_reports_handled')}
                   </p>
                 </div>
               ) : (
@@ -283,12 +284,12 @@ export default function EncadreurDashboard() {
                           <div>
                             <div className="font-weight-bold" style={{ fontSize: 13 }}>{s.nom_complet}</div>
                             <small className="text-muted">
-                              {s.filiere} &middot; {s.rapports.en_attente_validation} rapport{s.rapports.en_attente_validation > 1 ? 's' : ''} en attente
+                              {s.filiere} &middot; {s.rapports.en_attente_validation} rapport{s.rapports.en_attente_validation > 1 ? 's' : ''} {t('encadreur.pending_reports').toLowerCase()}
                             </small>
                           </div>
-                          <Link to="/encadreur/rapports-a-valider"
+                          <Link to="/manager/rapports-a-valider"
                             className="btn btn-sm btn-warning" style={{ fontSize: 11, whiteSpace: 'nowrap' }}>
-                            <i className="fas fa-gavel mr-1" />Valider
+                            <i className="fas fa-gavel mr-1" />{t('encadreur.validate_btn')}
                           </Link>
                         </div>
                       </li>
@@ -298,8 +299,8 @@ export default function EncadreurDashboard() {
             </div>
             {(resume.rapports_en_attente ?? 0) > 0 && (
               <div className="card-footer text-center py-2">
-                <Link to="/encadreur/rapports-a-valider" className="text-warning font-weight-bold" style={{ fontSize: 13 }}>
-                  <i className="fas fa-list mr-1" />Voir tous les rapports à valider
+                <Link to="/manager/rapports-a-valider" className="text-warning font-weight-bold" style={{ fontSize: 13 }}>
+                  <i className="fas fa-list mr-1" />{t('encadreur.see_all_pending_link')}
                 </Link>
               </div>
             )}
@@ -307,7 +308,7 @@ export default function EncadreurDashboard() {
         </div>
       </div>
 
-      {/* ── Carte Présences Équipe ── */}
+      {/* Présences Équipe */}
       {rapportPresences && (
         <div className="row mt-1 mb-2">
           <div className="col-12">
@@ -315,10 +316,10 @@ export default function EncadreurDashboard() {
               <div className="card-header d-flex justify-content-between align-items-center py-2">
                 <h3 className="card-title" style={{ fontSize: 13 }}>
                   <i className="fas fa-fingerprint mr-2" />
-                  Présences équipe — {new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+                  {t('encadreur.presences_team_title')} — {new Date().toLocaleDateString(locale, { month: 'long', year: 'numeric' })}
                 </h3>
                 <Link to="/manager/presences" className="btn btn-xs btn-outline-success">
-                  Voir le rapport
+                  {t('encadreur.see_report_btn')}
                 </Link>
               </div>
               <div className="card-body py-2">
@@ -326,8 +327,8 @@ export default function EncadreurDashboard() {
                   {(() => {
                     const emps = rapportPresences.employes || []
                     const totalEmps = emps.length
-                    const presents = emps.filter(e => e.jours_presents > 0).length
-                    const absents  = emps.filter(e => e.jours_absents > 0).length
+                    const presents  = emps.filter(e => e.jours_presents > 0).length
+                    const absents   = emps.filter(e => e.jours_absents > 0).length
                     const tauxMoyen = totalEmps > 0
                       ? Math.round(emps.reduce((s, e) => s + e.taux_presence, 0) / totalEmps)
                       : 0
@@ -335,17 +336,17 @@ export default function EncadreurDashboard() {
                       <>
                         <div className="col-3 border-right">
                           <div className="font-weight-bold" style={{ fontSize: 20, color: '#28A745' }}>{presents}</div>
-                          <small className="text-muted">Avec présences</small>
+                          <small className="text-muted">{t('encadreur.with_presences_stat')}</small>
                         </div>
                         <div className="col-3 border-right">
                           <div className="font-weight-bold" style={{ fontSize: 20, color: '#DC3545' }}>{absents}</div>
-                          <small className="text-muted">Avec absences</small>
+                          <small className="text-muted">{t('encadreur.with_absences_stat')}</small>
                         </div>
                         <div className="col-3 border-right">
                           <div className="font-weight-bold" style={{ fontSize: 20, color: 'var(--acerfi-blue)' }}>
                             {totalEmps}
                           </div>
-                          <small className="text-muted">Employés</small>
+                          <small className="text-muted">{t('encadreur.employees_stat')}</small>
                         </div>
                         <div className="col-3">
                           <div className="font-weight-bold" style={{
@@ -354,7 +355,7 @@ export default function EncadreurDashboard() {
                           }}>
                             {tauxMoyen}%
                           </div>
-                          <small className="text-muted">Taux moyen</small>
+                          <small className="text-muted">{t('encadreur.avg_rate_stat')}</small>
                         </div>
                       </>
                     )
@@ -366,7 +367,7 @@ export default function EncadreurDashboard() {
         </div>
       )}
 
-      {/* ── Carte Congés Équipe ── */}
+      {/* Congés Équipe */}
       {statsConges && (
         <div className="row mt-1">
           <div className="col-12">
@@ -374,13 +375,13 @@ export default function EncadreurDashboard() {
               <div className="card-header d-flex justify-content-between align-items-center">
                 <h3 className="card-title">
                   <i className="fas fa-umbrella-beach mr-2" />
-                  Congés équipe
+                  {t('encadreur.leaves_team_title')}
                   {statsConges.en_attente > 0 && (
                     <span className="badge badge-danger ml-2">{statsConges.en_attente}</span>
                   )}
                 </h3>
                 <Link to="/manager/conges" className="btn btn-sm btn-outline-warning">
-                  Voir les demandes
+                  {t('encadreur.see_requests_btn')}
                 </Link>
               </div>
               <div className="card-body">
@@ -389,33 +390,33 @@ export default function EncadreurDashboard() {
                     <div className="font-weight-bold" style={{ fontSize: 24, color: '#fd7e14' }}>
                       {statsConges.en_attente}
                     </div>
-                    <small className="text-muted">En attente</small>
+                    <small className="text-muted">{t('encadreur.pending_stat')}</small>
                   </div>
                   <div className="col-md-3 col-6 text-center border-right">
                     <div className="font-weight-bold" style={{ fontSize: 24, color: '#28a745' }}>
                       {statsConges.approuves}
                     </div>
-                    <small className="text-muted">Approuvés</small>
+                    <small className="text-muted">{t('encadreur.approved_stat')}</small>
                   </div>
                   <div className="col-md-3 col-6 text-center border-right">
                     <div className="font-weight-bold" style={{ fontSize: 24, color: '#2E74B5' }}>
                       {statsConges.total_jours_pris}j
                     </div>
-                    <small className="text-muted">Jours pris</small>
+                    <small className="text-muted">{t('encadreur.days_taken_stat')}</small>
                   </div>
                   <div className="col-md-3 col-6 text-center">
                     <div className="font-weight-bold" style={{ fontSize: 24, color: '#6f42c1' }}>
                       {statsConges.taux_approbation}%
                     </div>
-                    <small className="text-muted">Taux approbation</small>
+                    <small className="text-muted">{t('encadreur.approval_rate_stat')}</small>
                   </div>
                 </div>
                 {statsConges.en_attente > 0 && (
                   <div className="alert alert-warning py-2 mt-3 mb-0" style={{ fontSize: 13 }}>
                     <i className="fas fa-hourglass-half mr-2" />
-                    <strong>{statsConges.en_attente}</strong> demande{statsConges.en_attente > 1 ? 's' : ''} en attente de votre validation.
+                    {t('encadreur.pending_leave_alert', { count: statsConges.en_attente })}
                     {' '}
-                    <Link to="/manager/conges" className="alert-link">Valider maintenant →</Link>
+                    <Link to="/manager/conges" className="alert-link">{t('encadreur.validate_now_link')}</Link>
                   </div>
                 )}
               </div>
@@ -424,7 +425,7 @@ export default function EncadreurDashboard() {
         </div>
       )}
 
-      {/* ── Objectifs équipe ── */}
+      {/* Objectifs équipe */}
       {objectifsEquipe.length > 0 && (
         <div className="row mt-1">
           <div className="col-12">
@@ -432,10 +433,10 @@ export default function EncadreurDashboard() {
               <div className="card-header d-flex justify-content-between align-items-center">
                 <h3 className="card-title">
                   <i className="fas fa-bullseye mr-2" />
-                  Objectifs équipe
+                  {t('encadreur.objectives_team_title')}
                 </h3>
                 <Link to="/manager/objectifs-equipe" className="btn btn-sm btn-outline-primary">
-                  Gérer
+                  {t('encadreur.manage_btn')}
                 </Link>
               </div>
               <div className="card-body p-0">
@@ -443,10 +444,10 @@ export default function EncadreurDashboard() {
                   <table className="table table-sm table-hover mb-0">
                     <thead>
                       <tr>
-                        <th>Employé</th>
-                        <th>Objectif</th>
-                        <th>Priorité</th>
-                        <th style={{ minWidth: 100 }}>Progression</th>
+                        <th>{t('encadreur.col_emp')}</th>
+                        <th>{t('encadreur.col_obj')}</th>
+                        <th>{t('encadreur.col_prio')}</th>
+                        <th style={{ minWidth: 100 }}>{t('encadreur.col_prog')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -478,7 +479,7 @@ export default function EncadreurDashboard() {
         </div>
       )}
 
-      {/* ── Formations équipe ── */}
+      {/* Formations équipe */}
       {statsFormations && (
         <div className="row mt-1">
           <div className="col-12">
@@ -486,10 +487,10 @@ export default function EncadreurDashboard() {
               <div className="card-header d-flex justify-content-between align-items-center">
                 <h3 className="card-title">
                   <i className="fas fa-graduation-cap mr-2" />
-                  Formations équipe
+                  {t('encadreur.trainings_team_title')}
                 </h3>
                 <Link to="/manager/formations" className="btn btn-sm btn-outline-primary">
-                  Voir le détail
+                  {t('encadreur.see_details_btn')}
                 </Link>
               </div>
               <div className="card-body">
@@ -498,13 +499,13 @@ export default function EncadreurDashboard() {
                     <div className="font-weight-bold" style={{ fontSize: 22, color: '#007bff' }}>
                       {statsFormations.inscrits}
                     </div>
-                    <small className="text-muted">Inscrits / en attente</small>
+                    <small className="text-muted">{t('encadreur.enrolled_waiting_stat')}</small>
                   </div>
                   <div className="col-4 border-right">
                     <div className="font-weight-bold" style={{ fontSize: 22, color: '#28a745' }}>
                       {statsFormations.presents}
                     </div>
-                    <small className="text-muted">Présents</small>
+                    <small className="text-muted">{t('encadreur.present_stat')}</small>
                   </div>
                   <div className="col-4">
                     <div className="font-weight-bold" style={{
@@ -513,7 +514,7 @@ export default function EncadreurDashboard() {
                     }}>
                       {statsFormations.taux}%
                     </div>
-                    <small className="text-muted">Taux de présence</small>
+                    <small className="text-muted">{t('encadreur.presence_rate_stat')}</small>
                   </div>
                 </div>
               </div>

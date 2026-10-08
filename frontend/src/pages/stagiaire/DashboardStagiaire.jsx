@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
 import StagiaireLayout from '../../components/layout/StagiaireLayout'
 import Spinner from '../../components/Spinner'
 import useAuthStore from '../../store/authStore'
@@ -8,34 +9,12 @@ import { getMesStats, getRapports } from '../../api/rapports'
 import { getProjets, getPeriodes } from '../../api/stagiaires'
 import { getMesSoldes } from '../../api/conges'
 import { getMonPointageAujourdhui, pointerArrivee, pointerDepart } from '../../api/presences'
-import { getMesDocuments } from '../../api/documents'
+import { getMesDocuments, telechargerDocument } from '../../api/documents'
 import { getMesObjectifs } from '../../api/objectifs'
 import { getMesInscriptions } from '../../api/formations'
 import { getMesBulletins } from '../../api/paie'
+import { useApercu } from '../../components/ui/useApercu'
 
-const FILIERE_LABELS = {
-  ISA: 'IA Solutions Architect',
-  IT: 'Informatique & Télécoms',
-  GRAPHISME: 'Graphisme',
-  AUTRE: 'Autre',
-}
-
-const STATUT_CONFIG = {
-  BROUILLON: { badge: 'badge-secondary', label: 'Brouillon' },
-  SOUMIS:    { badge: 'badge-primary',   label: 'Soumis' },
-  VALIDE:    { badge: 'badge-success',   label: 'Validé' },
-  REJETE:    { badge: 'badge-danger',    label: 'Rejeté' },
-}
-
-const PROJET_STATUT_CONFIG = {
-  PROPOSE:  { badge: 'badge-secondary', label: 'Proposé' },
-  VALIDE:   { badge: 'badge-success',   label: 'Validé' },
-  EN_COURS: { badge: 'badge-primary',   label: 'En cours' },
-  LIVRE:    { badge: 'badge-info',      label: 'Livré' },
-  SOUTENU:  { badge: 'badge-warning',   label: 'Soutenu' },
-}
-
-// Jauge circulaire SVG simple
 function ScoreGauge({ score }) {
   if (score == null) return <span className="text-muted">—</span>
   const r = 36
@@ -55,7 +34,26 @@ function ScoreGauge({ score }) {
 }
 
 export default function DashboardStagiaire() {
+  const { t, i18n } = useTranslation()
+  const locale = i18n.language === 'en' ? 'en-US' : 'fr-FR'
   const { user } = useAuthStore()
+  const { voirFichier, apercuModal } = useApercu()
+
+  const STATUT_CONFIG = {
+    BROUILLON: { badge: 'badge-secondary', label: t('stagiaire.status_draft') },
+    SOUMIS:    { badge: 'badge-primary',   label: t('stagiaire.status_submitted') },
+    VALIDE:    { badge: 'badge-success',   label: t('stagiaire.status_validated') },
+    REJETE:    { badge: 'badge-danger',    label: t('stagiaire.status_rejected') },
+  }
+
+  const PROJET_STATUT_CONFIG = {
+    PROPOSE:  { badge: 'badge-secondary', label: t('stagiaire.project_status_proposed') },
+    VALIDE:   { badge: 'badge-success',   label: t('stagiaire.project_status_validated') },
+    EN_COURS: { badge: 'badge-primary',   label: t('stagiaire.project_status_ongoing') },
+    LIVRE:    { badge: 'badge-info',      label: t('stagiaire.project_status_delivered') },
+    SOUTENU:  { badge: 'badge-warning',   label: t('stagiaire.project_status_defended') },
+  }
+
   const [stats, setStats]     = useState(null)
   const [rapports, setRapports] = useState([])
   const [projet, setProjet]   = useState(null)
@@ -74,13 +72,13 @@ export default function DashboardStagiaire() {
       try {
         const annee = new Date().getFullYear()
         const [sRes, rRes, pjRes, peRes, soldesRes, ptRes, docRes, objRes, formRes, paieRes] = await Promise.all([
-          getMesStats(),
-          getRapports(),
-          getProjets(),
-          getPeriodes(),
-          getMesSoldes({ annee }),
-          getMonPointageAujourdhui(),
-          getMesDocuments(),
+          getMesStats().catch(() => ({ data: null })),
+          getRapports().catch(() => ({ data: [] })),
+          getProjets().catch(() => ({ data: [] })),
+          getPeriodes().catch(() => ({ data: [] })),
+          getMesSoldes({ annee }).catch(() => ({ data: [] })),
+          getMonPointageAujourdhui().catch(() => ({ data: { pointage: null } })),
+          getMesDocuments().catch(() => ({ data: [] })),
           getMesObjectifs().catch(() => ({ data: [] })),
           getMesInscriptions().catch(() => ({ data: [] })),
           getMesBulletins().catch(() => ({ data: [] })),
@@ -103,7 +101,7 @@ export default function DashboardStagiaire() {
         setDernierBulletin(bulletinsData[0] ?? null)
       } catch (err) {
         console.error('[Dashboard] load error:', err)
-        toast.error('Erreur lors du chargement du tableau de bord.')
+        toast.error(t('stagiaire.dashboard_error'), { id: 'dashboard-load-error' })
       } finally {
         setLoading(false)
       }
@@ -113,15 +111,13 @@ export default function DashboardStagiaire() {
 
   if (loading) {
     return (
-      <StagiaireLayout pageTitle="Tableau de bord">
-        <Spinner message="Chargement de votre tableau de bord…" />
+      <StagiaireLayout pageTitle={t('stagiaire.dashboard_loading')}>
+        <Spinner message={t('stagiaire.dashboard_loading')} />
       </StagiaireLayout>
     )
   }
 
-  const semaineCourante = stats?.dernier_rapport_semaine
-    ? stats.dernier_rapport_semaine + 1
-    : 1
+  const semaineCourante = stats?.dernier_rapport_semaine ? stats.dernier_rapport_semaine + 1 : 1
 
   async function handleArrivee() {
     setActioning('arrivee')
@@ -130,7 +126,7 @@ export default function DashboardStagiaire() {
       toast.success(res.data.message)
       setPointage(res.data.pointage)
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Erreur de pointage.')
+      toast.error(err.response?.data?.error || t('stagiaire.clock_error'))
     } finally { setActioning(null) }
   }
 
@@ -141,22 +137,22 @@ export default function DashboardStagiaire() {
       toast.success(res.data.message)
       setPointage(res.data.pointage)
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Erreur de pointage.')
+      toast.error(err.response?.data?.error || t('stagiaire.clock_error'))
     } finally { setActioning(null) }
   }
 
   return (
-    <StagiaireLayout pageTitle={`Bonjour, ${user?.first_name || user?.username} !`}>
+    <StagiaireLayout pageTitle={`${t('stagiaire.hello_prefix') || 'Bonjour,'} ${user?.first_name || user?.username} !`}>
 
-      {/* ── Période active ── */}
+      {/* Période active */}
       {periode && (
         <div className="alert alert-info py-2 mb-3" style={{ fontSize: 13 }}>
           <i className="fas fa-calendar-alt mr-2" />
-          Stage en cours : <strong>{periode.date_debut}</strong> → <strong>{periode.date_fin}</strong>
+          {t('stagiaire.stage_ongoing')} <strong>{periode.date_debut}</strong> → <strong>{periode.date_fin}</strong>
           {periode.encadreur_detail && (
             <span className="ml-3">
               <i className="fas fa-user-tie mr-1" />
-              Encadreur : <strong>
+              {t('stagiaire.supervisor_label')} <strong>
                 {periode.encadreur_detail.full_name || periode.encadreur_detail.username}
               </strong>
             </span>
@@ -164,17 +160,17 @@ export default function DashboardStagiaire() {
         </div>
       )}
 
-      {/* ── 4 Small Boxes stats ── */}
+      {/* 4 Small Boxes stats */}
       <div className="row">
         <div className="col-lg-3 col-6">
           <div className="small-box" style={{ background: '#2E74B5', color: '#fff' }}>
             <div className="inner">
               <h3>{stats?.soumis ?? 0}</h3>
-              <p>Rapports soumis</p>
+              <p>{t('stagiaire.reports_submitted')}</p>
             </div>
             <div className="icon"><i className="fas fa-paper-plane" /></div>
-            <Link to="/stagiaire/rapports" className="small-box-footer" style={{ color: 'rgba(255,255,255,0.85)' }}>
-              Voir tous <i className="fas fa-arrow-circle-right" />
+            <Link to="/employe/rapports" className="small-box-footer" style={{ color: 'rgba(255,255,255,0.85)' }}>
+              {t('stagiaire.see_all')} <i className="fas fa-arrow-circle-right" />
             </Link>
           </div>
         </div>
@@ -183,13 +179,13 @@ export default function DashboardStagiaire() {
           <div className="small-box bg-success">
             <div className="inner">
               <h3>{stats?.valides ?? 0}</h3>
-              <p>Rapports validés</p>
+              <p>{t('stagiaire.reports_validated')}</p>
             </div>
             <div className="icon"><i className="fas fa-check-double" /></div>
             <span className="small-box-footer">
               {stats?.total_rapports
                 ? `${Math.round((stats.valides / stats.total_rapports) * 100)}% du total`
-                : 'Aucun rapport'}
+                : t('stagiaire.no_reports_stat')}
             </span>
           </div>
         </div>
@@ -198,11 +194,11 @@ export default function DashboardStagiaire() {
           <div className="small-box" style={{ background: '#6f42c1', color: '#fff' }}>
             <div className="inner">
               <h3>{stats?.score_moyen != null ? `${stats.score_moyen}` : '—'}</h3>
-              <p>Score IA moyen / 100</p>
+              <p>{t('stagiaire.ia_score_label')}</p>
             </div>
             <div className="icon"><i className="fas fa-robot" /></div>
             <span className="small-box-footer" style={{ color: 'rgba(255,255,255,0.85)' }}>
-              Meilleur : {stats?.meilleur_score ?? '—'}/100
+              {t('stagiaire.best_score', { score: stats?.meilleur_score ?? '—' })}
             </span>
           </div>
         </div>
@@ -211,18 +207,17 @@ export default function DashboardStagiaire() {
           <div className="small-box bg-warning">
             <div className="inner">
               <h3>S{semaineCourante}</h3>
-              <p>Prochaine semaine</p>
+              <p>{t('stagiaire.next_week_label')}</p>
             </div>
             <div className="icon"><i className="fas fa-calendar-week" /></div>
-            <Link to="/stagiaire/rapports/nouveau"
-              className="small-box-footer">
-              Rédiger le rapport <i className="fas fa-arrow-circle-right" />
+            <Link to="/employe/rapports/nouveau" className="small-box-footer">
+              {t('stagiaire.write_report')} <i className="fas fa-arrow-circle-right" />
             </Link>
           </div>
         </div>
       </div>
 
-      {/* ── Barre de taux de soumission ── */}
+      {/* Barre de taux de soumission */}
       {stats && stats.total_rapports > 0 && (
         <div className="row mb-3">
           <div className="col-12">
@@ -230,7 +225,7 @@ export default function DashboardStagiaire() {
               <div className="card-body py-2">
                 <div className="d-flex justify-content-between align-items-center mb-1">
                   <small className="font-weight-bold" style={{ color: 'var(--text-secondary)' }}>
-                    Taux de soumission
+                    {t('stagiaire.submission_rate')}
                   </small>
                   <small style={{ color: 'var(--acerfi-blue)', fontWeight: 700 }}>
                     {stats.taux_soumission}%
@@ -251,38 +246,38 @@ export default function DashboardStagiaire() {
         </div>
       )}
 
-      {/* ── Deux colonnes : 5 derniers rapports + Mon projet ── */}
+      {/* Deux colonnes : 5 derniers rapports + Mon projet */}
       <div className="row">
 
-        {/* Colonne gauche — 5 derniers rapports (60%) */}
+        {/* Colonne gauche — 5 derniers rapports */}
         <div className="col-md-7">
           <div className="card">
             <div className="card-header d-flex justify-content-between align-items-center">
               <h3 className="card-title">
                 <i className="fas fa-list-ul mr-2" />
-                Derniers rapports
+                {t('stagiaire.last_reports_title')}
               </h3>
-              <Link to="/stagiaire/rapports" className="btn btn-sm btn-outline-primary">
-                Voir tout
+              <Link to="/employe/rapports" className="btn btn-sm btn-outline-primary">
+                {t('stagiaire.see_all_reports')}
               </Link>
             </div>
             <div className="card-body p-0">
               {rapports.length === 0 ? (
                 <div className="text-center py-4 text-muted">
                   <i className="fas fa-inbox fa-2x mb-2 d-block" />
-                  <p className="mb-2">Vous n'avez pas encore soumis de rapport.</p>
-                  <Link to="/stagiaire/rapports/nouveau" className="btn btn-sm btn-primary">
+                  <p className="mb-2">{t('stagiaire.no_reports_yet')}</p>
+                  <Link to="/employe/rapports/nouveau" className="btn btn-sm btn-primary">
                     <i className="fas fa-plus mr-1" />
-                    Commencer par la semaine 1
+                    {t('stagiaire.start_week1')}
                   </Link>
                 </div>
               ) : (
                 <table className="table table-sm table-hover mb-0">
                   <thead>
                     <tr>
-                      <th>Semaine</th>
-                      <th>Statut</th>
-                      <th>Score IA</th>
+                      <th>{t('stagiaire.col_week')}</th>
+                      <th>{t('stagiaire.col_status')}</th>
+                      <th>{t('stagiaire.col_ia_score')}</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -302,7 +297,7 @@ export default function DashboardStagiaire() {
                             {r.analyse ? `${r.analyse.score_engagement}/100` : '—'}
                           </td>
                           <td>
-                            <Link to={`/stagiaire/rapports/${r.id}`}
+                            <Link to={`/employe/rapports/${r.id}`}
                               className="btn btn-xs btn-outline-secondary"
                               style={{ fontSize: 11 }}>
                               <i className="fas fa-eye" />
@@ -318,13 +313,13 @@ export default function DashboardStagiaire() {
           </div>
         </div>
 
-        {/* Colonne droite — Mon projet (40%) */}
+        {/* Colonne droite — Mon projet */}
         <div className="col-md-5">
           <div className="card card-primary card-outline">
             <div className="card-header">
               <h3 className="card-title">
                 <i className="fas fa-bullseye mr-2" />
-                Mon projet de soutenance
+                {t('stagiaire.my_project_title')}
               </h3>
             </div>
             <div className="card-body">
@@ -341,9 +336,7 @@ export default function DashboardStagiaire() {
                   <div className="mt-3">
                     {(() => {
                       const cfg = PROJET_STATUT_CONFIG[projet.statut] || PROJET_STATUT_CONFIG.PROPOSE
-                      return (
-                        <span className={`badge ${cfg.badge} mr-2`}>{cfg.label}</span>
-                      )
+                      return <span className={`badge ${cfg.badge} mr-2`}>{cfg.label}</span>
                     })()}
                     {projet.date_soutenance && (
                       <small className="text-muted">
@@ -358,9 +351,9 @@ export default function DashboardStagiaire() {
                     )}
                   </div>
                   <div className="mt-3">
-                    <Link to="/stagiaire/projet" className="btn btn-sm btn-outline-primary btn-block">
+                    <Link to="/employe/objectifs" className="btn btn-sm btn-outline-primary btn-block">
                       <i className="fas fa-edit mr-1" />
-                      Voir mon projet
+                      {t('stagiaire.view_project')}
                     </Link>
                   </div>
                 </>
@@ -368,30 +361,29 @@ export default function DashboardStagiaire() {
                 <div className="text-center py-2">
                   <i className="fas fa-folder-open fa-2x mb-2 d-block text-muted" />
                   <p className="text-muted" style={{ fontSize: 13 }}>
-                    Aucun projet déclaré.
+                    {t('stagiaire.no_project')}
                   </p>
-                  <Link to="/stagiaire/projet" className="btn btn-sm btn-primary">
+                  <Link to="/employe/objectifs" className="btn btn-sm btn-primary">
                     <i className="fas fa-plus mr-1" />
-                    Déclarer mon projet
+                    {t('stagiaire.declare_project')}
                   </Link>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Score global card */}
           {stats?.score_moyen != null && (
             <div className="card mt-3">
               <div className="card-header">
                 <h3 className="card-title">
                   <i className="fas fa-robot mr-2" />
-                  Score IA global
+                  {t('stagiaire.ia_score_global')}
                 </h3>
               </div>
               <div className="card-body text-center">
                 <ScoreGauge score={stats.score_moyen} />
                 <p className="mt-2 mb-0" style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                  Basé sur {stats.total_rapports - stats.brouillons} analyse{stats.total_rapports - stats.brouillons > 1 ? 's' : ''}
+                  {t('stagiaire.based_on_analyses', { n: stats.total_rapports - stats.brouillons })}
                 </p>
               </div>
             </div>
@@ -399,17 +391,17 @@ export default function DashboardStagiaire() {
         </div>
       </div>
 
-      {/* ── Widget Pointage du jour ── */}
+      {/* Widget Pointage du jour */}
       <div className="row mt-1 mb-2">
         <div className="col-md-6">
           <div className="card card-outline card-success mb-0">
             <div className="card-header py-2">
               <h3 className="card-title" style={{ fontSize: 13 }}>
-                <i className="fas fa-fingerprint mr-2" />Pointage du jour
+                <i className="fas fa-fingerprint mr-2" />{t('stagiaire.attendance_today')}
               </h3>
               <div className="card-tools">
                 <Link to="/employe/presences" className="btn btn-xs btn-outline-secondary">
-                  Historique
+                  {t('stagiaire.history_link')}
                 </Link>
               </div>
             </div>
@@ -417,26 +409,26 @@ export default function DashboardStagiaire() {
               {pointage && pointage.id ? (
                 <div className="d-flex align-items-center justify-content-around">
                   <div className="text-center">
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Arrivée</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{t('stagiaire.arrival_label')}</div>
                     {pointage.heure_arrivee
                       ? <strong style={{ color: '#28A745', fontSize: 16 }}>{pointage.heure_arrivee?.slice(0,5)}</strong>
                       : <button className="btn btn-xs btn-success" disabled={actioning === 'arrivee'}
                           onClick={handleArrivee}>
-                          {actioning === 'arrivee' ? <i className="fas fa-spinner fa-spin" /> : 'Pointer'}
+                          {actioning === 'arrivee' ? <i className="fas fa-spinner fa-spin" /> : t('stagiaire.clock_in_btn')}
                         </button>}
                   </div>
                   <div className="text-center">
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Départ</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{t('stagiaire.departure_label')}</div>
                     {pointage.heure_depart
                       ? <strong style={{ color: '#DC3545', fontSize: 16 }}>{pointage.heure_depart?.slice(0,5)}</strong>
                       : <button className="btn btn-xs btn-danger"
                           disabled={!pointage.heure_arrivee || actioning === 'depart'}
                           onClick={handleDepart}>
-                          {actioning === 'depart' ? <i className="fas fa-spinner fa-spin" /> : 'Pointer'}
+                          {actioning === 'depart' ? <i className="fas fa-spinner fa-spin" /> : t('stagiaire.clock_in_btn')}
                         </button>}
                   </div>
                   <div className="text-center">
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Heures</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{t('stagiaire.hours_label')}</div>
                     <strong style={{ color: 'var(--acerfi-blue)', fontSize: 16 }}>
                       {pointage.heures_travaillees ? `${parseFloat(pointage.heures_travaillees).toFixed(1)}h` : '—'}
                     </strong>
@@ -444,11 +436,11 @@ export default function DashboardStagiaire() {
                 </div>
               ) : (
                 <div className="d-flex align-items-center justify-content-between">
-                  <span className="text-muted" style={{ fontSize: 12 }}>Pas encore pointé aujourd'hui.</span>
+                  <span className="text-muted" style={{ fontSize: 12 }}>{t('stagiaire.not_clocked')}</span>
                   <button className="btn btn-sm btn-success" disabled={actioning === 'arrivee'} onClick={handleArrivee}>
                     {actioning === 'arrivee'
                       ? <><i className="fas fa-spinner fa-spin mr-1" />…</>
-                      : <><i className="fas fa-sign-in-alt mr-1" />Pointer arrivée</>}
+                      : <><i className="fas fa-sign-in-alt mr-1" />{t('stagiaire.clock_in_btn')}</>}
                   </button>
                 </div>
               )}
@@ -456,23 +448,23 @@ export default function DashboardStagiaire() {
           </div>
         </div>
 
-        {/* ── Documents récents ── */}
+        {/* Documents récents */}
         <div className="col-md-6">
           <div className="card card-outline card-info mb-0">
             <div className="card-header py-2">
               <h3 className="card-title" style={{ fontSize: 13 }}>
-                <i className="fas fa-folder-open mr-2" />Mes documents récents
+                <i className="fas fa-folder-open mr-2" />{t('stagiaire.recent_docs')}
               </h3>
               <div className="card-tools">
                 <Link to="/employe/documents" className="btn btn-xs btn-outline-secondary">
-                  Voir tout
+                  {t('stagiaire.see_all_docs')}
                 </Link>
               </div>
             </div>
             <div className="card-body p-0">
               {docRecents.length === 0 ? (
                 <div className="text-center py-2 text-muted" style={{ fontSize: 12 }}>
-                  Aucun document disponible.
+                  {t('stagiaire.no_docs')}
                 </div>
               ) : (
                 <ul className="list-group list-group-flush">
@@ -483,10 +475,14 @@ export default function DashboardStagiaire() {
                           style={{ color: doc.categorie_detail?.couleur }} />
                         {doc.titre}
                       </span>
-                      <a href={doc.fichier} target="_blank" rel="noopener noreferrer"
-                        className="btn btn-xs btn-outline-primary">
-                        <i className="fas fa-download" />
-                      </a>
+                      <button
+                        className="btn btn-xs btn-outline-primary"
+                        title={t('apercu.preview')}
+                        onClick={() => telechargerDocument(doc.id)
+                          .then(res => voirFichier(res.data, doc.fichier ? doc.fichier.split('/').pop() : `doc-${doc.id}.pdf`, doc.titre))
+                          .catch(() => toast.error(t('apercu.load_error'), { id: 'apercu-err' }))}>
+                        <i className="fas fa-eye" />
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -496,7 +492,7 @@ export default function DashboardStagiaire() {
         </div>
       </div>
 
-      {/* ── Carte Congés ── */}
+      {/* Carte Congés */}
       {(() => {
         const soldeCA = soldes.find(s => s.type_conge_detail?.code === 'CA')
         const restant = soldeCA ? parseFloat(soldeCA.solde_restant).toFixed(0) : null
@@ -512,10 +508,10 @@ export default function DashboardStagiaire() {
                 <div className="card-header d-flex justify-content-between align-items-center">
                   <h3 className="card-title">
                     <i className="fas fa-umbrella-beach mr-2" />
-                    Mes congés
+                    {t('stagiaire.my_leaves')}
                   </h3>
                   <Link to="/employe/conges" className="btn btn-sm btn-outline-primary">
-                    Voir tout
+                    {t('stagiaire.see_all_leaves')}
                   </Link>
                 </div>
                 <div className="card-body">
@@ -524,7 +520,7 @@ export default function DashboardStagiaire() {
                       {restant !== null ? (
                         <>
                           <div className="d-flex justify-content-between mb-1" style={{ fontSize: 13 }}>
-                            <span className="font-weight-bold">Congé annuel</span>
+                            <span className="font-weight-bold">{t('stagiaire.annual_leave')}</span>
                             <span className="text-muted">
                               {parseFloat(soldeCA.jours_pris).toFixed(0)}/{acquis} jours pris
                             </span>
@@ -544,13 +540,13 @@ export default function DashboardStagiaire() {
                         </>
                       ) : (
                         <p className="text-muted mb-0" style={{ fontSize: 13 }}>
-                          Faites votre première demande pour initialiser vos soldes.
+                          {t('stagiaire.first_request_msg')}
                         </p>
                       )}
                     </div>
                     <div className="col-md-6 text-right">
                       <Link to="/employe/conges/nouveau" className="btn btn-success btn-sm">
-                        <i className="fas fa-plus mr-1" />Faire une demande
+                        <i className="fas fa-plus mr-1" />{t('stagiaire.make_request')}
                       </Link>
                     </div>
                   </div>
@@ -561,17 +557,17 @@ export default function DashboardStagiaire() {
         )
       })()}
 
-      {/* ── Objectifs récents ── */}
+      {/* Objectifs récents */}
       {objectifsRecents.length > 0 && (
         <div className="row mt-1">
           <div className="col-12">
             <div className="card card-outline card-primary">
               <div className="card-header d-flex justify-content-between align-items-center">
                 <h3 className="card-title" style={{ fontSize: 13 }}>
-                  <i className="fas fa-bullseye mr-2" />Mes objectifs en cours
+                  <i className="fas fa-bullseye mr-2" />{t('stagiaire.my_objectives')}
                 </h3>
                 <Link to="/employe/mes-objectifs" className="btn btn-xs btn-outline-secondary">
-                  Voir tout
+                  {t('stagiaire.see_all_objectives')}
                 </Link>
               </div>
               <div className="card-body p-0">
@@ -598,7 +594,7 @@ export default function DashboardStagiaire() {
         </div>
       )}
 
-      {/* ── Mes formations ── */}
+      {/* Mes formations */}
       {(() => {
         const now = new Date()
         const aVenir = mesFormations.filter(i =>
@@ -616,22 +612,22 @@ export default function DashboardStagiaire() {
               <div className="card card-outline card-primary">
                 <div className="card-header d-flex justify-content-between align-items-center">
                   <h3 className="card-title" style={{ fontSize: 13 }}>
-                    <i className="fas fa-graduation-cap mr-2" />Mes formations
+                    <i className="fas fa-graduation-cap mr-2" />{t('stagiaire.my_trainings')}
                   </h3>
                   <div className="d-flex gap-2">
-                    <Link to="/employe/mes-formations" className="btn btn-xs btn-outline-secondary">Mes inscriptions</Link>
-                    <Link to="/employe/formations" className="btn btn-xs btn-primary">Catalogue</Link>
+                    <Link to="/employe/mes-formations" className="btn btn-xs btn-outline-secondary">{t('stagiaire.my_enrollments')}</Link>
+                    <Link to="/employe/formations" className="btn btn-xs btn-primary">{t('stagiaire.catalog')}</Link>
                   </div>
                 </div>
                 <div className="card-body">
                   <div className="row text-center">
                     <div className="col-4 border-right">
                       <div style={{ fontSize: 22, fontWeight: 700, color: '#28a745' }}>{suivies}</div>
-                      <small className="text-muted">Formations suivies</small>
+                      <small className="text-muted">{t('stagiaire.trainings_followed')}</small>
                     </div>
                     <div className="col-4 border-right">
                       <div style={{ fontSize: 22, fontWeight: 700, color: '#007bff' }}>{aVenir.length}</div>
-                      <small className="text-muted">À venir</small>
+                      <small className="text-muted">{t('stagiaire.upcoming')}</small>
                     </div>
                     <div className="col-4">
                       {prochaine ? (
@@ -641,11 +637,11 @@ export default function DashboardStagiaire() {
                           </div>
                           <small className="text-muted">
                             <i className="fas fa-calendar mr-1" />
-                            {new Date(prochaine.formation_detail.date_debut).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+                            {new Date(prochaine.formation_detail.date_debut).toLocaleDateString(locale, { day: '2-digit', month: 'short' })}
                           </small>
                         </>
                       ) : (
-                        <small className="text-muted">Aucune à venir</small>
+                        <small className="text-muted">{t('stagiaire.no_upcoming')}</small>
                       )}
                     </div>
                   </div>
@@ -656,7 +652,7 @@ export default function DashboardStagiaire() {
         )
       })()}
 
-      {/* ── Dernier bulletin de paie ── */}
+      {/* Dernier bulletin de paie */}
       {dernierBulletin && (
         <div className="row mb-3">
           <div className="col-12">
@@ -664,35 +660,35 @@ export default function DashboardStagiaire() {
               <div className="card-header d-flex justify-content-between align-items-center py-2">
                 <h3 className="card-title" style={{ fontSize: 13 }}>
                   <i className="fas fa-coins mr-2" style={{ color: 'var(--acerfi-blue)' }} />
-                  Dernier bulletin de paie — {dernierBulletin.periode}
+                  {t('stagiaire.my_payslips')} — {dernierBulletin.periode}
                 </h3>
-                <Link to="/employe/paie" className="btn btn-xs btn-outline-primary">Mes bulletins</Link>
+                <Link to="/employe/paie" className="btn btn-xs btn-outline-primary">{t('stagiaire.my_payslips')}</Link>
               </div>
               <div className="card-body py-2">
                 <div className="row text-center">
                   <div className="col-6 col-md-3 border-right">
                     <div className="font-weight-bold" style={{ fontSize: 18, color: 'var(--acerfi-blue)' }}>
-                      {Number(dernierBulletin.salaire_brut).toLocaleString('fr-FR')} F
+                      {Number(dernierBulletin.salaire_brut).toLocaleString(locale)} F
                     </div>
-                    <small className="text-muted">Salaire brut</small>
+                    <small className="text-muted">{t('stagiaire.gross_salary')}</small>
                   </div>
                   <div className="col-6 col-md-3 border-right">
                     <div className="font-weight-bold" style={{ fontSize: 18, color: '#fd7e14' }}>
-                      {Number(dernierBulletin.cnps_employe).toLocaleString('fr-FR')} F
+                      {Number(dernierBulletin.cnps_employe).toLocaleString(locale)} F
                     </div>
-                    <small className="text-muted">CNPS</small>
+                    <small className="text-muted">{t('stagiaire.cnps_label')}</small>
                   </div>
                   <div className="col-6 col-md-3 border-right">
                     <div className="font-weight-bold" style={{ fontSize: 18, color: '#6f42c1' }}>
-                      {Number(dernierBulletin.irpp).toLocaleString('fr-FR')} F
+                      {Number(dernierBulletin.irpp).toLocaleString(locale)} F
                     </div>
-                    <small className="text-muted">IRPP</small>
+                    <small className="text-muted">{t('stagiaire.irpp_label')}</small>
                   </div>
                   <div className="col-6 col-md-3">
                     <div className="font-weight-bold" style={{ fontSize: 18, color: '#28a745' }}>
-                      {Number(dernierBulletin.salaire_net).toLocaleString('fr-FR')} F
+                      {Number(dernierBulletin.salaire_net).toLocaleString(locale)} F
                     </div>
-                    <small className="text-muted">Net à payer</small>
+                    <small className="text-muted">{t('stagiaire.net_salary')}</small>
                   </div>
                 </div>
               </div>
@@ -701,6 +697,7 @@ export default function DashboardStagiaire() {
         </div>
       )}
 
+      {apercuModal}
     </StagiaireLayout>
   )
 }

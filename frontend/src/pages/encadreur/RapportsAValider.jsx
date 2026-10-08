@@ -1,50 +1,67 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
 import EncadreurLayout from '../../components/layout/EncadreurLayout'
 import Spinner from '../../components/Spinner'
 import { getRapportsAValider } from '../../api/encadreur'
 
-const ALERTE_CONFIG = {
-  AUCUNE:  { cls: 'badge-success',  icon: 'fas fa-check-circle text-success',  label: 'Aucune alerte' },
-  FAIBLE:  { cls: 'badge-success',  icon: 'fas fa-check-circle text-success',  label: 'Faible' },
-  MOYENNE: { cls: 'badge-warning',  icon: 'fas fa-exclamation-circle text-warning', label: 'Moyenne' },
-  ELEVEE:  { cls: 'badge-danger',   icon: 'fas fa-exclamation-triangle text-danger', label: 'Élevée' },
+const ALERTE_CLS = {
+  AUCUNE:  'badge-success',
+  FAIBLE:  'badge-success',
+  MOYENNE: 'badge-warning',
+  ELEVEE:  'badge-danger',
 }
-
-function tempsDepuis(dateStr) {
-  if (!dateStr) return null
-  const diff  = Date.now() - new Date(dateStr).getTime()
-  const jours = Math.floor(diff / 86400000)
-  const heures = Math.floor(diff / 3600000)
-  if (jours >= 1) return `il y a ${jours} jour${jours > 1 ? 's' : ''}`
-  if (heures >= 1) return `il y a ${heures} heure${heures > 1 ? 's' : ''}`
-  return "à l'instant"
-}
-
-function fmtDate(d) {
-  if (!d) return '—'
-  const [y, m, j] = d.split('-')
-  const mois = ['jan', 'fév', 'mars', 'avr', 'mai', 'juin', 'juil', 'août', 'sep', 'oct', 'nov', 'déc']
-  return `${parseInt(j)} ${mois[parseInt(m) - 1]}. ${y}`
+const ALERTE_ICON = {
+  AUCUNE:  'fas fa-check-circle text-success',
+  FAIBLE:  'fas fa-check-circle text-success',
+  MOYENNE: 'fas fa-exclamation-circle text-warning',
+  ELEVEE:  'fas fa-exclamation-triangle text-danger',
 }
 
 export default function RapportsAValider() {
+  const { t, i18n } = useTranslation()
+  const locale = i18n.language === 'en' ? 'en-US' : 'fr-FR'
   const [rapports, setRapports] = useState([])
   const [loading, setLoading]   = useState(true)
+
+  const ALERTE_LABEL = {
+    AUCUNE:  t('encadreur.alert_none_full'),
+    FAIBLE:  t('encadreur.alert_low'),
+    MOYENNE: t('encadreur.alert_medium'),
+    ELEVEE:  t('encadreur.alert_high'),
+  }
+
+  function fmtDate(d) {
+    if (!d) return '—'
+    return new Date(d + 'T12:00:00').toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })
+  }
+
+  function tempsDepuis(dateStr) {
+    if (!dateStr) return null
+    const diff  = Date.now() - new Date(dateStr).getTime()
+    const jours  = Math.floor(diff / 86400000)
+    const heures = Math.floor(diff / 3600000)
+    if (jours >= 1) return jours === 1
+      ? t('encadreur.time_days', { n: jours })
+      : t('encadreur.time_days_plural', { n: jours })
+    if (heures >= 1) return heures === 1
+      ? t('encadreur.time_hours', { n: heures })
+      : t('encadreur.time_hours_plural', { n: heures })
+    return t('encadreur.time_instant')
+  }
 
   function load() {
     setLoading(true)
     getRapportsAValider()
       .then(r => {
         const data = r.data.results ?? r.data
-        // Trier : plus ancien en premier
         const sorted = [...data].sort((a, b) =>
           new Date(a.date_soumission || 0) - new Date(b.date_soumission || 0)
         )
         setRapports(sorted)
       })
-      .catch(() => toast.error('Impossible de charger les rapports.'))
+      .catch(() => toast.error(t('encadreur.load_error_rapport')))
       .finally(() => setLoading(false))
   }
 
@@ -52,28 +69,29 @@ export default function RapportsAValider() {
 
   if (loading) {
     return (
-      <EncadreurLayout pageTitle="Rapports à valider">
-        <Spinner message="Chargement des rapports en attente…" />
+      <EncadreurLayout pageTitle={t('encadreur.reports_to_validate')}>
+        <Spinner message={t('encadreur.loading_pending')} />
       </EncadreurLayout>
     )
   }
 
   return (
-    <EncadreurLayout pageTitle="Rapports à valider">
+    <EncadreurLayout pageTitle={t('encadreur.reports_to_validate')}>
 
-      {/* ── Résumé ── */}
       <div className="row mb-3">
         <div className="col-12">
           {rapports.length > 0 ? (
             <div className="alert alert-warning py-2 mb-0" style={{ fontSize: 13 }}>
               <i className="fas fa-hourglass-half mr-2" />
-              <strong>{rapports.length}</strong> rapport{rapports.length > 1 ? 's' : ''} en attente de validation
-              — triés par ancienneté de soumission.
+              <strong>{rapports.length}</strong>{' '}
+              {rapports.length > 1
+                ? t('encadreur.n_pending_plural', { count: rapports.length })
+                : t('encadreur.n_pending', { count: rapports.length })}
             </div>
           ) : (
             <div className="alert alert-success py-2 mb-0" style={{ fontSize: 13 }}>
               <i className="fas fa-check-circle mr-2" />
-              <strong>Tous les rapports sont traités !</strong> Aucun rapport en attente de validation.
+              <strong>{t('encadreur.all_done')}</strong> {t('encadreur.all_done_sub')}
             </div>
           )}
         </div>
@@ -82,22 +100,24 @@ export default function RapportsAValider() {
       {rapports.length === 0 ? (
         <div className="text-center py-5">
           <i className="fas fa-check-double fa-4x mb-3 text-success d-block" />
-          <h5 style={{ color: 'var(--text-primary)' }}>Aucun rapport en attente</h5>
-          <p className="text-muted">Tous les rapports soumis ont été traités.</p>
-          <Link to="/encadreur/dashboard" className="btn btn-outline-primary">
-            <i className="fas fa-home mr-1" />Retour au tableau de bord
+          <h5 style={{ color: 'var(--text-primary)' }}>{t('encadreur.no_pending_title')}</h5>
+          <p className="text-muted">{t('encadreur.no_pending_sub')}</p>
+          <Link to="/manager/dashboard" className="btn btn-outline-primary">
+            <i className="fas fa-home mr-1" />{t('encadreur.back_to_dashboard')}
           </Link>
         </div>
       ) : (
         <div className="row">
           {rapports.map(r => {
-            const alerteCfg = ALERTE_CONFIG[r.analyse?.niveau_alerte] || ALERTE_CONFIG.AUCUNE
-            const stagiaire = r.stagiaire_detail || {}
+            const niveauAlerte = r.analyse?.niveau_alerte || 'AUCUNE'
+            const alerteCls  = ALERTE_CLS[niveauAlerte] || 'badge-secondary'
+            const alerteIcon = ALERTE_ICON[niveauAlerte]
+            const alerteLbl  = ALERTE_LABEL[niveauAlerte] || niveauAlerte
+            const stagiaire  = r.stagiaire_detail || {}
             return (
               <div className="col-lg-6" key={r.id}>
                 <div className="card mb-3 card-primary card-outline">
                   <div className="card-body">
-                    {/* ── Stagiaire + semaine ── */}
                     <div className="d-flex justify-content-between align-items-start mb-2">
                       <div>
                         <div className="font-weight-bold" style={{ fontSize: 15, color: 'var(--text-primary)' }}>
@@ -110,50 +130,40 @@ export default function RapportsAValider() {
                         </small>
                       </div>
                       <span className="badge badge-primary" style={{ fontSize: 13 }}>
-                        Semaine {r.semaine_numero}
+                        {t('encadreur.week_label', { n: r.semaine_numero })}
                       </span>
                     </div>
 
-                    {/* ── Période ── */}
                     <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
                       <i className="fas fa-calendar-week mr-1" />
                       Du <strong>{fmtDate(r.date_debut_semaine)}</strong> au <strong>{fmtDate(r.date_fin_semaine)}</strong>
                     </div>
 
-                    {/* ── Soumis il y a ── */}
                     {r.date_soumission && (
                       <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>
                         <i className="fas fa-clock mr-1" />
-                        Soumis <strong>{tempsDepuis(r.date_soumission)}</strong>
+                        {t('encadreur.submitted_ago')} <strong>{tempsDepuis(r.date_soumission)}</strong>
                       </div>
                     )}
 
-                    {/* ── Score IA ── */}
                     {r.analyse && (
                       <div className="d-flex align-items-center mb-2" style={{ fontSize: 13 }}>
                         <i className="fas fa-robot mr-2" style={{ color: '#6f42c1' }} />
-                        Score IA : <strong className="mx-1">{r.analyse.score_engagement}/100</strong>
-                        <span className={`badge ${alerteCfg.cls} ml-1`}>
-                          <i className={`${alerteCfg.icon} mr-1`} />{alerteCfg.label}
+                        {t('encadreur.ia_score_inline')} <strong className="mx-1">{r.analyse.score_engagement}/100</strong>
+                        <span className={`badge ${alerteCls} ml-1`}>
+                          <i className={`${alerteIcon} mr-1`} />{alerteLbl}
                         </span>
                       </div>
                     )}
                   </div>
 
-                  {/* ── Actions ── */}
                   <div className="card-footer py-2" style={{ background: 'transparent' }}>
                     <div className="btn-group btn-group-sm w-100">
-                      <Link
-                        to={`/encadreur/rapports/${r.id}/valider`}
-                        className="btn btn-outline-secondary"
-                      >
-                        <i className="fas fa-eye mr-1" />Lire le rapport
+                      <Link to={`/manager/rapports/${r.id}/valider`} className="btn btn-outline-secondary">
+                        <i className="fas fa-eye mr-1" />{t('encadreur.read_report_btn')}
                       </Link>
-                      <Link
-                        to={`/encadreur/rapports/${r.id}/valider`}
-                        className="btn btn-success"
-                      >
-                        <i className="fas fa-gavel mr-1" />Valider / Rejeter
+                      <Link to={`/manager/rapports/${r.id}/valider`} className="btn btn-success">
+                        <i className="fas fa-gavel mr-1" />{t('encadreur.validate_reject_btn')}
                       </Link>
                     </div>
                   </div>
