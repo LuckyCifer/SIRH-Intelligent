@@ -37,6 +37,8 @@ class CalculateurPaie:
     # ── IRPP ──────────────────────────────────────────────────────────────────
     TAUX_CAC             = Decimal("0.10")
     ABATTEMENT_FRAIS_PRO = Decimal("0.30")
+    # Loi de finances 2024 : abattement de 30 % plafonné à 4 800 000 FCFA/an
+    PLAFOND_FRAIS_PRO_MENSUEL = Decimal("400000")
     # Abattement forfaitaire annuel / 12 → 41 667 FCFA
     ABATTEMENT_MENSUEL   = (Decimal("500000") / Decimal("12")).quantize(
         Decimal("1"), rounding=ROUND_HALF_UP
@@ -81,8 +83,10 @@ class CalculateurPaie:
     ]
 
     # ── Divers ────────────────────────────────────────────────────────────────
-    SMIG               = Decimal("43969")
+    # SMIG secteur privé non agricole (décret n° 2023/00338/PM du 21 mars 2023)
+    SMIG               = Decimal("60000")
     TAUX_ANCIENNETE_AN = Decimal("0.02")
+    ANCIENNETE_MIN_ANS = 2   # prime due à partir de 2 ans : 4 %, puis +2 %/an
 
     # ── Utilitaires ───────────────────────────────────────────────────────────
 
@@ -108,7 +112,9 @@ class CalculateurPaie:
     # ── Méthodes de calcul ────────────────────────────────────────────────────
 
     def calculer_prime_anciennete(self, salaire_categoriel, annees: int) -> Decimal:
-        """2 % par an × salaire catégoriel."""
+        """0 avant 2 ans, puis 4 % à 2 ans et +2 % par année supplémentaire (= 2 % × années)."""
+        if annees < self.ANCIENNETE_MIN_ANS:
+            return Decimal("0")
         return self._round(self._D(salaire_categoriel) * self.TAUX_ANCIENNETE_AN * annees)
 
     def calculer_heures_sup(self, nb_h25, nb_h40, taux_horaire) -> dict:
@@ -155,8 +161,9 @@ class CalculateurPaie:
         }
 
     def calculer_irpp(self, sbt: Decimal, cnps_salarie: Decimal) -> dict:
-        """SNC = SBT × 0,70 − CNPS_salarié − 500 000/12."""
-        snc = sbt * (Decimal("1") - self.ABATTEMENT_FRAIS_PRO) - cnps_salarie - self.ABATTEMENT_MENSUEL
+        """SNC = SBT − min(30 % SBT ; 400 000) − CNPS_salarié − 500 000/12."""
+        frais_pro = min(sbt * self.ABATTEMENT_FRAIS_PRO, self.PLAFOND_FRAIS_PRO_MENSUEL)
+        snc = sbt - frais_pro - cnps_salarie - self.ABATTEMENT_MENSUEL
         snc = self._round(snc)
         if snc <= 0:
             return {"snc": Decimal("0"), "irpp": Decimal("0"), "cac": Decimal("0")}

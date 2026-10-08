@@ -127,6 +127,17 @@ class IrppTests(SimpleTestCase):
         self.assertEqual(irpp["irpp"], D("100000"))
         self.assertEqual(irpp["cac"], D("10000"))
 
+    def test_plafond_frais_professionnels(self):
+        # LF 2024 : 30 % plafonné à 400 000/mois. SBT 2 000 000 → abattement 400 000 (et non 600 000)
+        # SNC = 2 000 000 − 400 000 − 31 500 − 41 667 = 1 526 833
+        irpp = self.calc.calculer_irpp(D("2000000"), D("31500"))
+        self.assertEqual(irpp["snc"], D("1526833"))
+
+    def test_frais_professionnels_sous_le_plafond(self):
+        # 1 000 000 × 30 % = 300 000 < 400 000 → abattement entier
+        irpp = self.calc.calculer_irpp(D("1000000"), D("0"))
+        self.assertEqual(irpp["snc"], D("658333"))   # 1 000 000 − 300 000 − 41 667
+
     def test_abattement_mensuel(self):
         self.assertEqual(CalculateurPaie.ABATTEMENT_MENSUEL, D("41667"))  # 500 000 / 12
 
@@ -155,6 +166,12 @@ class ForfaitsTests(SimpleTestCase):
 
 class ElementsDuBrutTests(SimpleTestCase):
     calc = CalculateurPaie()
+
+    def test_prime_anciennete(self):
+        cas = {0: 0, 1: 0, 2: 12_000, 3: 18_000, 10: 60_000}   # base 300 000
+        for annees, attendu in cas.items():
+            with self.subTest(annees=annees):
+                self.assertEqual(self.calc.calculer_prime_anciennete(300_000, annees), D(attendu))
 
     def test_heures_supplementaires(self):
         hs = self.calc.calculer_heures_sup(2, 1, 2_000)

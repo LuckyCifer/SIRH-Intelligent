@@ -22,7 +22,7 @@ python manage.py test paie
 
 | Ligne | Calcul | Montant |
 |---|---|---:|
-| Prime d'ancienneté | 300 000 × 2 % × 2 ans | 12 000 |
+| Prime d'ancienneté | 4 % à 2 ans (+2 %/an ensuite ; 0 avant 2 ans) | 12 000 |
 | **Salaire brut taxable (SBT)** | 300 000 + 12 000 + 20 000 | **332 000** |
 | **Total brut** | 332 000 + 25 000 (transport) | **357 000** |
 
@@ -45,7 +45,7 @@ Assiette : SBT plafonné à 750 000 FCFA/mois → **332 000**.
 
 | Étape | Calcul | Montant |
 |---|---|---:|
-| Abattement frais professionnels | 332 000 × 30 % | − 99 600 |
+| Abattement frais professionnels | 332 000 × 30 % (plafond 400 000/mois non atteint) | − 99 600 |
 | Cotisation CNPS salariale | | − 13 944 |
 | Abattement forfaitaire | 500 000 / 12 | − 41 667 |
 | **Salaire net catégoriel (SNC)** | 332 000 − 99 600 − 13 944 − 41 667 | **176 789** |
@@ -114,10 +114,13 @@ Assiette : salaire brut taxable **sans plafond** (contrairement à la CNPS).
 
 ## Sources
 
+- DGI — [IRPP : ce que vous devez savoir](https://impots.cm/fr/document/impot-sur-le-revenu-des-personnes-physiques-irpp-ce-que-vous-devez-savoir) (barème 10/15/25/35 %, abattement 30 %, cotisations CNPS déductibles, abattement 500 000, CAC 10 %, pas de retenue sous 62 000)
+- Loi de finances 2024 — [plafonnement de l'abattement à 4,8 M FCFA/an](https://www.investiraucameroun.com/gestion-publique/0401-20158-loi-de-finances-2024-ces-mesures-fiscales-qui-vont-baisser-les-salaires-de-certains-travailleurs-au-cameroun)
+
 - MINFI — [Les autres retenues sur les salaires](https://minfi.gov.cm/les-autres-retenues-sur-les-salaires/) (CFC 1 % / 1,5 %, FNE 1 %, seuil IRPP 62 000)
 - [Barème TDL Cameroun](https://lefisk.cm/outils/bareme-tdl) · [IRPP — barème](https://lefisk.cm/fiscalite/irpp)
 - [Tout savoir sur les retenues salariales appliquées au Cameroun](https://fiscafinance.com/tout-savoir-sur-les-retenues-salariales-appliquees-au-cameroun/) (barème RAV)
 
-À confirmer sur le Code Général des Impôts en vigueur avant la soutenance :
-l'éventuel plafonnement de l'abattement de 30 % pour frais professionnels
-introduit par une loi de finances récente (non appliqué par le calculateur).
+Points encore à confirmer sur les textes officiels (non modifiés dans le calculateur) :
+taux de majoration des heures supplémentaires, caractère imposable de l'indemnité
+de logement versée en numéraire.
