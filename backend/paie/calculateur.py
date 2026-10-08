@@ -13,6 +13,16 @@ Taux applicables :
   RAV : forfait mensuel selon le salaire brut (0 à 13 000 FCFA)
   TDL : forfait mensuel selon le salaire de base > 62 000 (250 à 2 500 FCFA)
 
+Assiettes (doctrine DGI / CNPS — art. 31 à 34 CGI, ordonnance 73/17, arrêté du 1er mars 1974) :
+  Brut taxable (IRPP, CFC, FNE, RAV) = salaire + primes + HS + prime de transport permanente
+      + avantages en nature + indemnité de logement (plafonnée à 15 % du salaire taxable)
+  Assiette CNPS = brut taxable − transport + logement au réel (pension/PF plafonnées, AT non)
+  Non imposables : représentation (frais justifiés), allocations familiales, part de logement
+      au-delà de 15 %.
+Loi de finances 2024 (abattement 30 % plafonné à 400 000/mois, indemnité de logement imposée
+intégralement) : SUSPENDUE par lettre du MINFI du 12/01/2024 → désactivée par défaut,
+activable avec settings.PAIE_APPLIQUER_LF2024 = True.
+
 Sources : MINFI (minfi.gov.cm, « Les autres retenues sur les salaires ») pour CFC/FNE ;
 barèmes RAV et TDL publiés (CGI, loi de finances) repris par lefisk.cm et fiscafinance.com.
 """
@@ -37,8 +47,10 @@ class CalculateurPaie:
     # ── IRPP ──────────────────────────────────────────────────────────────────
     TAUX_CAC             = Decimal("0.10")
     ABATTEMENT_FRAIS_PRO = Decimal("0.30")
-    # Loi de finances 2024 : abattement de 30 % plafonné à 4 800 000 FCFA/an
+    # Loi de finances 2024 (suspendue, voir docstring) : 30 % plafonné à 4 800 000 FCFA/an
     PLAFOND_FRAIS_PRO_MENSUEL = Decimal("400000")
+    # Indemnité de logement en argent : imposable dans la limite de 15 % du salaire taxable
+    TAUX_PLAFOND_LOGEMENT     = Decimal("0.15")
     # Abattement forfaitaire annuel / 12 → 41 667 FCFA
     ABATTEMENT_MENSUEL   = (Decimal("500000") / Decimal("12")).quantize(
         Decimal("1"), rounding=ROUND_HALF_UP
@@ -94,6 +106,15 @@ class CalculateurPaie:
     TAUX_ANCIENNETE_AN = Decimal("0.02")
     ANCIENNETE_MIN_ANS = 2   # prime due à partir de 2 ans : 4 %, puis +2 %/an
 
+    def __init__(self, appliquer_lf2024=None):
+        if appliquer_lf2024 is None:
+            try:
+                from django.conf import settings
+                appliquer_lf2024 = getattr(settings, "PAIE_APPLIQUER_LF2024", False)
+            except Exception:
+                appliquer_lf2024 = False
+        self.appliquer_lf2024 = bool(appliquer_lf2024)
+
     # ── Utilitaires ───────────────────────────────────────────────────────────
 
     @staticmethod
@@ -136,44 +157,62 @@ class CalculateurPaie:
 
     def calculer_brut(self, b) -> dict:
         """
-        Éléments imposables/cotisables → SBT.
-        Éléments non cotisables (transport, logement, représentation, alloc.) → total_brut.
+        Trois assiettes distinctes :
+          sbt        brut taxable → IRPP, CFC, FNE, RAV
+          base_cnps  assiette CNPS (non plafonnée ici) : sans transport, logement au réel
+          total_brut tout ce qui est versé (inclut les éléments non imposables)
         """
         hs = self.calculer_heures_sup(b.nb_heures_sup_20, b.nb_heures_sup_30,
                                       b.nb_heures_sup_40, b.nb_heures_sup_50, b.taux_horaire)
-        sbt = (self._D(b.salaire_categoriel)
-               + self._D(b.sursalaire)
-               + self._D(b.prime_anciennete)
-               + self._D(b.prime_responsabilite)
-               + self._D(b.prime_assiduite)
-               + self._D(b.prime_rendement)
-               + self._D(b.gratification)
-               + hs["total"]
-               + self._D(b.avantages_nature))
-        non_imposable = (self._D(b.indemnite_transport)
-                        + self._D(b.indemnite_logement)
-                        + self._D(b.indemnite_representation)
-                        + self._D(b.allocations_familiales))
+        remuneration = (self._D(b.salaire_categoriel)
+                        + self._D(b.sursalaire)
+                        + self._D(b.prime_anciennete)
+                        + self._D(b.prime_responsabilite)
+                        + self._D(b.prime_assiduite)
+                        + self._D(b.prime_rendement)
+                        + self._D(b.gratification)
+                        + hs["total"])
+        transport = self._D(b.indemnite_transport)   # permanente → imposable, non cotisable
+        avantages = self._D(b.avantages_nature)
+        logement  = self._D(b.indemnite_logement)
+
+        # Salaire taxable servant de référence au plafond de 15 % (hors avantages)
+        salaire_taxable = remuneration + transport
+        if self.appliquer_lf2024:
+            logement_imposable = logement
+        else:
+            logement_imposable = min(logement, self._round(salaire_taxable * self.TAUX_PLAFOND_LOGEMENT))
+
+        sbt       = salaire_taxable + avantages + logement_imposable
+        base_cnps = remuneration + avantages + logement
+        non_imposable = (logement - logement_imposable
+                         + self._D(b.indemnite_representation)
+                         + self._D(b.allocations_familiales))
         return {
-            "sbt":           self._round(sbt),
-            "non_imposable": self._round(non_imposable),
-            "total_brut":    self._round(sbt + non_imposable),
-            "heures_sup":    {k: hs[f"h{k}"] for k in self.MAJORATIONS_HS},
+            "sbt":                self._round(sbt),
+            "base_cnps":          self._round(base_cnps),
+            "logement_imposable": self._round(logement_imposable),
+            "non_imposable":      self._round(non_imposable),
+            "total_brut":         self._round(sbt + non_imposable),
+            "heures_sup":         {k: hs[f"h{k}"] for k in self.MAJORATIONS_HS},
         }
 
-    def calculer_cnps(self, sbt: Decimal) -> dict:
-        base = min(sbt, self.PLAFOND_CNPS)
+    def calculer_cnps(self, assiette: Decimal) -> dict:
+        """Pension et prestations familiales plafonnées à 750 000 ; accidents du travail sans plafond."""
+        base = min(assiette, self.PLAFOND_CNPS)
         return {
             "base":             base,
             "salarie":          self._round(base * self.TAUX_CNPS_SALARIE),
             "patronal_pension": self._round(base * self.TAUX_CNPS_PATRONAL_PENSION),
             "patronal_famille": self._round(base * self.TAUX_CNPS_PATRONAL_FAMILLE),
-            "patronal_at":      self._round(base * self.TAUX_CNPS_PATRONAL_AT_A),
+            "patronal_at":      self._round(assiette * self.TAUX_CNPS_PATRONAL_AT_A),
         }
 
     def calculer_irpp(self, sbt: Decimal, cnps_salarie: Decimal) -> dict:
-        """SNC = SBT − min(30 % SBT ; 400 000) − CNPS_salarié − 500 000/12."""
-        frais_pro = min(sbt * self.ABATTEMENT_FRAIS_PRO, self.PLAFOND_FRAIS_PRO_MENSUEL)
+        """SNC = SBT − 30 % SBT (plafonné à 400 000 si LF 2024) − CNPS_salarié − 500 000/12."""
+        frais_pro = sbt * self.ABATTEMENT_FRAIS_PRO
+        if self.appliquer_lf2024:
+            frais_pro = min(frais_pro, self.PLAFOND_FRAIS_PRO_MENSUEL)
         snc = sbt - frais_pro - cnps_salarie - self.ABATTEMENT_MENSUEL
         snc = self._round(snc)
         if snc <= 0:
@@ -214,12 +253,12 @@ class CalculateurPaie:
         sbt        = brut_d["sbt"]
         total_brut = brut_d["total_brut"]
 
-        cnps_d = self.calculer_cnps(sbt)
+        cnps_d = self.calculer_cnps(brut_d["base_cnps"])
         irpp_d = self.calculer_irpp(sbt, cnps_d["salarie"])
         # CFC et FNE : assiette = salaire brut taxable, non plafonnée (≠ CNPS)
         cfc_d  = self.calculer_cfc(sbt)
         fne    = self._round(sbt * self.TAUX_FNE)
-        rav    = self.calculer_rav(total_brut)
+        rav    = self.calculer_rav(sbt)   # assiette RAV = brut taxable (note MINFI 2007)
         tdl    = self.calculer_tdl(self._D(bulletin.salaire_categoriel))
 
         # ── Récapitulatif ──
@@ -276,6 +315,8 @@ class CalculateurPaie:
             "sbt":            str(sbt),
             "total_brut":     str(total_brut),
             "base_cotisable": str(cnps_d["base"]),
+            "logement_imposable": str(brut_d["logement_imposable"]),
+            "lf2024_appliquee":   self.appliquer_lf2024,
             "cnps_taux":      "4,2 %",
             "snc":            str(irpp_d["snc"]),
             "irpp":           str(irpp_d["irpp"]),

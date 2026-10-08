@@ -100,65 +100,35 @@ TDL_TRANCHES  = _CP.TDL_TRANCHES
 
 def calculer_paie(salaire_brut: float, anciennete_mois: int = 0,
                   indemnite_transport: float = 25_000) -> dict:
-    """Calcule toutes les retenues salariales (fiscalite camerounaise 2026)."""
-    sbt   = _D(salaire_brut)
-    transp = _D(indemnite_transport)
+    """Calcule toutes les retenues salariales via le CalculateurPaie (source unique des règles)."""
+    from types import SimpleNamespace
 
-    annees = max(0, anciennete_mois // 12)
-    prime_anc = _r(sbt * Decimal("0.02") * annees) if annees else 0
-
-    total_brut = sbt + transp + _D(prime_anc)
-
-    # CNPS
-    base_cnps = min(sbt, Decimal("750000"))
-    cnps_s = _r(base_cnps * Decimal("0.042"))
-
-    # CFC
-    cfc_s = _r(sbt * Decimal("0.01"))
-
-    # IRPP - SNC mensuel
-    snc_d = max(Decimal("0"), sbt * Decimal("0.70") - _D(cnps_s) - Decimal("41667"))
-
-    irpp = Decimal("0")
-    prev = Decimal("0")
-    for plaf, taux in IRPP_TRANCHES:
-        borne = min(snc_d, plaf) if plaf is not None else snc_d
-        if borne <= prev:
-            break
-        irpp += (borne - prev) * taux
-        prev = plaf if plaf is not None else snc_d
-        if plaf is None or snc_d <= plaf:
-            break
-    irpp_v = _r(irpp)
-    cac_v  = _r(_D(irpp_v) * Decimal("0.10"))
-
-    rav_v = _r(_forfait(total_brut, RAV_TRANCHES))
-    tdl_v = _r(_forfait(sbt, TDL_TRANCHES))
-
-    total_ret = cnps_s + cfc_s + irpp_v + cac_v + rav_v + tdl_v
-    net_v     = _r(total_brut) - total_ret
-
-    cnps_p_pen = _r(base_cnps * Decimal("0.042"))
-    cnps_p_fam = _r(base_cnps * Decimal("0.07"))
-    cnps_p_at  = _r(base_cnps * Decimal("0.0175"))
-    cfc_p      = _r(sbt * Decimal("0.015"))
-    fne_v      = _r(sbt * Decimal("0.01"))   # FNE : assiette non plafonnée
-    cout_total = _r(total_brut) + cnps_p_pen + cnps_p_fam + cnps_p_at + cfc_p + fne_v
-
+    calc = _CP()
+    b = SimpleNamespace(
+        salaire_categoriel=_D(salaire_brut), sursalaire=0,
+        prime_anciennete=calc.calculer_prime_anciennete(salaire_brut, max(0, anciennete_mois // 12)),
+        prime_responsabilite=0, prime_assiduite=0, prime_rendement=0, gratification=0,
+        avantages_nature=0, nb_heures_sup_20=0, nb_heures_sup_30=0, nb_heures_sup_40=0,
+        nb_heures_sup_50=0, taux_horaire=0,
+        indemnite_transport=_D(indemnite_transport), indemnite_logement=0,
+        indemnite_representation=0, allocations_familiales=0,
+        avances_salaire=0, autres_retenues=0,
+    )
+    calc.calculer(b)
     return {
-        "salaire_categoriel":  _r(sbt),
-        "prime_anciennete":    prime_anc,
-        "indemnite_transport": _r(transp),
-        "total_brut":          _r(total_brut),
-        "cnps_s":   cnps_s, "cfc_s":   cfc_s,
-        "snc":      _r(snc_d),
-        "irpp":     irpp_v, "cac":     cac_v,
-        "rav":      rav_v,  "tdl":     tdl_v,
-        "total_retenues": total_ret,
-        "net_a_payer":    net_v,
-        "cnps_p_pen": cnps_p_pen, "cnps_p_fam": cnps_p_fam,
-        "cnps_p_at":  cnps_p_at,  "cfc_p": cfc_p, "fne": fne_v,
-        "cout_total": cout_total,
+        "salaire_categoriel":  _r(b.salaire_categoriel),
+        "prime_anciennete":    _r(b.prime_anciennete),
+        "indemnite_transport": _r(b.indemnite_transport),
+        "total_brut":          _r(b.total_brut),
+        "cnps_s":   _r(b.cnps_employe), "cfc_s":   _r(b.cfc_salarie),
+        "snc":      _r(b.revenu_net_categoriel),
+        "irpp":     _r(b.irpp), "cac":     _r(b.cac),
+        "rav":      _r(b.rav),  "tdl":     _r(b.tdl),
+        "total_retenues": _r(b.total_retenues),
+        "net_a_payer":    _r(b.salaire_net),
+        "cnps_p_pen": _r(b.cnps_patronal_pension), "cnps_p_fam": _r(b.cnps_patronal_famille),
+        "cnps_p_at":  _r(b.cnps_patronal_at),      "cfc_p": _r(b.cfc_patronal), "fne": _r(b.fne),
+        "cout_total": _r(b.cout_total_employeur),
     }
 
 

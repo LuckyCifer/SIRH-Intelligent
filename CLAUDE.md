@@ -163,6 +163,10 @@ Heures sup.           : +20/30/40 % (tranches 8/8/4 au-delà de 40 h/sem.), dima
                         décret 95/677/PM art. 12 ; taux horaire = salaire / (520/3)
 Tests                 : `python manage.py test paie` — cas de référence dans docs/BULLETIN_PAIE_PAS_A_PAS.md
 Exonération IRPP      : SNC < 500 000 FCFA/an (< 41 666 FCFA/mois)
+Assiettes             : transport permanent imposable (non cotisable) ; logement imposable ≤ 15 %
+                        (cotisable au réel) ; représentation/alloc. non imposables ; AT CNPS sans plafond
+LF 2024               : plafond 30 % (400 000/mois) + logement intégral — SUSPENDUS (MINFI 12/01/2024),
+                        réglage PAIE_APPLIQUER_LF2024 (False par défaut)
 Note : Les constantes TAUX_CNPS_EMPLOYE=0.028 et TAUX_CNPS_EMPLOYEUR=0.077 dans
        paie/models.py sont des valeurs LEGACY pour le fallback uniquement.
        Le CalculateurPaie (paie/calculateur.py) utilise les taux 2024 corrects.

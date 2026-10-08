@@ -30,84 +30,123 @@ def bulletin(**champs):
     return SimpleNamespace(**base)
 
 
+def calculateur(lf2024=False):
+    """Régime explicite : les tests ne dépendent pas du réglage PAIE_APPLIQUER_LF2024."""
+    return CalculateurPaie(appliquer_lf2024=lf2024)
+
+
 class BulletinDeReferenceTests(SimpleTestCase):
     """
     Bulletin calculé à la main (voir docs/BULLETIN_PAIE_PAS_A_PAS.md).
 
     Salaire catégoriel 300 000 · ancienneté 2 ans · prime de responsabilité 20 000
-    · indemnité de transport 25 000 (non imposable).
+    · prime de transport permanente 25 000 (imposable, non cotisable CNPS).
     """
 
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        calc = CalculateurPaie()
+        calc = calculateur()
         cls.b = bulletin(
             salaire_categoriel=300_000,
-            prime_anciennete=calc.calculer_prime_anciennete(300_000, 2),  # 2 % × 2 ans
+            prime_anciennete=calc.calculer_prime_anciennete(300_000, 2),  # 4 % à 2 ans
             prime_responsabilite=20_000,
             indemnite_transport=25_000,
         )
         calc.calculer(cls.b)
 
     def test_1_bruts(self):
-        self.assertEqual(self.b.prime_anciennete, D("12000"))         # 300 000 × 2 % × 2
-        self.assertEqual(self.b.salaire_brut_imposable, D("332000"))  # 300 000 + 12 000 + 20 000
-        self.assertEqual(self.b.total_brut, D("357000"))              # + 25 000 transport
+        self.assertEqual(self.b.prime_anciennete, D("12000"))          # 300 000 × 4 %
+        self.assertEqual(self.b.salaire_brut_imposable, D("357000"))   # 300 000 + 12 000 + 20 000 + 25 000
+        self.assertEqual(self.b.total_brut, D("357000"))
 
     def test_2_cnps(self):
-        self.assertEqual(self.b.salaire_brut_cotisable, D("332000"))  # < plafond 750 000
-        self.assertEqual(self.b.cnps_employe, D("13944"))             # 332 000 × 4,2 %
-        self.assertEqual(self.b.cnps_patronal_pension, D("13944"))    # 332 000 × 4,2 %
-        self.assertEqual(self.b.cnps_patronal_famille, D("23240"))    # 332 000 × 7 %
-        self.assertEqual(self.b.cnps_patronal_at, D("5810"))          # 332 000 × 1,75 %
+        self.assertEqual(self.b.salaire_brut_cotisable, D("332000"))   # sans le transport
+        self.assertEqual(self.b.cnps_employe, D("13944"))              # 332 000 × 4,2 %
+        self.assertEqual(self.b.cnps_patronal_pension, D("13944"))
+        self.assertEqual(self.b.cnps_patronal_famille, D("23240"))     # × 7 %
+        self.assertEqual(self.b.cnps_patronal_at, D("5810"))           # × 1,75 %
 
     def test_3_irpp_et_cac(self):
-        # SNC = 332 000 × 70 % − 13 944 − 41 667 = 176 789
-        self.assertEqual(self.b.revenu_net_categoriel, D("176789"))
-        # 166 667 × 10 % + (176 789 − 166 667) × 15 % = 16 666,7 + 1 518,3 = 18 185
-        self.assertEqual(self.b.irpp, D("18185"))
-        self.assertEqual(self.b.cac, D("1819"))                        # 18 185 × 10 % = 1 818,5
+        # SNC = 357 000 − 107 100 − 13 944 − 41 667 = 194 289
+        self.assertEqual(self.b.revenu_net_categoriel, D("194289"))
+        # 166 667 × 10 % + 27 622 × 15 % = 16 666,7 + 4 143,3 = 20 810
+        self.assertEqual(self.b.irpp, D("20810"))
+        self.assertEqual(self.b.cac, D("2081"))
 
     def test_4_cfc_fne(self):
-        self.assertEqual(self.b.cfc_salarie, D("3320"))               # 332 000 × 1 %
-        self.assertEqual(self.b.cfc_patronal, D("4980"))              # 332 000 × 1,5 %
-        self.assertEqual(self.b.fne, D("3320"))                       # 332 000 × 1 %
+        self.assertEqual(self.b.cfc_salarie, D("3570"))                # 357 000 × 1 %
+        self.assertEqual(self.b.cfc_patronal, D("5355"))               # × 1,5 %
+        self.assertEqual(self.b.fne, D("3570"))                        # × 1 %
 
     def test_5_forfaits(self):
-        self.assertEqual(self.b.rav, D("4550"))   # brut 357 000 ∈ ]300 000 ; 400 000]
+        self.assertEqual(self.b.rav, D("4550"))   # brut taxable 357 000 ∈ ]300 000 ; 400 000]
         self.assertEqual(self.b.tdl, D("2000"))   # base 300 000 ∈ ]250 000 ; 300 000]
 
     def test_6_net_a_payer(self):
-        # 13 944 + 18 185 + 1 819 + 3 320 + 4 550 + 2 000
-        self.assertEqual(self.b.total_retenues, D("43818"))
-        self.assertEqual(self.b.salaire_net, D("313182"))              # 357 000 − 43 818
+        # 13 944 + 20 810 + 2 081 + 3 570 + 4 550 + 2 000
+        self.assertEqual(self.b.total_retenues, D("46955"))
+        self.assertEqual(self.b.salaire_net, D("310045"))
 
     def test_7_cout_employeur(self):
-        # 357 000 + 13 944 + 23 240 + 5 810 + 4 980 + 3 320 (transport compté une seule fois)
-        self.assertEqual(self.b.cout_total_employeur, D("408294"))
+        # 357 000 + 13 944 + 23 240 + 5 810 + 5 355 + 3 570
+        self.assertEqual(self.b.cout_total_employeur, D("408919"))
 
 
 class CnpsTests(SimpleTestCase):
-    calc = CalculateurPaie()
+    calc = calculateur()
 
-    def test_plafond_750000(self):
+    def test_plafond_750000_sauf_accidents_du_travail(self):
         cnps = self.calc.calculer_cnps(D("1000000"))
         self.assertEqual(cnps["base"], D("750000"))
         self.assertEqual(cnps["salarie"], D("31500"))                 # 750 000 × 4,2 %
         self.assertEqual(cnps["patronal_famille"], D("52500"))        # 750 000 × 7 %
+        self.assertEqual(cnps["patronal_at"], D("17500"))             # 1 000 000 × 1,75 %
 
     def test_cfc_et_fne_non_plafonnes(self):
         b = bulletin(salaire_categoriel=1_000_000)
         self.calc.calculer(b)
-        self.assertEqual(b.cnps_employe, D("31500"))                  # plafonné
-        self.assertEqual(b.cfc_salarie, D("10000"))                   # 1 000 000 × 1 %, pas 7 500
+        self.assertEqual(b.cnps_employe, D("31500"))
+        self.assertEqual(b.cfc_salarie, D("10000"))                   # 1 000 000 × 1 %
         self.assertEqual(b.cfc_patronal, D("15000"))
         self.assertEqual(b.fne, D("10000"))
 
 
+class AssiettesTests(SimpleTestCase):
+    """Traitement des indemnités (doctrine DGI / CNPS)."""
+
+    def test_transport_imposable_non_cotisable(self):
+        b = bulletin(salaire_categoriel=200_000, indemnite_transport=30_000)
+        calculateur().calculer(b)
+        self.assertEqual(b.salaire_brut_imposable, D("230000"))
+        self.assertEqual(b.cnps_employe, D("8400"))      # sur 200 000
+        self.assertEqual(b.rav, D("3250"))               # brut taxable 230 000
+
+    def test_logement_imposable_dans_la_limite_de_15_pourcent(self):
+        b = bulletin(salaire_categoriel=200_000, indemnite_logement=50_000)
+        calculateur().calculer(b)
+        self.assertEqual(b.salaire_brut_imposable, D("230000"))   # 200 000 + min(50 000 ; 30 000)
+        self.assertEqual(b.details["logement_imposable"], "30000")
+        self.assertEqual(b.cnps_employe, D("10500"))              # cotisable au réel : 250 000
+        self.assertEqual(b.total_brut, D("250000"))
+
+    def test_logement_impose_integralement_si_lf2024(self):
+        b = bulletin(salaire_categoriel=200_000, indemnite_logement=50_000)
+        calculateur(lf2024=True).calculer(b)
+        self.assertEqual(b.salaire_brut_imposable, D("250000"))
+
+    def test_representation_et_allocations_non_imposables(self):
+        b = bulletin(salaire_categoriel=290_000, indemnite_representation=20_000,
+                     allocations_familiales=10_000)
+        calculateur().calculer(b)
+        self.assertEqual(b.salaire_brut_imposable, D("290000"))
+        self.assertEqual(b.total_brut, D("320000"))
+        self.assertEqual(b.rav, D("3250"))   # sur 290 000, pas sur 320 000
+        self.assertEqual(b.cnps_employe, D("12180"))
+
+
 class IrppTests(SimpleTestCase):
-    calc = CalculateurPaie()
+    calc = calculateur()
 
     def test_petit_salaire_exonere(self):
         # 60 000 × 70 % − 2 520 − 41 667 < 0 → aucun impôt
@@ -128,23 +167,22 @@ class IrppTests(SimpleTestCase):
         self.assertEqual(irpp["irpp"], D("100000"))
         self.assertEqual(irpp["cac"], D("10000"))
 
-    def test_plafond_frais_professionnels(self):
-        # LF 2024 : 30 % plafonné à 400 000/mois. SBT 2 000 000 → abattement 400 000 (et non 600 000)
-        # SNC = 2 000 000 − 400 000 − 31 500 − 41 667 = 1 526 833
+    def test_abattement_30_pourcent_non_plafonne_par_defaut(self):
+        # LF 2024 suspendue : 2 000 000 − 600 000 − 31 500 − 41 667
         irpp = self.calc.calculer_irpp(D("2000000"), D("31500"))
-        self.assertEqual(irpp["snc"], D("1526833"))
+        self.assertEqual(irpp["snc"], D("1326833"))
 
-    def test_frais_professionnels_sous_le_plafond(self):
-        # 1 000 000 × 30 % = 300 000 < 400 000 → abattement entier
-        irpp = self.calc.calculer_irpp(D("1000000"), D("0"))
-        self.assertEqual(irpp["snc"], D("658333"))   # 1 000 000 − 300 000 − 41 667
+    def test_plafond_400000_si_lf2024(self):
+        # 2 000 000 − 400 000 − 31 500 − 41 667
+        irpp = calculateur(lf2024=True).calculer_irpp(D("2000000"), D("31500"))
+        self.assertEqual(irpp["snc"], D("1526833"))
 
     def test_abattement_mensuel(self):
         self.assertEqual(CalculateurPaie.ABATTEMENT_MENSUEL, D("41667"))  # 500 000 / 12
 
 
 class ForfaitsTests(SimpleTestCase):
-    calc = CalculateurPaie()
+    calc = calculateur()
 
     def test_rav_bornes(self):
         cas = {
@@ -166,7 +204,7 @@ class ForfaitsTests(SimpleTestCase):
 
 
 class ElementsDuBrutTests(SimpleTestCase):
-    calc = CalculateurPaie()
+    calc = calculateur()
 
     def test_prime_anciennete(self):
         cas = {0: 0, 1: 0, 2: 12_000, 3: 18_000, 10: 60_000}   # base 300 000
@@ -193,15 +231,8 @@ class ElementsDuBrutTests(SimpleTestCase):
         b = bulletin(salaire_categoriel=200_000, nb_heures_sup_20=8, taux_horaire=1_000)
         self.calc.calculer(b)
         self.assertEqual(b.salaire_brut_imposable, D("209600"))   # + 8 × 1 000 × 1,20
+        self.assertEqual(b.salaire_brut_cotisable, D("209600"))
         self.assertEqual(b.details["heures_sup_20"], "9600")
-
-    def test_indemnites_non_imposables_hors_cotisations(self):
-        b = bulletin(salaire_categoriel=200_000, indemnite_transport=30_000,
-                     indemnite_logement=50_000)
-        self.calc.calculer(b)
-        self.assertEqual(b.salaire_brut_imposable, D("200000"))
-        self.assertEqual(b.total_brut, D("280000"))
-        self.assertEqual(b.cnps_employe, D("8400"))   # sur 200 000 seulement
 
     def test_net_jamais_negatif(self):
         b = bulletin(salaire_categoriel=100_000, avances_salaire=500_000)

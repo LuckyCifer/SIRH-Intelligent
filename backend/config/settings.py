@@ -135,6 +135,12 @@ GEMINI_MODEL   = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 OPENROUTER_MODEL   = os.getenv("OPENROUTER_MODEL", "google/gemma-4-26b-a4b-it:free")
 
+# ─── Paie ─────────────────────────────────────────────────────
+# Mesures salariales de la loi de finances 2024 (plafond de l'abattement de 30 %,
+# imposition intégrale de l'indemnité de logement) : suspendues par le MINFI le
+# 12/01/2024. À activer uniquement sur confirmation d'une circulaire DGI.
+PAIE_APPLIQUER_LF2024 = os.getenv("PAIE_APPLIQUER_LF2024", "False") == "True"
+
 # ─── Mobile Money ─────────────────────────────────────────────
 # MTN MoMo Disbursement (https://momodeveloper.mtn.com)
 MTN_MOMO_SUBSCRIPTION_KEY = os.getenv("MTN_MOMO_SUBSCRIPTION_KEY", "")

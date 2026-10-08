@@ -198,8 +198,8 @@ def generer_bulletin_pdf(bulletin):
                 nb_h = getattr(b, f"nb_heures_sup_{taux}")
                 ligne_gain(f"Heures sup. +{taux}% ({nb_h}h)", montant, alt); alt = not alt
         ligne_gain("Avantages en nature",     b.avantages_nature,         alt); alt = not alt
-        ligne_gain("Indemnité transport  (NI)",     b.indemnite_transport,      alt); alt = not alt
-        ligne_gain("Indemnité logement  (NI)",      b.indemnite_logement,       alt); alt = not alt
+        ligne_gain("Prime de transport",            b.indemnite_transport,      alt); alt = not alt
+        ligne_gain("Indemnité de logement",         b.indemnite_logement,       alt); alt = not alt
         ligne_gain("Indemnité représentation  (NI)", b.indemnite_representation, alt); alt = not alt
         ligne_gain("Allocations familiales  (NI)",  b.allocations_familiales,   alt)
         total_brut_display = b.total_brut
