@@ -22,8 +22,8 @@ class PointageSerializer(serializers.ModelSerializer):
         ]
 
     def get_employe_detail(self, obj):
-        from accounts.serializers import UserSerializer
-        return UserSerializer(obj.employe).data
+        from accounts.serializers import UserResumeSerializer
+        return UserResumeSerializer(obj.employe).data
 
     def get_retard_minutes(self, obj):
         if not obj.heure_arrivee:

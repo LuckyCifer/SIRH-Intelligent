@@ -87,7 +87,8 @@ class SanctionViewSet(viewsets.ModelViewSet):
         if self.action in ["create", "update", "partial_update", "destroy",
                            "notifier", "archiver", "notifier_it",
                            "appliquer_retenue_paie"]:
-            return [IsManagerOrRH()]
+            # Pouvoir disciplinaire de l'employeur (art. 30 Code du travail) : RH
+            return [IsRH()]
         return [permissions.IsAuthenticated()]
 
     def get_queryset(self):

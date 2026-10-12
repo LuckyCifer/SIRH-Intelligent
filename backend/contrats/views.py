@@ -4,7 +4,8 @@ from django.utils import timezone
 from rest_framework import viewsets, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from accounts.permissions import IsManagerOrRH
+from django.db.models import Q
+from accounts.permissions import IsManagerOrRH, IsRH
 from .models import Contrat, _ajouter_mois
 from .serializers import ContratSerializer
 from .validators import (
@@ -105,8 +106,9 @@ class ContratViewSet(viewsets.ModelViewSet):
     serializer_class = ContratSerializer
 
     def get_permissions(self):
+        # Contrat de travail : acte de l'employeur, géré par les RH
         if self.action in ("create", "update", "partial_update", "destroy"):
-            return [IsManagerOrRH()]
+            return [IsRH()]
         return [permissions.IsAuthenticated()]
 
     def get_queryset(self):
@@ -115,6 +117,9 @@ class ContratViewSet(viewsets.ModelViewSet):
 
         if user.is_employe:
             qs = qs.filter(employe=user)
+        elif user.role == "MANAGER":
+            from accounts.permissions import membres_equipe
+            qs = qs.filter(Q(employe=user) | Q(employe__in=membres_equipe(user)))
 
         employe_id   = self.request.query_params.get("employe")
         type_contrat = self.request.query_params.get("type")

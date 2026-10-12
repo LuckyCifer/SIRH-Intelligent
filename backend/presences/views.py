@@ -59,6 +59,13 @@ def _recalculer_hs_si_besoin(pointage):
 
 
 class PointageViewSet(viewsets.ModelViewSet):
+    def get_permissions(self):
+        # L'employé pointe via pointer-arrivee / pointer-depart ; la saisie manuelle est RH
+        if self.action in ("create", "update", "partial_update", "destroy"):
+            from accounts.permissions import IsRH
+            return [IsRH()]
+        return super().get_permissions()
+
     serializer_class   = PointageSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -197,6 +204,12 @@ class PointageViewSet(viewsets.ModelViewSet):
 
 class ConfigPresenceViewSet(viewsets.ModelViewSet):
     queryset           = ConfigPresence.objects.all()
+
+    def get_permissions(self):
+        if self.action in ("create", "update", "partial_update", "destroy"):
+            from accounts.permissions import IsRH
+            return [IsRH()]
+        return super().get_permissions()
     serializer_class   = ConfigPresenceSerializer
     permission_classes = [permissions.IsAuthenticated]
 

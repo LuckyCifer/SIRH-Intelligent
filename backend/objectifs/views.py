@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 from django.db.models import Avg, Count, Q
 
-from accounts.permissions import IsRH, IsManagerOrRH
+from accounts.permissions import IsRH, IsManagerOrRH, peut_gerer
 from .models import PeriodeEvaluation, Objectif, EvaluationPerformance
 from .serializers import (
     PeriodeEvaluationSerializer,
@@ -32,6 +32,25 @@ class PeriodeEvaluationViewSet(viewsets.ModelViewSet):
         return Response(PeriodeEvaluationSerializer(periodes, many=True).data)
 
 
+def _employe_gere(user, employe_id):
+    """Employé ciblé, s'il fait partie de ceux que l'utilisateur peut gérer."""
+    from rest_framework.exceptions import ValidationError
+    if not employe_id:
+        raise ValidationError({"employe": "Employé obligatoire."})
+    try:
+        employe = User.objects.get(pk=employe_id)
+    except (User.DoesNotExist, ValueError):
+        raise ValidationError({"employe": "Employé introuvable."})
+    _verifier_gestion(user, employe)
+    return employe
+
+
+def _verifier_gestion(user, employe):
+    from rest_framework.exceptions import PermissionDenied
+    if not peut_gerer(user, employe):
+        raise PermissionDenied("Cet employé ne fait pas partie de votre équipe.")
+
+
 class ObjectifViewSet(viewsets.ModelViewSet):
     serializer_class = ObjectifSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -52,14 +71,23 @@ class ObjectifViewSet(viewsets.ModelViewSet):
             return qs.filter(Q(employe=user) | Q(employe__in=subordonnes))
         return qs.filter(employe=user)
 
+    def get_permissions(self):
+        # Objectifs fixés par le N+1 (son équipe) ou les RH ; l'employé met à jour sa progression
+        if self.action in ("create", "update", "partial_update", "destroy"):
+            return [IsManagerOrRH()]
+        return super().get_permissions()
+
     def perform_create(self, serializer):
         user = self.request.user
-        employe_id = self.request.data.get("employe")
-        if employe_id and user.role in ["MANAGER", "RH", "ADMIN"]:
-            employe = User.objects.get(pk=employe_id)
-            serializer.save(employe=employe, assigne_par=user)
-        else:
-            serializer.save(employe=user, assigne_par=user)
+        serializer.save(employe=_employe_gere(user, self.request.data.get("employe")), assigne_par=user)
+
+    def perform_update(self, serializer):
+        _verifier_gestion(self.request.user, serializer.instance.employe)
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        _verifier_gestion(self.request.user, instance.employe)
+        instance.delete()
 
     @action(detail=False, methods=["get"], url_path="mes-objectifs")
     def mes_objectifs(self, request):
@@ -115,13 +143,15 @@ class EvaluationPerformanceViewSet(viewsets.ModelViewSet):
             return qs.filter(Q(employe=user) | Q(employe__in=subordonnes))
         return qs.filter(employe=user)
 
+    def get_permissions(self):
+        # Évaluation rédigée par le N+1 (son équipe) ou les RH ; l'employé signe ou conteste
+        if self.action in ("create", "update", "partial_update", "destroy"):
+            return [IsManagerOrRH()]
+        return super().get_permissions()
+
     def perform_create(self, serializer):
         user = self.request.user
-        employe_id = self.request.data.get("employe")
-        if employe_id and user.role in ["MANAGER", "RH", "ADMIN"]:
-            employe = User.objects.get(pk=employe_id)
-        else:
-            employe = user
+        employe = _employe_gere(user, self.request.data.get("employe"))
         evaluation = serializer.save(employe=employe, evaluateur=user)
         try:
             from notifications.services import notifier_evaluation_soumise
@@ -130,6 +160,7 @@ class EvaluationPerformanceViewSet(viewsets.ModelViewSet):
             pass
 
     def perform_update(self, serializer):
+        _verifier_gestion(self.request.user, serializer.instance.employe)
         instance = serializer.save()
         # Lancer analyse IA si toutes les notes sont présentes et statut >= EN_ATTENTE
         notes = [

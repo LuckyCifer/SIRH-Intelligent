@@ -94,6 +94,8 @@ class InscriptionFormationViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ["valider", "marquer_presence"]:
             return [IsManagerOrRH()]
+        if self.action in ["update", "partial_update", "destroy"]:
+            return [IsRH()]
         return [permissions.IsAuthenticated()]
 
     def get_queryset(self):

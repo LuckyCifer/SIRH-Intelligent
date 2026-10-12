@@ -1,7 +1,7 @@
 from rest_framework import viewsets, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from accounts.permissions import IsManagerOrRH
+from accounts.permissions import IsRH
 from .models import Departement, Poste
 from .serializers import DepartementSerializer, DepartementListSerializer, PosteSerializer
 
@@ -14,8 +14,9 @@ class DepartementViewSet(viewsets.ModelViewSet):
         return DepartementListSerializer if self.action == "list" else DepartementSerializer
 
     def get_permissions(self):
+        # Organisation de l'entreprise : RH
         if self.action in ("create", "update", "partial_update", "destroy"):
-            return [IsManagerOrRH()]
+            return [IsRH()]
         return [permissions.IsAuthenticated()]
 
     def get_queryset(self):
@@ -27,7 +28,7 @@ class DepartementViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"])
     def employes(self, request, pk=None):
-        from accounts.serializers import UserSerializer
+        from accounts.serializers import UserResumeSerializer as UserSerializer
         dept = self.get_object()
         return Response(UserSerializer(dept.employes.all(), many=True).data)
 
@@ -55,8 +56,9 @@ class PosteViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_permissions(self):
+        # Organisation de l'entreprise : RH
         if self.action in ("create", "update", "partial_update", "destroy"):
-            return [IsManagerOrRH()]
+            return [IsRH()]
         return [permissions.IsAuthenticated()]
 
     def get_queryset(self):

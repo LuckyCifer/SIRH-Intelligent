@@ -143,9 +143,17 @@ class DemandeCongeViewSet(viewsets.ModelViewSet):
             solde.jours_en_attente = float(solde.jours_en_attente) + demande.nb_jours
             solde.save()
 
+    def get_permissions(self):
+        # L'employé crée et annule ses demandes ; la modification directe est réservée aux RH
+        if self.action in ("update", "partial_update", "destroy"):
+            return [IsRH()]
+        return super().get_permissions()
+
     @action(detail=True, methods=["post"], permission_classes=[IsManagerOrRH])
     def approuver(self, request, pk=None):
         demande = self.get_object()
+        if demande.employe_id == request.user.pk:
+            return Response({"error": "Vous ne pouvez pas valider votre propre demande."}, status=403)
         if demande.statut != DemandeConge.Statut.EN_ATTENTE:
             return Response({"error": "Seules les demandes EN_ATTENTE peuvent être approuvées."}, status=400)
         commentaire = request.data.get("commentaire", "")
@@ -165,6 +173,8 @@ class DemandeCongeViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], permission_classes=[IsManagerOrRH])
     def refuser(self, request, pk=None):
         demande = self.get_object()
+        if demande.employe_id == request.user.pk:
+            return Response({"error": "Vous ne pouvez pas traiter votre propre demande."}, status=403)
         if demande.statut != DemandeConge.Statut.EN_ATTENTE:
             return Response({"error": "Seules les demandes EN_ATTENTE peuvent être refusées."}, status=400)
         commentaire = request.data.get("commentaire", "")
@@ -269,6 +279,11 @@ class SoldeCongeViewSet(viewsets.ModelViewSet):
     serializer_class   = SoldeCongeSerializer
     permission_classes = [permissions.IsAuthenticated]
     http_method_names  = ["get", "put", "patch", "head", "options"]  # Pas de POST/DELETE (géré auto)
+
+    def get_permissions(self):
+        if self.action in ("update", "partial_update", "destroy"):
+            return [IsRH()]
+        return super().get_permissions()
 
     def list(self, request, *args, **kwargs):
         # Le solde annuel est recalculé à la lecture : même source que l'écran détaillé

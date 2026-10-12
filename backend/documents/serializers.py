@@ -25,12 +25,12 @@ class DocumentRHSerializer(serializers.ModelSerializer):
 
     def get_employe_detail(self, obj):
         if obj.employe:
-            from accounts.serializers import UserSerializer
-            return UserSerializer(obj.employe).data
+            from accounts.serializers import UserResumeSerializer
+            return UserResumeSerializer(obj.employe).data
         return None
 
     def get_uploade_par_detail(self, obj):
         if obj.uploade_par:
-            from accounts.serializers import UserSerializer
-            return UserSerializer(obj.uploade_par).data
+            from accounts.serializers import UserResumeSerializer
+            return UserResumeSerializer(obj.uploade_par).data
         return None

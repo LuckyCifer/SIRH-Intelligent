@@ -61,8 +61,8 @@ class DocumentRHViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ("create", "update", "partial_update", "destroy"):
-            from accounts.permissions import IsManagerOrRH
-            return [IsManagerOrRH()]
+            from accounts.permissions import IsRH
+            return [IsRH()]
         return [permissions.IsAuthenticated()]
 
     @action(detail=False, methods=["get"], url_path="mes-documents")

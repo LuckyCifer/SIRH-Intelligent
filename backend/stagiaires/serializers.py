@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from accounts.serializers import UserSerializer
+from accounts.serializers import UserResumeSerializer as UserSerializer
 from .models import StagePeriode, ProjetSoutenance
 
 

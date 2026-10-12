@@ -39,6 +39,7 @@ def _supprimer_photo_fichier(user):
 from .models import User
 from .serializers import (
     UserSerializer,
+    UserResumeSerializer,
     RegisterSerializer,
     ChangePasswordSerializer,
     UpdateProfileSerializer,
@@ -181,8 +182,9 @@ class MonEquipeView(APIView):
 
 
 class AnnuaireView(generics.ListAPIView):
-    """GET /api/accounts/annuaire/ — Annuaire entreprise (tous les rôles authentifiés)"""
-    serializer_class = UserSerializer
+    """GET /api/accounts/annuaire/ — Annuaire entreprise (tous les rôles authentifiés).
+    Identité professionnelle seulement (UserResumeSerializer, loi n° 2024/017)."""
+    serializer_class = UserResumeSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):

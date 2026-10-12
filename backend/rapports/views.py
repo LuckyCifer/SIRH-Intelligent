@@ -56,9 +56,18 @@ class RapportListCreateView(generics.ListCreateAPIView):
 
 
 class RapportDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset           = RapportHebdomadaire.objects.all()
     serializer_class   = RapportHebdomadaireSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # Même périmètre que la liste : ses propres rapports, ou ceux de ses stagiaires
+        user = self.request.user
+        qs = RapportHebdomadaire.objects.all()
+        if user.is_stagiaire:
+            return qs.filter(stagiaire=user)
+        if user.is_encadreur:
+            return qs.filter(stagiaire__periodes_stage__encadreur=user).distinct()
+        return qs
 
 
 @api_view(["POST"])

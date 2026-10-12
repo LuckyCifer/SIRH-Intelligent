@@ -60,6 +60,14 @@ gsria/
 | `RH` | `/rh/*` | IsRH (= IsAdminRH) |
 | `ADMIN` | `/rh/*` + superadmin | IsRH + is_staff |
 
+Règles de droits (détail : docs/SECURITE_DROITS_ACCES.md, tests : `python manage.py test accounts`) :
+- MANAGER agit sur son équipe seulement : `membres_equipe()` / `peut_gerer()` (accounts/permissions.py) ;
+  ne fixe pas ses propres objectifs, ne valide pas son propre congé
+- Contrats, sanctions, documents, départements/postes, config présences, saisie de pointages,
+  modification directe des demandes/soldes de congé : RH uniquement
+- Données imbriquées et annuaire : `UserResumeSerializer` (pas de CNI/NIU/CNPS/état civil/Mobile Money,
+  loi n° 2024/017) ; `UserSerializer` complet réservé aux RH et au profil de l'intéressé
+
 ## Variables d'environnement (backend `.env`)
 
 ```

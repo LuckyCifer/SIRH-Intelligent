@@ -28,13 +28,13 @@ class DemandeCongeSerializer(serializers.ModelSerializer):
         ]
 
     def get_employe_detail(self, obj):
-        from accounts.serializers import UserSerializer
-        return UserSerializer(obj.employe).data
+        from accounts.serializers import UserResumeSerializer
+        return UserResumeSerializer(obj.employe).data
 
     def get_valideur_detail(self, obj):
         if obj.valideur:
-            from accounts.serializers import UserSerializer
-            return UserSerializer(obj.valideur).data
+            from accounts.serializers import UserResumeSerializer
+            return UserResumeSerializer(obj.valideur).data
         return None
 
     def validate(self, data):

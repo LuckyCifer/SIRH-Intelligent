@@ -54,6 +54,36 @@ class UserSerializer(serializers.ModelSerializer):
             return None
 
 
+class UserResumeSerializer(serializers.ModelSerializer):
+    """
+    Identité professionnelle uniquement : annuaire et données imbriquées (congés,
+    présences, documents…). Aucun identifiant légal (CNI, NIU, n° CNPS), aucune donnée
+    familiale, d'état civil, d'adresse ni Mobile Money — principe de minimisation de la
+    loi n° 2024/017 du 23 décembre 2024 sur la protection des données personnelles.
+    """
+    full_name       = serializers.SerializerMethodField()
+    departement_nom = serializers.SerializerMethodField()
+    photo_url       = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            "id", "username", "first_name", "last_name", "full_name", "role",
+            "email", "telephone", "departement", "departement_nom", "poste",
+            "filiere", "photo_url",
+        ]
+        read_only_fields = fields
+
+    def get_full_name(self, obj):
+        return obj.get_full_name() or obj.username
+
+    def get_departement_nom(self, obj):
+        return obj.departement.nom if obj.departement_id else None
+
+    def get_photo_url(self, obj):
+        return UserSerializer(obj, context=self.context).get_photo_url(obj)
+
+
 class RegisterSerializer(serializers.ModelSerializer):
     """Création d'un nouveau compte"""
 
