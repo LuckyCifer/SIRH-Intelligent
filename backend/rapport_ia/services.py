@@ -8,8 +8,7 @@ import json
 import logging
 import threading
 from datetime import date
-from django.conf import settings
-from django.db.models import Sum
+from django.db.models import Q, Sum
 
 from ia.client import IAIndisponible, appeler_ia, motif_plan_b, parser_json
 
@@ -59,6 +58,22 @@ def _mois_bornes(mois, annee):
     return debut, fin
 
 
+def jours_ouvres_ecoules(debut, fin):
+    """Jours travaillés (lundi → vendredi, hors fériés) du mois, jusqu'à aujourd'hui inclus."""
+    from datetime import date, timedelta
+    from conges.calculateur_conges import CalculateurConges
+    borne = min(fin, date.today() + timedelta(days=1))
+    if borne <= debut:
+        return 0
+    feries = CalculateurConges().get_jours_feries_periode(debut, borne)
+    n, jour = 0, debut
+    while jour < borne:
+        if jour.weekday() < 5 and jour not in feries:
+            n += 1
+        jour += timedelta(days=1)
+    return n
+
+
 def collecter_donnees_rh(mois, annee, departement=None, employe=None, entreprise=None):
     """Données agrégées d'UNE entreprise (jamais celles des autres clientes de la plateforme)."""
     from accounts.models import User
@@ -73,8 +88,10 @@ def collecter_donnees_rh(mois, annee, departement=None, employe=None, entreprise
 
     nb_employes = employes_qs.count()
 
+    from datetime import date as _date
     data = {
         "periode": f"{annee}-{str(mois).zfill(2)}",
+        "mois_termine": fin <= _date.today(),
         "nb_employes": nb_employes,
         "presences": {},
         "conges": {},
@@ -91,8 +108,13 @@ def collecter_donnees_rh(mois, annee, departement=None, employe=None, entreprise
         pts = Pointage.objects.filter(employe__in=employes_qs, date__gte=debut, date__lt=fin)
         total = pts.count()
         presences = pts.filter(statut__in=["PRESENT", "RETARD"]).count()
+        # Couverture : pointages enregistrés / pointages attendus (employés × jours ouvrés écoulés)
+        attendus = nb_employes * jours_ouvres_ecoules(debut, fin)
         data["presences"] = {
             "total_pointages": total,
+            "pointages_attendus": attendus,
+            # plafonnée à 100 % : l'effectif de référence est l'effectif actif actuel
+            "couverture": min(100.0, round(total / attendus * 100, 1)) if attendus else None,
             "presences": presences,
             "absences": pts.filter(statut="ABSENT").count(),
             "retards": pts.filter(statut="RETARD").count(),
@@ -122,7 +144,9 @@ def collecter_donnees_rh(mois, annee, departement=None, employe=None, entreprise
     # 3. Objectifs
     try:
         from objectifs.models import Objectif
-        oq = Objectif.objects.filter(employe__in=employes_qs)
+        # Objectifs dont la période d'évaluation couvre le mois
+        oq = Objectif.objects.filter(employe__in=employes_qs,
+                                     periode__date_debut__lt=fin, periode__date_fin__gte=debut)
         total_o = oq.count()
         atteints = oq.filter(statut__in=["ATTEINT", "DEPASSE"]).count()
         data["objectifs"] = {
@@ -138,8 +162,10 @@ def collecter_donnees_rh(mois, annee, departement=None, employe=None, entreprise
     # 4. Formations
     try:
         from formations.models import Formation, InscriptionFormation
-        fq = Formation.objects.filter(entreprise=entreprise)
-        iq = InscriptionFormation.objects.filter(employe__in=employes_qs)
+        # Formations qui se déroulent pendant le mois
+        fq = Formation.objects.filter(entreprise=entreprise, date_debut__lt=fin).filter(
+            Q(date_fin__gte=debut) | Q(date_fin__isnull=True, date_debut__gte=debut))
+        iq = InscriptionFormation.objects.filter(employe__in=employes_qs, formation__in=fq)
         presents = iq.filter(statut="PRESENT").count()
         data["formations"] = {
             "total": fq.count(),
@@ -184,16 +210,11 @@ def collecter_donnees_rh(mois, annee, departement=None, employe=None, entreprise
     # 7. Sanctions
     try:
         from sanctions.models import Sanction
-        from django.utils import timezone
-        import datetime as dt
-        tz = timezone.get_current_timezone()
-        mois_debut = timezone.make_aware(dt.datetime(annee, mois, 1), tz)
-        mois_fin_val = fin
-        mois_fin_dt = timezone.make_aware(dt.datetime(mois_fin_val.year, mois_fin_val.month, 1), tz)
         sq = Sanction.objects.filter(employe__in=employes_qs)
         data["sanctions"] = {
             "total": sq.count(),
-            "ce_mois": sq.filter(created_at__gte=mois_debut, created_at__lt=mois_fin_dt).count(),
+            # date légale de la sanction (et non date de saisie)
+            "ce_mois": sq.filter(date_sanction__gte=debut, date_sanction__lt=fin).count(),
             "en_cours": sq.filter(statut__in=["NOTIFIEE", "ACCEPTEE", "CONTESTEE"]).count(),
         }
     except Exception as exc:
@@ -202,12 +223,25 @@ def collecter_donnees_rh(mois, annee, departement=None, employe=None, entreprise
     return data
 
 
+COUVERTURE_MINIMALE = 50   # % de pointages attendus en dessous duquel la présence n'est pas interprétée
+
+
+def presence_exploitable(pres):
+    couverture = pres.get("couverture")
+    return couverture is None or couverture >= COUVERTURE_MINIMALE
+
+
 def calculer_score_sans_ia(donnees):
     composantes = []
 
+    # Présence (30) : taux de présence si les pointages sont représentatifs ; sinon la
+    # couverture des pointages elle-même (un suivi absent n'est pas une bonne santé RH)
     pres = donnees.get("presences", {})
-    if pres.get("total_pointages", 0) > 0:
-        composantes.append((pres["taux_presence"], 30))
+    if pres.get("pointages_attendus") or pres.get("total_pointages", 0) > 0:
+        if pres.get("total_pointages", 0) > 0 and presence_exploitable(pres):
+            composantes.append((pres["taux_presence"], 30))
+        else:
+            composantes.append((pres.get("couverture") or 0, 30))
 
     conges = donnees.get("conges", {})
     if conges.get("total", 0) > 0:
@@ -220,6 +254,11 @@ def calculer_score_sans_ia(donnees):
     form = donnees.get("formations", {})
     if form.get("inscrits", 0) > 0:
         composantes.append((form["taux_completion"], 15))
+
+    # Paie (15) : part des employés ayant un bulletin, pour un mois terminé
+    if donnees.get("mois_termine") and donnees.get("nb_employes", 0) > 0:
+        bulletins = donnees.get("paie", {}).get("total_bulletins", 0)
+        composantes.append((min(100, bulletins / donnees["nb_employes"] * 100), 15))
 
     nb = max(1, donnees.get("nb_employes", 1))
     sanc_mois = donnees.get("sanctions", {}).get("ce_mois", 0)
@@ -238,7 +277,22 @@ def alertes_sans_ia(donnees):
     """Alertes et recommandations par règles explicites (plan B, sans IA)."""
     alertes, recommandations = [], []
     pres = donnees.get("presences", {})
-    if pres.get("total_pointages", 0) > 0:
+    attendus = pres.get("pointages_attendus") or 0
+    if attendus and pres.get("total_pointages", 0) == 0:
+        alertes.append({"titre": "Aucun pointage enregistré", "niveau": "IMPORTANT",
+                        "detail": f"0 pointage sur {attendus} attendus : la présence ne peut pas être évaluée."})
+        recommandations.append({"titre": "Rétablir le pointage",
+                                "action": "Vérifier que les employés pointent chaque jour et saisir les pointages manquants.",
+                                "priorite": "HAUTE"})
+    elif not presence_exploitable(pres):
+        alertes.append({"titre": "Pointages incomplets", "niveau": "IMPORTANT",
+                        "detail": f"{pres['total_pointages']} pointage(s) sur {attendus} attendus "
+                                  f"({pres['couverture']} %) : le taux de présence n'est pas représentatif "
+                                  f"et n'entre pas dans le score."})
+        recommandations.append({"titre": "Compléter les pointages",
+                                "action": "Saisir les pointages manquants avant d'interpréter la présence du mois.",
+                                "priorite": "HAUTE"})
+    if pres.get("total_pointages", 0) > 0 and presence_exploitable(pres):
         taux = pres.get("taux_presence", 100)
         if taux < 90:
             alertes.append({"titre": "Présence en baisse",
@@ -247,9 +301,10 @@ def alertes_sans_ia(donnees):
             recommandations.append({"titre": "Analyser les absences",
                                     "action": "Identifier les absences répétées et en rechercher les causes avec les managers.",
                                     "priorite": "HAUTE" if taux < 80 else "MOYENNE"})
-        if pres.get("retards", 0) > 0:
-            alertes.append({"titre": "Retards", "niveau": "INFO",
-                            "detail": f"{pres['retards']} pointage(s) en retard."})
+    if pres.get("retards", 0) > 0 and pres.get("presences", 0) > 0:
+        part = round(pres["retards"] / pres["presences"] * 100)
+        alertes.append({"titre": "Retards", "niveau": "IMPORTANT" if part >= 20 else "INFO",
+                        "detail": f"{pres['retards']} arrivée(s) en retard sur {pres['presences']} présence(s) ({part} %)."})
     conges = donnees.get("conges", {})
     if conges.get("en_attente", 0) > 0:
         alertes.append({"titre": "Congés à traiter", "niveau": "INFO",
@@ -264,10 +319,44 @@ def alertes_sans_ia(donnees):
         recommandations.append({"titre": "Revoir les objectifs",
                                 "action": "Faire un point d'étape avec chaque manager sur les objectifs en retard.",
                                 "priorite": "HAUTE"})
+    paie = donnees.get("paie", {})
+    nb = donnees.get("nb_employes", 0)
+    if donnees.get("mois_termine") and nb:
+        if paie.get("total_bulletins", 0) == 0:
+            alertes.append({"titre": "Paie non établie", "niveau": "IMPORTANT",
+                            "detail": f"Aucun bulletin de paie pour {nb} employé(s) sur ce mois."})
+            recommandations.append({"titre": "Établir la paie",
+                                    "action": "Générer et valider les bulletins du mois (obligations CNPS et DGI).",
+                                    "priorite": "HAUTE"})
+        elif paie["total_bulletins"] < nb:
+            alertes.append({"titre": "Paie incomplète", "niveau": "INFO",
+                            "detail": f"{paie['total_bulletins']} bulletin(s) pour {nb} employé(s)."})
     if donnees.get("sanctions", {}).get("en_cours", 0) > 0:
         alertes.append({"titre": "Procédures disciplinaires", "niveau": "INFO",
                         "detail": f"{donnees['sanctions']['en_cours']} sanction(s) en cours de procédure."})
     return alertes, recommandations
+
+
+ECART_TENDANCE = 5   # points de score
+
+
+def tendance(rapport, score):
+    """HAUSSE / BAISSE / STABLE par rapport au rapport généré du mois précédent."""
+    from .models import RapportIAMensuel
+    mois, annee = (12, rapport.annee - 1) if rapport.mois == 1 else (rapport.mois - 1, rapport.annee)
+    precedent = RapportIAMensuel.objects.filter(
+        entreprise=rapport.entreprise, mois=mois, annee=annee, type_rapport=rapport.type_rapport,
+        departement=rapport.departement, employe=rapport.employe,
+        statut=RapportIAMensuel.Statut.GENERE,
+    ).first()
+    if precedent is None or precedent.score_sante_rh is None:
+        return "STABLE"
+    ecart = score - float(precedent.score_sante_rh)
+    if ecart >= ECART_TENDANCE:
+        return "HAUSSE"
+    if ecart <= -ECART_TENDANCE:
+        return "BAISSE"
+    return "STABLE"
 
 
 def _remplir_sans_ia(rapport, donnees, raison):
@@ -287,7 +376,7 @@ def _remplir_sans_ia(rapport, donnees, raison):
     rapport.indicateurs_cles = {
         "point_fort":      "Indicateurs calculés à partir des données réelles du mois",
         "point_vigilance": alertes[0]["titre"] if alertes else "Aucune alerte détectée",
-        "tendance":        "STABLE",
+        "tendance":        tendance(rapport, score),
         "source":          "calcul sans IA",
     }
     lignes = [
@@ -300,7 +389,8 @@ def _remplir_sans_ia(rapport, donnees, raison):
         "",
         "| Indicateur | Valeur |",
         "|---|---|",
-        f"| Taux de présence | {pres.get('taux_presence', '—')} % |",
+        f"| Pointages enregistrés / attendus | {pres.get('total_pointages', 0)} / {pres.get('pointages_attendus', '—')} |",
+        f"| Taux de présence | {pres.get('taux_presence', '—') if presence_exploitable(pres) and pres.get('total_pointages') else 'non représentatif'} % |",
         f"| Absences / retards | {pres.get('absences', 0)} / {pres.get('retards', 0)} |",
         f"| Congés pris (jours) | {conges.get('jours_pris', 0)} |",
         f"| Demandes de congé en attente | {conges.get('en_attente', 0)} |",
