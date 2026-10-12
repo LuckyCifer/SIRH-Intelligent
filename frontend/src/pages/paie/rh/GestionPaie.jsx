@@ -49,7 +49,6 @@ function DetailModal({ bulletin: b, onClose }) {
   if (!b) return null;
   const nouveau = b.salaire_categoriel && Number(b.salaire_categoriel) > 0;
   const totalBrut = nouveau ? b.total_brut : (Number(b.salaire_brut) + Number(b.total_primes));
-  const irppCac   = Number(b.irpp) + Number(b.cac || 0);
 
   return (
     <>

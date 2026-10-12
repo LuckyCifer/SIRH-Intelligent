@@ -58,7 +58,6 @@ export default function EmployeLayout({ children, pageTitle = 'Mon Espace', brea
     { to: '/employe/paie',            icon: 'fas fa-coins',          label: t('nav.mes_bulletins') },
   ]
 
-  const initial = (user?.first_name?.[0] || user?.username?.[0] || '?').toUpperCase()
 
   function isActive(path) {
     if (path === '/employe/dashboard') return location.pathname === path

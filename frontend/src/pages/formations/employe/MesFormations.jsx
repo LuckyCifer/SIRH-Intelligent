@@ -138,7 +138,7 @@ export default function MesFormations() {
   const [inscriptions, setInscriptions] = useState([]);
   const [loading,      setLoading]      = useState(true);
   const [onglet,       setOnglet]       = useState("avenir");
-  const [annulant,     setAnnulant]     = useState(null);
+  const [, setAnnulant] = useState(null);
 
   useEffect(() => {
     getMesInscriptions()

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import toast from 'react-hot-toast'
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import RHLayout from '../../components/layout/RHLayout'
@@ -32,7 +31,6 @@ function ScoreGauge({ score, label, sublabel }) {
 }
 
 export default function TableauBordIA() {
-  const navigate = useNavigate()
   const { t } = useTranslation()
   const [dernier,   setDernier]   = useState(null)
   const [historique, setHistorique] = useState([])

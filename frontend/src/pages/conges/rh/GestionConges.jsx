@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
-import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import RHLayout from '../../../components/layout/RHLayout'
 import Spinner from '../../../components/Spinner'

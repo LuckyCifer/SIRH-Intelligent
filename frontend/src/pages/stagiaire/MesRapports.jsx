@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useTranslation } from 'react-i18next'
 import StagiaireLayout from '../../components/layout/StagiaireLayout'
@@ -9,7 +9,6 @@ import { getRapports, soumettreRapport, getMesStats } from '../../api/rapports'
 
 export default function MesRapports() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const [rapports, setRapports] = useState([])
   const [stats, setStats]       = useState(null)
   const [loading, setLoading]   = useState(true)

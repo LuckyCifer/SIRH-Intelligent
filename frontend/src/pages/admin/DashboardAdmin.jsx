@@ -554,7 +554,7 @@ export default function DashboardAdmin() {
                           <PieChart>
                             <Pie data={pieData} dataKey="value" nameKey="name"
                               cx="50%" cy="50%" outerRadius={90}
-                              label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}>
+                              label={({ percent }) => `${(percent * 100).toFixed(0)}%`}>
                               {pieData.map(entry => (
                                 <Cell key={entry.key} fill={getFiliere(entry.key).couleur} />
                               ))}

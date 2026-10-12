@@ -27,6 +27,7 @@ export function ThemeProvider({ children }) {
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- hook co-localisé avec son contexte (n'affecte que le rechargement à chaud)
 export function useTheme() {
   return useContext(ThemeContext)
 }

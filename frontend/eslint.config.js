@@ -17,5 +17,12 @@ export default defineConfig([
       globals: globals.browser,
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
+    rules: {
+      // Règle « React Compiler » (performance : rendus en cascade), pas une erreur de
+      // logique. Elle signale le schéma volontaire « chargement des données dans un
+      // useEffect » (setLoading(true) puis appel API) utilisé par les pages de liste.
+      // Migration prévue : TanStack Query (déjà installé). Laissée visible en avertissement.
+      'react-hooks/set-state-in-effect': 'warn',
+    },
   },
 ])

@@ -107,7 +107,6 @@ export default function MesPresences() {
     else setMois(m => m + 1)
   }
 
-  const todayStr = today.toISOString().slice(0, 10)
   const todayLabel = new Date().toLocaleDateString('fr-FR', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   })

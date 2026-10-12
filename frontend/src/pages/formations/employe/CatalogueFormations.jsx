@@ -11,17 +11,6 @@ const NIVEAU_BADGE = {
   DEBUTANT: "secondary", INTERMEDIAIRE: "info", AVANCE: "warning", EXPERT: "danger",
 };
 
-function EtoilesNote({ note }) {
-  return (
-    <span>
-      {[1, 2, 3, 4, 5].map(n => (
-        <i key={n} className="fas fa-star"
-          style={{ color: n <= note ? "#ffc107" : "var(--text-muted)", fontSize: "0.8rem" }} />
-      ))}
-    </span>
-  );
-}
-
 export default function CatalogueFormations() {
   const { t } = useTranslation();
   const [formations,     setFormations]     = useState([]);

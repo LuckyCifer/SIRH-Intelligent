@@ -12,13 +12,6 @@ import { getRapportEquipe } from '../../api/presences'
 import { getObjectifsEquipe } from '../../api/objectifs'
 import { getInscriptions } from '../../api/formations'
 
-const STATUT_CONFIG = {
-  BROUILLON: 'badge-secondary',
-  SOUMIS:    'badge-primary',
-  VALIDE:    'badge-success',
-  REJETE:    'badge-danger',
-}
-
 const ALERTE_DOT = {
   AUCUNE:  '#28a745',
   FAIBLE:  '#28a745',

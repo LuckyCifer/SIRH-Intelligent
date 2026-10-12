@@ -22,7 +22,7 @@ function tempsDepuis(iso, t) {
   return t('conges_extra.time_just_now')
 }
 
-function CarteDemande({ d, onAction }) {
+function CarteDemande({ d }) {
   const { t } = useTranslation()
 
   const STATUT_CONFIG = {
@@ -217,7 +217,7 @@ export default function CongesEquipe() {
               <div className="row">
                 {filtered.map(d => (
                   <div className="col-md-6" key={d.id}>
-                    <CarteDemande d={d} onAction={load} />
+                    <CarteDemande d={d} />
                   </div>
                 ))}
               </div>

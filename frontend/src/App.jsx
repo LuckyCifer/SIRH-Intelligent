@@ -13,7 +13,6 @@ import MesRapports         from "./pages/stagiaire/MesRapports"
 import FormulaireRapport   from "./pages/stagiaire/FormulaireRapport"
 import DetailRapport       from "./pages/stagiaire/DetailRapport"
 import MonProjet           from "./pages/stagiaire/MonProjet"
-import MonProfil           from "./pages/stagiaire/MonProfil"
 import MonProfilPage       from "./pages/employe/MonProfilPage"
 import MonContrat          from "./pages/employe/MonContrat"
 
@@ -144,7 +143,6 @@ function EntrepriseThemeLoader() {
 const EMP = ["EMPLOYE"]
 const MGR = ["MANAGER"]
 const RH  = ["RH", "ADMIN"]
-const ALL = ["EMPLOYE", "MANAGER", "RH", "ADMIN"]
 
 export default function App() {
   return (

@@ -7,7 +7,7 @@ import api from "../api/axios";
 
 const useAuthStore = create(
   persist(
-    (set, get) => ({
+    (set) => ({
       user: null,
       accessToken: null,
       refreshToken: null,

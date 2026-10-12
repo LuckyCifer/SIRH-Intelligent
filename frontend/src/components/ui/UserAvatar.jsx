@@ -150,6 +150,19 @@ export function UserAvatarCard({
           }}
         />
       )}
+
+      {editable && onRemove && user?.photo_url && (
+        <button
+          type="button"
+          className="btn btn-sm btn-danger position-absolute"
+          style={{ top: 4, right: 4, padding: '0 6px', lineHeight: '20px', borderRadius: '50%' }}
+          title="Supprimer la photo"
+          aria-label="Supprimer la photo"
+          onClick={e => { e.stopPropagation(); onRemove() }}
+        >
+          <i className="fas fa-times" style={{ fontSize: '11px' }} />
+        </button>
+      )}
     </div>
   )
 }

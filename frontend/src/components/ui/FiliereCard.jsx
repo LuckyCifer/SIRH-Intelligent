@@ -14,7 +14,6 @@ export default function FiliereCard({ code, selected = false, onClick }) {
       onKeyDown={e => e.key === 'Enter' && onClick?.()}
       style={{
         cursor:      'pointer',
-        borderLeft:  `5px solid ${f.couleur}`,
         borderRadius: 8,
         padding:     '12px 14px',
         background:  selected ? f.couleur + '18' : 'var(--bg-card)',

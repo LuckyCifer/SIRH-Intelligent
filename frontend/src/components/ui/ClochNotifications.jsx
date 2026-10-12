@@ -81,7 +81,6 @@ export default function ClochNotifications() {
     setNonLues(0)
   }
 
-  const { icon: bellIcon } = TYPE_ICON.ALERTE
 
   return (
     <li className="nav-item dropdown" ref={dropdownRef} style={{ position: 'relative' }}>

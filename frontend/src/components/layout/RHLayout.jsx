@@ -78,7 +78,6 @@ export default function RHLayout({ children, pageTitle = 'Espace RH' }) {
     { to: '/filieres',                    icon: 'fas fa-graduation-cap',  label: t('nav.postes_metiers') },
   ]
 
-  const initial = (user?.first_name?.[0] || user?.username?.[0] || 'R').toUpperCase()
 
   return (
     <div className="wrapper">

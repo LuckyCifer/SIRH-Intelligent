@@ -182,7 +182,7 @@ export default function ParametresEntreprise() {
                   >
                     {preview || entreprise.logo ? (
                       <img
-                        src={preview || (entreprise.logo + '?v=' + (entreprise.updated_at || Date.now()))}
+                        src={preview || (entreprise.logo + '?v=' + (entreprise.updated_at || ''))}
                         alt="Logo"
                         style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                     ) : (

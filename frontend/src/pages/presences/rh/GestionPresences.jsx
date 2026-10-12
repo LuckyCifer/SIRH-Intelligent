@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import RHLayout from '../../../components/layout/RHLayout'
 import Spinner from '../../../components/Spinner'
-import { getRapportEquipe, getPointages, creerPointage, updatePointage, getJoursFeries } from '../../../api/presences'
+import { getRapportEquipe, creerPointage, updatePointage, getJoursFeries } from '../../../api/presences'
 import { useApercu } from '../../../components/ui/useApercu'
 import { chargerTout } from '../../../api/listes'
 
@@ -69,11 +69,7 @@ export default function GestionPresences() {
     WEEKEND:  t('presences.weekend'),
   }
 
-  const STATUT_CLS = {
-    PRESENT:'badge-success', ABSENT:'badge-danger', RETARD:'badge-warning',
-    CONGE:'badge-primary', FERIE:'badge-secondary', WEEKEND:'badge-light',
-  }
-
+  
   const today = new Date()
   const [annee, setAnnee] = useState(today.getFullYear())
   const [mois,  setMois]  = useState(today.getMonth())

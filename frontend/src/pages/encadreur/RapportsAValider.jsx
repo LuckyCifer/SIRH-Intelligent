@@ -23,6 +23,8 @@ export default function RapportsAValider() {
   const { t, i18n } = useTranslation()
   const locale = i18n.language === 'en' ? 'en-US' : 'fr-FR'
   const [rapports, setRapports] = useState([])
+  // Heure de référence figée au premier rendu (un rendu doit rester pur)
+  const [maintenant] = useState(() => Date.now())
   const [loading, setLoading]   = useState(true)
 
   const ALERTE_LABEL = {
@@ -39,7 +41,7 @@ export default function RapportsAValider() {
 
   function tempsDepuis(dateStr) {
     if (!dateStr) return null
-    const diff  = Date.now() - new Date(dateStr).getTime()
+    const diff  = maintenant - new Date(dateStr).getTime()
     const jours  = Math.floor(diff / 86400000)
     const heures = Math.floor(diff / 3600000)
     if (jours >= 1) return jours === 1

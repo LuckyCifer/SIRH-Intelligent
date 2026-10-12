@@ -74,7 +74,6 @@ export default function ManagerLayout({ children, pageTitle = 'Espace Manager' }
     { to: '/manager/profil',              icon: 'fas fa-user-circle',    label: t('nav.mon_profil_manager') },
   ]
 
-  const initial = (user?.first_name?.[0] || user?.username?.[0] || 'M').toUpperCase()
 
   return (
     <div className="wrapper">
