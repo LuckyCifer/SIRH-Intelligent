@@ -1,11 +1,16 @@
 """
-Client IA centralisé — Gemini (principal) + OpenRouter (secondaire/fallback)
+Client IA centralisé — Gemini (principal, SDK officiel google-genai) + OpenRouter (secours)
 
 Usage :
-    from ia.client import appeler_ia, parser_json
+    from ia.client import appeler_ia, parser_json, IAIndisponible
 
     raw  = appeler_ia(prompt, system=SYSTEM_PROMPT, temperature=0.3)
     data = parser_json(raw)
+
+Plan B : si aucun fournisseur ne répond (pas de réseau, quotas épuisés, clés absentes),
+appeler_ia lève IAIndisponible ; chaque module produit alors un résultat calculé
+sans IA, marqué comme tel, au lieu d'échouer. Sans réseau, l'échec est immédiat
+(pas de cascade de tentatives inutiles).
 """
 import json
 import logging
@@ -14,6 +19,35 @@ import time
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
+
+DELAI_REPONSE_S = 60   # délai maximal d'une réponse de fournisseur
+
+
+class IAIndisponible(RuntimeError):
+    """Aucun fournisseur d'IA n'a répondu : utiliser le calcul sans IA."""
+
+
+def motif_plan_b(exc) -> str:
+    """Phrase destinée à l'utilisateur expliquant pourquoi l'IA n'a pas été utilisée."""
+    texte = str(exc).lower()
+    if "aucune clé" in texte:
+        return "aucune clé d'API d'IA n'est configurée"
+    if "pas de connexion" in texte:
+        return "pas de connexion Internet vers le service d'IA"
+    if isinstance(exc, ValueError):
+        return "la réponse du service d'IA était inexploitable"
+    return "le service d'IA n'a pas répondu (surcharge ou quota épuisé)"
+
+
+def _erreur_reseau(exc) -> bool:
+    """Absence de réseau / DNS / connexion refusée : inutile d'essayer d'autres modèles."""
+    texte = f"{type(exc).__name__} {exc}".lower()
+    return any(m in texte for m in (
+        "connecterror", "apiconnectionerror", "connectionerror", "connecttimeout",
+        "getaddrinfo", "name or service not known", "nodename nor servname",
+        "failed to establish", "network is unreachable", "temporary failure in name resolution",
+        "no address associated", "connection refused",
+    ))
 
 
 def parser_json(raw: str) -> dict:
@@ -35,23 +69,27 @@ def parser_json(raw: str) -> dict:
 # ─── Fournisseurs ────────────────────────────────────────────
 
 def _appeler_gemini(prompt: str, system: str | None, temperature: float) -> str:
-    import google.generativeai as genai
+    # SDK officiel google-genai (remplace google.generativeai, abandonné par Google)
+    from google import genai
+    from google.genai import types
 
-    genai.configure(api_key=settings.GEMINI_API_KEY)
-
-    model_name = getattr(settings, "GEMINI_MODEL", "gemini-flash-latest")
-    gen_config = genai.GenerationConfig(
-        temperature=temperature,
-        # Les modèles Gemini récents consomment aussi ce budget pour leur raisonnement
-        max_output_tokens=8192,
+    client = genai.Client(
+        api_key=settings.GEMINI_API_KEY,
+        http_options=types.HttpOptions(timeout=DELAI_REPONSE_S * 1000),   # millisecondes
     )
-
-    kwargs = {"generation_config": gen_config}
-    if system:
-        kwargs["system_instruction"] = system
-
-    model = genai.GenerativeModel(model_name, **kwargs)
-    response = model.generate_content(prompt)
+    model_name = getattr(settings, "GEMINI_MODEL", "gemini-flash-latest")
+    response = client.models.generate_content(
+        model=model_name,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            system_instruction=system or None,
+            temperature=temperature,
+            # Les modèles Gemini récents consomment aussi ce budget pour leur raisonnement
+            max_output_tokens=8192,
+        ),
+    )
+    if not response.text:
+        raise RuntimeError(f"Réponse vide du modèle {model_name}")
     return response.text
 
 
@@ -61,6 +99,8 @@ def _appeler_openrouter_model(prompt: str, system: str | None, temperature: floa
     client = OpenAI(
         api_key=settings.OPENROUTER_API_KEY,
         base_url="https://openrouter.ai/api/v1",
+        timeout=DELAI_REPONSE_S,   # 600 s par défaut dans le SDK
+        max_retries=0,             # les nouvelles tentatives sont gérées ci-dessous
     )
 
     messages = []
@@ -98,7 +138,7 @@ def appeler_ia_complet(
     - GEMINI_API_KEY est absente, ou
     - Gemini échoue après 2 tentatives.
     Retourne (texte_réponse, nom_modèle_utilisé).
-    Lève RuntimeError uniquement si les deux fournisseurs sont indisponibles.
+    Lève IAIndisponible (sous-classe de RuntimeError) si aucun fournisseur ne répond.
     """
     gemini_key      = getattr(settings, "GEMINI_API_KEY", "")
     openrouter_key  = getattr(settings, "OPENROUTER_API_KEY", "")
@@ -118,6 +158,8 @@ def appeler_ia_complet(
             except Exception as exc:
                 errors.append(f"Gemini/{attempt}: {exc}")
                 logger.warning("Gemini tentative %d échouée: %s", attempt, exc)
+                if _erreur_reseau(exc):
+                    raise IAIndisponible(f"Pas de connexion au service d'IA : {exc}") from exc
                 # Quota/rate-limit (429) → inutile de réessayer, basculer immédiatement
                 exc_str = str(exc).lower()
                 if "429" in exc_str or "quota" in exc_str or "rate" in exc_str:
@@ -157,6 +199,8 @@ def appeler_ia_complet(
                     exc_str = str(exc).lower()
                     errors.append(f"OpenRouter/{model_name}/{attempt}: {exc}")
                     logger.warning("OpenRouter %s tentative %d échouée: %s", model_name, attempt, exc)
+                    if _erreur_reseau(exc):
+                        raise IAIndisponible(f"Pas de connexion au service d'IA : {exc}") from exc
                     # modèle indisponible → passer au suivant immédiatement
                     if "404" in exc_str or "unavailable" in exc_str or "no endpoints" in exc_str:
                         logger.info("Modèle %s indisponible — cascade suivante", model_name)
@@ -164,7 +208,9 @@ def appeler_ia_complet(
     else:
         logger.debug("OPENROUTER_API_KEY absente")
 
-    raise RuntimeError(f"Tous les agents IA ont échoué : {'; '.join(errors)}")
+    if not gemini_key and not openrouter_key:
+        raise IAIndisponible("Aucune clé d'API d'IA configurée")
+    raise IAIndisponible(f"Tous les agents IA ont échoué : {'; '.join(errors)}")
 
 
 def appeler_ia(prompt: str, system: str | None = None, temperature: float = 0.3) -> str:

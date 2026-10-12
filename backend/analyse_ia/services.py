@@ -4,7 +4,7 @@ Utilise ia.client (Gemini principal, Groq fallback).
 """
 import logging
 from django.conf import settings
-from ia.client import appeler_ia_complet, parser_json
+from ia.client import IAIndisponible, appeler_ia_complet, parser_json
 
 logger = logging.getLogger(__name__)
 
@@ -112,5 +112,9 @@ Période   : {rapport.date_debut_semaine} → {rapport.date_fin_semaine}
             "Analyse IA rapport #%d — score %s/100",
             rapport.pk, data.get("score_engagement"),
         )
+    except (IAIndisponible, ValueError) as exc:
+        # Plan B : le rapport reste soumis et consultable ; pas de score inventé,
+        # l'analyse peut être relancée (POST /api/analyse/rapport/<pk>/relancer/)
+        logger.warning("Analyse du rapport #%d reportée, IA indisponible : %s", rapport.pk, exc)
     except Exception as exc:
         logger.error("Analyse IA abandonnée rapport #%d : %s", rapport.pk, exc)

@@ -182,3 +182,12 @@ class SecuriteTests(TestCase):
             date_fin_semaine=date(2026, 10, 9), activites_realisees="Inventaire")
         r = self.client_de(self.membre).get(f"/api/rapports/{rapport.pk}/")
         self.assertEqual(r.status_code, 404)
+
+    # ── Fiche employé côté manager (page « Mes employés ») ───────────────────
+
+    def test_manager_ouvre_la_fiche_d_un_membre_de_son_equipe(self):
+        manager = self.client_de(self.manager)
+        r = manager.get(f"/api/stagiaires/{self.membre.pk}/detail/")
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertEqual(r.data["nom_complet"], "Awa MEMBRE")
+        self.assertEqual(manager.get(f"/api/stagiaires/{self.externe.pk}/detail/").status_code, 403)

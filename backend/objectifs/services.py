@@ -1,6 +1,6 @@
 import logging
 import threading
-from ia.client import appeler_ia, parser_json
+from ia.client import IAIndisponible, appeler_ia, motif_plan_b, parser_json
 
 logger = logging.getLogger(__name__)
 
@@ -75,5 +75,45 @@ def _run_analyse(evaluation_id):
             "Analyse IA évaluation #%d — score %s/100",
             evaluation_id, data.get("score_global_100"),
         )
+    except (IAIndisponible, ValueError) as exc:
+        # Plan B : score calculé à partir des notes du manager, signalé comme tel
+        logger.warning("Évaluation #%d : plan B sans IA (%s)", evaluation_id, exc)
+        data = analyse_sans_ia(evaluation, motif_plan_b(exc))
+        EvaluationPerformance.objects.filter(pk=evaluation_id).update(
+            analyse_ia=data, score_ia=data["score_global_100"],
+        )
     except Exception as exc:
         logger.error("Analyse IA abandonnée évaluation #%d : %s", evaluation_id, exc)
+
+
+CRITERES = {
+    "note_competences": "Compétences techniques", "note_objectifs": "Atteinte des objectifs",
+    "note_comportement": "Comportement", "note_initiative": "Initiative",
+    "note_travail_equipe": "Travail en équipe", "note_communication": "Communication",
+}
+
+
+def analyse_sans_ia(evaluation, raison):
+    """Synthèse par règles à partir des notes (1 à 5) quand l'IA est indisponible."""
+    notes = {libelle: getattr(evaluation, champ) for champ, libelle in CRITERES.items()
+             if getattr(evaluation, champ) is not None}
+    moyenne = sum(notes.values()) / len(notes) if notes else None
+    score = round(moyenne / 5 * 100) if moyenne is not None else None
+    if score is None:
+        niveau = "NON_EVALUE"
+    elif score >= 80:
+        niveau = "EXCELLENT"
+    elif score >= 60:
+        niveau = "SATISFAISANT"
+    else:
+        niveau = "A_AMELIORER"
+    return {
+        "source": "calcul sans IA",
+        "score_global_100": score,
+        "niveau_performance": niveau,
+        "synthese": (f"Analyse IA indisponible ({raison}). Score calculé à partir de la moyenne "
+                     f"des notes du manager : {round(moyenne, 2) if moyenne else '—'}/5."),
+        "points_forts": [c for c, n in notes.items() if n >= 4],
+        "axes_developpement": [c for c, n in notes.items() if n <= 2],
+        "recommandation_rh": "Relancer l'analyse IA lorsque le service sera accessible.",
+    }

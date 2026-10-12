@@ -349,19 +349,16 @@ class VirementMobileViewSet(IsolationEntrepriseMixin, viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], url_path="stats")
     def stats(self, request):
         """Statistiques agrégées des virements pour le dashboard."""
-        entreprise = getattr(request.user, "entreprise", None)
-        qs = VirementMobile.objects.all()
-        if entreprise:
-            qs = qs.filter(entreprise=entreprise)
-
-        from django.db.models import Sum, Count
+        from django.db.models import Count, Q, Sum
+        from entreprises.isolation import filtrer_par_entreprise
+        qs = filtrer_par_entreprise(VirementMobile.objects.all(), request.user)
         agg = qs.aggregate(
             total_virements = Count("id"),
             total_montant   = Sum("montant"),
-            nb_succes       = Count("id", filter=models.Q(statut="SUCCES")),
-            nb_echec        = Count("id", filter=models.Q(statut="ECHEC")),
-            nb_en_cours     = Count("id", filter=models.Q(statut="EN_COURS")),
-            montant_succes  = Sum("montant", filter=models.Q(statut="SUCCES")),
+            nb_succes       = Count("id", filter=Q(statut="SUCCES")),
+            nb_echec        = Count("id", filter=Q(statut="ECHEC")),
+            nb_en_cours     = Count("id", filter=Q(statut="EN_COURS")),
+            montant_succes  = Sum("montant", filter=Q(statut="SUCCES")),
         )
         taux = 0
         if agg["total_virements"]:

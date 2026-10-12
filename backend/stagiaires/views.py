@@ -196,17 +196,23 @@ def detail_stagiaire(request, stagiaire_id):
     from analyse_ia.models import AnalyseIA
     from accounts.models import User as UserModel
 
+    from accounts.permissions import peut_gerer
+    from entreprises.isolation import filtrer_par_entreprise
+
     user = request.user
+    try:
+        # Fiche d'un salarié de l'entreprise (le rôle STAGIAIRE hérité de GSRIA n'existe plus)
+        stagiaire = filtrer_par_entreprise(UserModel.objects.all(), user).get(pk=stagiaire_id)
+    except UserModel.DoesNotExist:
+        return Response({"error": "Employé introuvable."}, status=404)
+
     if user.is_stagiaire and user.id != stagiaire_id:
         return Response({"error": "Accès non autorisé."}, status=403)
-    if user.is_encadreur:
-        if not StagePeriode.objects.filter(encadreur=user, stagiaire_id=stagiaire_id).exists():
-            return Response({"error": "Ce stagiaire ne vous est pas assigné."}, status=403)
-
-    try:
-        stagiaire = UserModel.objects.get(pk=stagiaire_id, role="STAGIAIRE")
-    except UserModel.DoesNotExist:
-        return Response({"error": "Stagiaire introuvable."}, status=404)
+    if user.is_encadreur and not (
+        peut_gerer(user, stagiaire)   # membre de son équipe
+        or StagePeriode.objects.filter(encadreur=user, stagiaire_id=stagiaire_id).exists()
+    ):
+        return Response({"error": "Cet employé ne fait pas partie de votre équipe."}, status=403)
 
     periode = StagePeriode.objects.filter(stagiaire=stagiaire).order_by("-date_debut").first()
 

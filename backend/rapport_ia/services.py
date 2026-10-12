@@ -11,7 +11,7 @@ from datetime import date
 from django.conf import settings
 from django.db.models import Sum
 
-from ia.client import appeler_ia, parser_json
+from ia.client import IAIndisponible, appeler_ia, motif_plan_b, parser_json
 
 logger = logging.getLogger(__name__)
 
@@ -234,6 +234,83 @@ def calculer_score_sans_ia(donnees):
     return round(score, 1)
 
 
+def alertes_sans_ia(donnees):
+    """Alertes et recommandations par règles explicites (plan B, sans IA)."""
+    alertes, recommandations = [], []
+    pres = donnees.get("presences", {})
+    if pres.get("total_pointages", 0) > 0:
+        taux = pres.get("taux_presence", 100)
+        if taux < 90:
+            alertes.append({"titre": "Présence en baisse",
+                            "niveau": "CRITIQUE" if taux < 80 else "IMPORTANT",
+                            "detail": f"Taux de présence de {taux} % sur le mois."})
+            recommandations.append({"titre": "Analyser les absences",
+                                    "action": "Identifier les absences répétées et en rechercher les causes avec les managers.",
+                                    "priorite": "HAUTE" if taux < 80 else "MOYENNE"})
+        if pres.get("retards", 0) > 0:
+            alertes.append({"titre": "Retards", "niveau": "INFO",
+                            "detail": f"{pres['retards']} pointage(s) en retard."})
+    conges = donnees.get("conges", {})
+    if conges.get("en_attente", 0) > 0:
+        alertes.append({"titre": "Congés à traiter", "niveau": "INFO",
+                        "detail": f"{conges['en_attente']} demande(s) de congé en attente de validation."})
+        recommandations.append({"titre": "Traiter les demandes de congé",
+                                "action": "Valider ou refuser les demandes en attente avant le départ prévu.",
+                                "priorite": "MOYENNE"})
+    obj = donnees.get("objectifs", {})
+    if obj.get("total", 0) > 0 and obj.get("taux_atteinte", 100) < 50:
+        alertes.append({"titre": "Objectifs peu atteints", "niveau": "IMPORTANT",
+                        "detail": f"Taux d'atteinte des objectifs : {obj['taux_atteinte']} %."})
+        recommandations.append({"titre": "Revoir les objectifs",
+                                "action": "Faire un point d'étape avec chaque manager sur les objectifs en retard.",
+                                "priorite": "HAUTE"})
+    if donnees.get("sanctions", {}).get("en_cours", 0) > 0:
+        alertes.append({"titre": "Procédures disciplinaires", "niveau": "INFO",
+                        "detail": f"{donnees['sanctions']['en_cours']} sanction(s) en cours de procédure."})
+    return alertes, recommandations
+
+
+def _remplir_sans_ia(rapport, donnees, raison):
+    """Plan B : rapport complet calculé sans IA, clairement signalé, régénérable plus tard."""
+    score = calculer_score_sans_ia(donnees)
+    alertes, recommandations = alertes_sans_ia(donnees)
+    pres = donnees.get("presences", {})
+    conges = donnees.get("conges", {})
+    obj = donnees.get("objectifs", {})
+    rapport.score_sante_rh   = score
+    rapport.resume_executif  = (
+        f"Rapport calculé sans analyse IA ({raison}). Score de santé RH : {score}/100, "
+        f"établi à partir des présences, des congés, des objectifs, des formations et des sanctions."
+    )
+    rapport.alertes_ia       = alertes
+    rapport.recommandations  = recommandations
+    rapport.indicateurs_cles = {
+        "point_fort":      "Indicateurs calculés à partir des données réelles du mois",
+        "point_vigilance": alertes[0]["titre"] if alertes else "Aucune alerte détectée",
+        "tendance":        "STABLE",
+        "source":          "calcul sans IA",
+    }
+    lignes = [
+        f"# Rapport RH — {donnees['periode']}",
+        "",
+        f"> Analyse IA indisponible : {raison}. Ce rapport est calculé par règles ; "
+        "il peut être régénéré avec l'IA dès que le service est de nouveau accessible.",
+        "",
+        f"**Score de santé RH : {score}/100** — effectif : {donnees.get('nb_employes', 0)} employé(s)",
+        "",
+        "| Indicateur | Valeur |",
+        "|---|---|",
+        f"| Taux de présence | {pres.get('taux_presence', '—')} % |",
+        f"| Absences / retards | {pres.get('absences', 0)} / {pres.get('retards', 0)} |",
+        f"| Congés pris (jours) | {conges.get('jours_pris', 0)} |",
+        f"| Demandes de congé en attente | {conges.get('en_attente', 0)} |",
+        f"| Objectifs atteints | {obj.get('taux_atteinte', '—')} % |",
+    ]
+    if alertes:
+        lignes += ["", "## Alertes", ""] + [f"- **{a['titre']}** ({a['niveau']}) : {a['detail']}" for a in alertes]
+    rapport.contenu_rapport = "\n".join(lignes)
+
+
 def generer_rapport_ia(rapport_id: int) -> None:
     from .models import RapportIAMensuel
 
@@ -253,37 +330,18 @@ def generer_rapport_ia(rapport_id: int) -> None:
         )
         rapport.donnees_collectees = donnees
 
-        gemini_key     = getattr(settings, "GEMINI_API_KEY", "")
-        openrouter_key = getattr(settings, "OPENROUTER_API_KEY", "")
-        aucune_cle     = not gemini_key and not openrouter_key
-
-        if aucune_cle:
-            logger.warning("Aucune clé IA configurée — rapport sans IA")
-            score = calculer_score_sans_ia(donnees)
-            rapport.score_sante_rh   = score
-            rapport.resume_executif  = "Rapport généré sans IA (aucune clé configurée)"
-            rapport.recommandations  = []
-            rapport.alertes_ia       = []
-            rapport.indicateurs_cles = {
-                "point_fort":      "Données collectées avec succès",
-                "point_vigilance": "Analyse IA non disponible",
-                "tendance":        "STABLE",
-            }
-            rapport.contenu_rapport = (
-                f"# Rapport RH — {donnees['periode']}\n\n"
-                f"**Score santé RH : {score}/100**\n\n"
-                "Ce rapport a été généré sans analyse IA (aucune clé configurée). "
-                "Les données brutes sont disponibles ci-dessous.\n\n"
-                f"```json\n{json.dumps(donnees, ensure_ascii=False, indent=2)}\n```"
-            )
-        else:
+        try:
             prompt = (
                 f"Données RH du mois {donnees['periode']} :\n\n"
                 + json.dumps(donnees, ensure_ascii=False, indent=2)
             )
             raw = appeler_ia(prompt, system=SYSTEM_PROMPT_RH, temperature=0.3)
             ia_result = parser_json(raw)
-
+        except (IAIndisponible, ValueError) as exc:
+            # Plan B : pas de réseau, quota épuisé, clé absente ou réponse illisible
+            logger.warning("Rapport IA #%d : plan B sans IA (%s)", rapport_id, exc)
+            _remplir_sans_ia(rapport, donnees, motif_plan_b(exc))
+        else:
             rapport.score_sante_rh   = float(ia_result.get("score_sante_rh", calculer_score_sans_ia(donnees)))
             rapport.resume_executif  = ia_result.get("resume_executif", "")
             rapport.indicateurs_cles = ia_result.get("indicateurs_cles", {})

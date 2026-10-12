@@ -76,14 +76,7 @@ export default function DetailStagiaire() {
       .finally(() => setLoading(false))
   }, [id])
 
-  if (loading) {
-    return (
-      <EncadreurLayout pageTitle={t('encadreur.detail_page_loading')}>
-        <Spinner message={t('encadreur.detail_page_loading')} />
-      </EncadreurLayout>
-    )
-  }
-
+  // Hooks avant tout return conditionnel (règle des hooks React : sinon erreur #310)
   useEffect(() => {
     if (activeTab === 'carriere' && carriere.length === 0) {
       setCarriereLoading(true)
@@ -106,7 +99,15 @@ export default function DetailStagiaire() {
         .catch(() => {})
         .finally(() => setSanctionsLoading(false))
     }
-  }, [activeTab])
+  }, [activeTab]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (loading) {
+    return (
+      <EncadreurLayout pageTitle={t('encadreur.detail_page_loading')}>
+        <Spinner message={t('encadreur.detail_page_loading')} />
+      </EncadreurLayout>
+    )
+  }
 
   if (!data) return null
 

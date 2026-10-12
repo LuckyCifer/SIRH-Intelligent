@@ -1,7 +1,7 @@
 import json
 import threading
 from django.conf import settings
-from ia.client import appeler_ia, parser_json
+from ia.client import IAIndisponible, appeler_ia, motif_plan_b, parser_json
 
 SYSTEM_PROMPT = """
 Tu es un expert RH analysant la correspondance entre un CV et une offre d'emploi.
@@ -48,6 +48,18 @@ Analyse la correspondance entre ce profil et cette offre."""
         Candidature.objects.filter(pk=candidature_id).update(
             analyse_cv_ia=json.dumps(data, ensure_ascii=False),
             score_cv_ia=data.get("score_correspondance"),
+        )
+    except (IAIndisponible, ValueError) as exc:
+        # Plan B : pas de score inventé ; l'écran indique d'évaluer le CV manuellement
+        Candidature.objects.filter(pk=candidature_id).update(
+            analyse_cv_ia=json.dumps({
+                "source": "indisponible",
+                "score_correspondance": None,
+                "synthese": f"Analyse IA indisponible ({motif_plan_b(exc)}). "
+                            "Le CV est à évaluer manuellement ; l'analyse peut être relancée plus tard.",
+                "recommandation": "Évaluation manuelle",
+            }, ensure_ascii=False),
+            score_cv_ia=None,
         )
     except Exception:
         pass
