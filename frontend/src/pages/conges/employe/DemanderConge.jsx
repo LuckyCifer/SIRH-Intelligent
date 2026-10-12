@@ -73,7 +73,8 @@ function calculerJoursOuvrables(debut, fin) {
   const cur = new Date(d)
   while (cur <= f) {
     const day = cur.getDay()
-    if (day !== 0 && day !== 6 && !feries.has(toIso(cur))) count++
+    // Jours ouvrables (art. 89 Code du travail) : lundi → samedi, hors fériés
+    if (day !== 0 && !feries.has(toIso(cur))) count++
     cur.setDate(cur.getDate() + 1)
   }
   return count
@@ -99,7 +100,7 @@ function getFeriesEntreDates(debut, fin) {
   const cur = new Date(d)
   while (cur <= f) {
     const iso = toIso(cur)
-    if (cur.getDay() !== 0 && cur.getDay() !== 6 && feries.has(iso)) {
+    if (cur.getDay() !== 0 && feries.has(iso)) {
       result.push(iso)
     }
     cur.setDate(cur.getDate() + 1)

@@ -120,7 +120,7 @@ class DemandeConge(models.Model):
                 feries |= calc.get_jours_feries(self.date_fin.year)
             self.jours_ouvrable_pauses = sum(
                 1 for i in range((self.date_fin - self.date_debut).days + 1)
-                if (self.date_debut + timedelta(days=i)).weekday() < 5
+                if (self.date_debut + timedelta(days=i)).weekday() != 6   # samedi ouvrable (art. 89)
                 and (self.date_debut + timedelta(days=i)) in feries
             )
             self.date_retour_prevue = calc.calculer_date_retour(self.date_fin)

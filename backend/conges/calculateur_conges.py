@@ -1,6 +1,17 @@
 """
 CalculateurConges — Conformité Code du Travail camerounais
-Loi n°92/007 du 14 août 1992 — Articles 84, 89-93.
+Loi n°92/007 du 14 août 1992 — Articles 84, 89-93 (texte : OIT, bureau de Yaoundé).
+
+  Art. 89 (1) 1,5 jour OUVRABLE par mois de service effectif. Jours ouvrables =
+              tous les jours sauf le dimanche (repos hebdomadaire) et les jours fériés :
+              18 jours ouvrables = 3 semaines.
+  Art. 90 (1) 2,5 jours par mois pour les moins de 18 ans
+  Art. 90 (2) mères salariées : +2 jours ouvrables par enfant de moins de 6 ans,
+              ou +1 jour seulement si le congé principal n'excède pas 6 jours
+  Art. 90 (3) ancienneté : +2 jours ouvrables par période entière de 5 ans de service
+  Art. 92 (1) droit de jouissance acquis après 1 an de service
+  Art. 93     allocation fixée par décret : 1/16 de la rémunération de la période
+              de référence (= 0,75 mois pour 12 mois, cohérent avec 18 j / 24 j ouvrables)
 """
 from datetime import date, timedelta
 from decimal import Decimal
@@ -11,9 +22,17 @@ class CalculateurConges:
     JOURS_PAR_MOIS = Decimal("1.5")
     JOURS_PAR_MOIS_MOINS_18 = Decimal("2.5")
 
-    # Art. 90 — mères de famille
-    JOURS_ENFANT_CHARGE = 2
-    MAX_JOURS_ENFANTS   = 10
+    # Art. 90 (2) — mères salariées
+    JOURS_ENFANT_CHARGE        = 2
+    JOURS_ENFANT_CONGE_COURT   = 1    # si le congé principal ≤ 6 jours
+    SEUIL_CONGE_COURT          = 6
+    # Art. 90 (3) — ancienneté
+    JOURS_PAR_TRANCHE_ANCIENNETE = 2
+    ANNEES_PAR_TRANCHE           = 5
+    AGE_MAJORITE                 = 18
+
+    # Jours ouvrables : lundi (0) → samedi (5) ; date de retour : jours travaillés lun → ven
+    DIMANCHE = 6
 
     # Art. 93 — allocation de congé
     FRACTION_ALLOCATION = Decimal("1") / Decimal("16")
@@ -91,14 +110,14 @@ class CalculateurConges:
 
     def calculer_jours_ouvrables(self, date_debut, date_fin):
         """
-        Compte les jours ouvrables entre date_debut et date_fin (inclus).
-        Exclut samedis, dimanches et jours fériés camerounais.
+        Compte les jours ouvrables entre date_debut et date_fin (inclus) — art. 89.
+        Exclut les dimanches et les jours fériés camerounais (le samedi est ouvrable).
         """
         feries = self.get_jours_feries_periode(date_debut, date_fin)
         count  = 0
         cur    = date_debut
         while cur <= date_fin:
-            if cur.weekday() < 5 and cur not in feries:
+            if cur.weekday() != self.DIMANCHE and cur not in feries:
                 count += 1
             cur += timedelta(days=1)
         return count
@@ -120,39 +139,50 @@ class CalculateurConges:
         return retour
 
     def lister_feries_pendant_conge(self, date_debut, date_fin):
-        """Retourne la liste des jours fériés (semaine) tombant pendant le congé."""
+        """Retourne la liste des jours fériés tombant un jour ouvrable pendant le congé."""
         feries = self.get_jours_feries_periode(date_debut, date_fin)
         result = []
         cur = date_debut
         while cur <= date_fin:
-            if cur.weekday() < 5 and cur in feries:
+            if cur.weekday() != self.DIMANCHE and cur in feries:
                 result.append(cur)
             cur += timedelta(days=1)
         return result
 
     # ── Solde légal annuel ──────────────────────────────────────────────────
 
-    def calculer_solde_annuel(self, employe, annee, nb_enfants=0):
+    def calculer_solde_annuel(self, employe, annee, nb_enfants=0, aujourd_hui=None):
         """
-        Calcule le droit au congé annuel (Art. 89-91) pour un employé.
+        Calcule le droit au congé annuel (art. 89-90) pour un employé.
+        nb_enfants : enfants de moins de 6 ans d'une MÈRE salariée (art. 90 al. 2) ;
+        à laisser à 0 pour les autres salariés.
         Returns:
             dict: jours_base, majoration_enfants, majoration_anciennete,
                   total_jours_droit, mois_travailles, anciennete_annees, taux_mensuel
         """
+        aujourd_hui = aujourd_hui or date.today()
         date_embauche = self._get_date_embauche(employe)
-        mois_travailles = self._calculer_mois_travailles(date_embauche, annee)
+        mois_travailles = self._calculer_mois_travailles(date_embauche, annee, aujourd_hui)
 
-        # Art. 89 — taux selon âge (pas de champ dob disponible → on suppose > 18 ans)
-        taux = self.JOURS_PAR_MOIS
+        # Art. 89 / 90 (1) — 1,5 j/mois, 2,5 j/mois pour les moins de 18 ans
+        fin_reference = min(date(annee, 12, 31), aujourd_hui)
+        age = self._age(getattr(employe, "date_naissance", None), fin_reference)
+        taux = (self.JOURS_PAR_MOIS_MOINS_18
+                if age is not None and age < self.AGE_MAJORITE else self.JOURS_PAR_MOIS)
 
         jours_base = int(Decimal(str(mois_travailles)) * taux)  # arrondi inférieur
 
-        # Art. 90 — majoration enfants (mères avec enfants < 6 ans)
-        majoration_enfants = min(nb_enfants * self.JOURS_ENFANT_CHARGE, self.MAX_JOURS_ENFANTS)
+        # Art. 90 (2) — mères : +2 j par enfant de moins de 6 ans, +1 j seulement si congé ≤ 6 j
+        if nb_enfants <= 0:
+            majoration_enfants = 0
+        elif jours_base <= self.SEUIL_CONGE_COURT:
+            majoration_enfants = self.JOURS_ENFANT_CONGE_COURT
+        else:
+            majoration_enfants = nb_enfants * self.JOURS_ENFANT_CHARGE
 
-        # Art. 91 — majoration ancienneté (+1j par tranche de 5 ans)
+        # Art. 90 (3) — ancienneté : +2 j par période entière de 5 ans
         anciennete = self._get_anciennete_annees(date_embauche, annee)
-        majoration_anciennete = anciennete // 5
+        majoration_anciennete = (anciennete // self.ANNEES_PAR_TRANCHE) * self.JOURS_PAR_TRANCHE_ANCIENNETE
 
         total = jours_base + majoration_enfants + majoration_anciennete
 
@@ -169,17 +199,17 @@ class CalculateurConges:
 
     # ── Éligibilité (Art. 92 — 12 mois de service) ─────────────────────────
 
-    def verifier_droit_conge(self, employe):
+    def verifier_droit_conge(self, employe, aujourd_hui=None):
         """
-        Art. 92 : Le droit au congé est acquis après 12 mois de service continu.
+        Art. 92 : Le droit au congé est acquis après 12 mois de service.
         Returns: {'eligible': bool, 'mois_travailles': int, 'mois_restants': int}
         """
         date_embauche = self._get_date_embauche(employe)
         if date_embauche is None:
             return {"eligible": True, "mois_travailles": 12, "mois_restants": 0}
 
-        today = date.today()
-        mois  = (today.year - date_embauche.year) * 12 + today.month - date_embauche.month
+        today = aujourd_hui or date.today()
+        mois  = max(0, self._mois_complets(date_embauche, today))
         eligible      = mois >= 12
         mois_restants = max(0, 12 - mois)
         return {
@@ -237,21 +267,35 @@ class CalculateurConges:
             return employe.date_joined.date()
         return None
 
-    def _calculer_mois_travailles(self, date_embauche, annee):
+    @staticmethod
+    def _mois_complets(debut, fin_exclue):
+        """Mois entiers entre debut (inclus) et fin_exclue : 01/01 → 01/01 suivant = 12."""
+        mois = (fin_exclue.year - debut.year) * 12 + fin_exclue.month - debut.month
+        if fin_exclue.day < debut.day:
+            mois -= 1
+        return mois
+
+    @staticmethod
+    def _age(date_naissance, a_la_date):
+        if not date_naissance:
+            return None
+        age = a_la_date.year - date_naissance.year
+        if (a_la_date.month, a_la_date.day) < (date_naissance.month, date_naissance.day):
+            age -= 1
+        return age
+
+    def _calculer_mois_travailles(self, date_embauche, annee, aujourd_hui=None):
         """Nombre de mois complets travaillés dans l'année (max 12)."""
         debut_periode = date(annee, 1, 1)
         if date_embauche and date_embauche > debut_periode:
             debut_periode = date_embauche
 
-        fin_effective = min(date(annee, 12, 31), date.today())
+        fin_effective = min(date(annee, 12, 31), aujourd_hui or date.today())
 
         if debut_periode > fin_effective:
             return 0
 
-        mois = (
-            (fin_effective.year - debut_periode.year) * 12
-            + fin_effective.month - debut_periode.month
-        )
+        mois = self._mois_complets(debut_periode, fin_effective + timedelta(days=1))
         return min(12, max(0, mois))
 
     def _get_anciennete_annees(self, date_embauche, annee):

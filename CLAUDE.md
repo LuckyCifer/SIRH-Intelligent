@@ -171,6 +171,11 @@ Note : Les constantes TAUX_CNPS_EMPLOYE=0.028 et TAUX_CNPS_EMPLOYEUR=0.077 dans
        paie/models.py sont des valeurs LEGACY pour le fallback uniquement.
        Le CalculateurPaie (paie/calculateur.py) utilise les taux 2024 corrects.
 
+### Congés — Code du travail (loi 92/007), art. 89 à 93
+1,5 jour OUVRABLE/mois (lundi → samedi, hors fériés) ; 2,5 j/mois si < 18 ans ;
+mères : +2 j/enfant < 6 ans (+1 j seulement si congé ≤ 6 j) ; ancienneté +2 j par 5 ans ;
+jouissance après 12 mois ; allocation 1/16. Tests : `python manage.py test conges`.
+
 ### Rapports
 Le modèle de l'app `rapports` s'appelle `RapportHebdomadaire`
 (table MySQL : `rapports_rapporthebdomadaire`), pas `RapportActivite`.
