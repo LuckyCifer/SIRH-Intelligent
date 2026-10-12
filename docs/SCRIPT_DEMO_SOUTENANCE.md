@@ -37,7 +37,7 @@ npm run dev
 |-------|--------|------|
 | 1-6 | `admin.rh` / `Demo2026!` | RH |
 | 7 | `alice.mballa` / `Demo2026!` | Employé |
-| 8 | `manager.it` / `Demo2026!` | Manager |
+| 8 | `paul.atangana` / `Demo2026!` | Manager |
 
 ---
 
@@ -50,7 +50,7 @@ npm run dev
 | 3 | Gestion des employés & Annuaire | 90s | CRUD, multi-rôles |
 | 4 | Congés & Workflow de validation | 120s | Workflow, notifications |
 | 5 | Paie automatisée | 90s | Fiscalité camerounaise, CNPS + IRPP |
-| 6 | Rapport IA mensuel (CLOU DE LA DÉMO) | 150s | Groq LLaMA 3.3, score santé RH |
+| 6 | Rapport IA mensuel (CLOU DE LA DÉMO) | 150s | Gemini, plan B hors ligne, score santé RH |
 | 7 | Espace Employé | 60s | Vue multi-rôles |
 | 8 | Multi-entreprises & Notifications | 60s | Architecture, personnalisation |
 
@@ -167,15 +167,16 @@ npm run dev
 
 *Ouvrir un bulletin existant pour montrer le détail.*
 
-> "Voici le détail d'un bulletin. Le salaire brut est de 450 000 FCFA. Le système calcule automatiquement :"
+> "Voici le détail d'un bulletin. Le système distingue trois bases : le brut taxable pour l'impôt, l'assiette CNPS, et le total versé."
 
-*Pointer chaque ligne :*
-- > "La cotisation CNPS employé : 2,8% du brut, soit 12 600 FCFA"
-- > "La cotisation CNPS employeur : 7,7% du brut — à la charge de l'entreprise"
-- > "L'IRPP selon les tranches progressives camerounaises"
-- > "Et le net à payer"
+*Pointer chaque ligne (exemple du bulletin de référence : salaire de base 300 000, 2 ans d'ancienneté, prime de responsabilité 20 000, transport 25 000) :*
+- > "La CNPS salariale : 4,2 % de l'assiette plafonnée à 750 000 FCFA, soit 13 944 FCFA"
+- > "Côté employeur : 4,2 % pension, 7 % prestations familiales et 1,75 % accidents du travail"
+- > "L'IRPP : abattement de 30 %, déduction de la CNPS et de 500 000 FCFA par an, puis barème 10 / 15 / 25 / 35 %, plus 10 % de centimes communaux"
+- > "Le Crédit foncier, la redevance audiovisuelle et la taxe de développement local, par barèmes officiels"
+- > "Net à payer : 310 045 FCFA — calcul vérifié par des tests automatiques"
 
-> "Les salaires inférieurs à 166 666 FCFA par mois sont exonérés d'IRPP — c'est la réglementation en vigueur."
+> "Aucune retenue d'IRPP n'est opérée sous 62 000 FCFA par mois. Les barèmes ont été vérifiés sur les sources de la DGI et du MINFI."
 
 *Montrer le bouton "Marquer comme payé".*
 
@@ -195,11 +196,13 @@ npm run dev
 
 *Pointer le score de santé RH.*
 
-> "Le score de santé RH ici est de 78 sur 100. Il est calculé selon 5 indicateurs pondérés : taux d'absentéisme, objectifs atteints, contrats actifs, présences et formations."
+> "Le score de santé RH synthétise les présences, les congés, les objectifs, les formations, la paie et la discipline du mois."
 
 *Pointer le résumé exécutif.*
 
-> "Le résumé exécutif est généré par le modèle LLaMA 3.3 de Groq. Ce modèle de 70 milliards de paramètres analyse les données contextualisées pour ACERFI Cameroun."
+> "Le résumé exécutif est rédigé par Gemini de Google, à partir des données agrégées de l'entreprise — et uniquement de celle-ci."
+
+> "Sans Internet, le rapport n'échoue pas : un plan B calcule le score, les alertes et les recommandations par règles explicites, et l'indique clairement."
 
 *Pointer les alertes et recommandations.*
 
@@ -209,7 +212,7 @@ npm run dev
 
 *Cliquer sur "Nouveau rapport" puis sélectionner le mois actuel.*
 
-> "Je vais générer un nouveau rapport pour ce mois. Observez : la réponse API est immédiate, le rapport est créé avec le statut EN_COURS. L'appel à l'API Groq se fait dans un thread daemon Python séparé pour ne pas bloquer le serveur."
+> "Je vais générer un nouveau rapport pour ce mois. Observez : la réponse API est immédiate, le rapport est créé avec le statut EN_COURS. L'appel à l'IA se fait dans un thread séparé pour ne pas bloquer le serveur."
 
 *Montrer la barre de progression pendant 10 secondes.*
 
@@ -217,9 +220,10 @@ npm run dev
 
 **Points techniques à mentionner :**
 - `threading.Thread(target=..., daemon=True)` — non-bloquant
-- Modèle llama-3.3-70b-versatile (Groq)
-- Fallback calculé sans GROQ_API_KEY
-- Score pondéré sur 5 indicateurs collectés depuis tous les modules
+- Gemini (SDK officiel google-genai), secours OpenRouter, puis plan B par règles
+- Sans réseau : bascule immédiate (aucune cascade de tentatives)
+- Score pondéré : présence 30, objectifs 25, congés 20, formations 15, paie 15, discipline 10
+- Contrôle de qualité des données : pointages incomplets ou paie non établie signalés
 - Prompt système contextualisé (expert RH Cameroun)
 
 ---
@@ -282,10 +286,10 @@ npm run dev
 Points à mettre en avant face au jury :
 
 1. **Couverture fonctionnelle complète** : 18 modules couvrant l'intégralité du cycle de vie RH
-2. **Innovation IA** : intégration LLaMA 3.3 pour transformer les données en insights actionnables
+2. **Innovation IA** : Gemini transforme les données en recommandations ; un plan B garantit le service sans Internet
 3. **Architecture propre** : séparation frontend/backend, JWT stateless, multi-tenancy
 4. **Fiscalité locale** : paie conforme à la réglementation camerounaise 2024
-5. **Production-ready** : le projet est déployable avec quelques ajustements de configuration
+5. **Rigueur** : 99 tests automatisés, conformité légale documentée (paie, congés, données personnelles), application conteneurisée
 
 ---
 
@@ -295,29 +299,29 @@ Points à mettre en avant face au jury :
 
 > "Django offre un ORM puissant, un système de migrations intégré et un panel d'administration gratuit. Pour une application CRUD avec beaucoup de modèles de données RH, Django est plus productif que Node.js/Express où il faudrait assembler plusieurs bibliothèques."
 
-**Q : Pourquoi Groq et pas OpenAI ?**
+**Q : Pourquoi Gemini ?**
 
-> "Groq présente une latence bien inférieure sur le modèle LLaMA — 1 à 3 secondes vs 10 à 20 secondes pour GPT-4. De plus, le tier gratuit de Groq est suffisant pour un projet académique. L'architecture permet facilement de switcher vers un autre provider en changeant la clé API."
+> "Gemini offre une offre gratuite suffisante et de bonnes performances en français. Tous les appels passent par un client unique : changer de fournisseur ne touche qu'un fichier. OpenRouter sert de secours, et un plan B sans IA garantit que le rapport est produit même sans Internet."
 
 **Q : Comment gérez-vous la sécurité des données RH ?**
 
-> "Plusieurs niveaux de sécurité : JWT avec durée courte (60 min), contrôle d'accès basé sur les rôles (RBAC), isolation des données par entreprise (multi-tenancy), variables d'environnement pour les secrets, ORM Django contre les injections SQL."
+> "JWT de 60 minutes ; droits par rôle — un manager n'agit que sur son équipe ; isolation stricte entre entreprises, testée avec deux entreprises complètes ; minimisation des données personnelles selon la loi n° 2024/017 en vigueur depuis le 23 juin 2026 : l'annuaire ne montre ni CNI, ni NIU, ni numéro CNPS. 17 tests de sécurité et 7 d'isolation le vérifient."
 
 **Q : Le système de paie est-il certifié ?**
 
-> "Non, il s'agit d'une implémentation académique. Les taux CNPS (2,8% employé, 7,7% employeur) et les tranches IRPP sont conformes à la réglementation camerounaise 2024 selon les sources officielles, mais une utilisation en production nécessiterait une validation par un expert-comptable."
+> "Non, il n'est pas certifié. Mais chaque barème — CNPS, IRPP, CAC, CFC, FNE, RAV, TDL, heures supplémentaires — a été vérifié sur des sources officielles et verrouillé par des tests, avec un bulletin de référence calculé à la main. Les mesures de la loi de finances 2024 suspendues par le MINFI sont paramétrables. Une mise en production passerait par la validation d'un expert-comptable."
 
 **Q : Comment déployer en production ?**
 
-> "L'architecture est prête : gunicorn + nginx pour le backend, npm run build + nginx pour le frontend statique. Il faudrait ajuster les variables d'environnement (DEBUG=False, ALLOWED_HOSTS, CORS) et configurer SSL. Celery + Redis remplacerait les daemon threads pour les tâches async."
+> "L'application est déjà conteneurisée : Docker Compose avec MySQL, Django sous gunicorn et nginx. Pour la production : HTTPS, secrets hors du dépôt, sauvegardes de la base, et une file de tâches pour l'IA. Le détail est dans docs/DEPLOIEMENT.md."
 
 **Q : Pourquoi null=True sur les FK entreprise ?**
 
-> "Pour la rétrocompatibilité des migrations. Les données existantes avant l'ajout du champ entreprise ne seraient pas impactées. En production, une contrainte NOT NULL pourrait être ajoutée une fois toutes les données migrées."
+> "Pour la rétrocompatibilité des migrations. L'isolation ne dépend pas de ce champ : elle passe par l'employé, donc une ligne au champ vide reste rattachée à la bonne entreprise. Une contrainte NOT NULL pourra être ajoutée une fois toutes les données migrées."
 
-**Q : Comment gérez-vous les pannes Groq API ?**
+**Q : Que se passe-t-il si l'IA ne répond pas ?**
 
-> "Double protection : timeout de 15 secondes côté axios frontend + fallback dans le service Python. Si Groq ne répond pas ou si la clé est absente, la fonction `calculer_score_sans_ia()` produit un score basé sur les métriques calculées sans narrative IA. Le rapport reste exploitable."
+> "Délai maximal de 60 secondes par appel, Gemini puis OpenRouter. Sans réseau, la bascule est immédiate vers le plan B : score, alertes et recommandations par règles, avec la mention « Analyse IA indisponible ». Une évaluation est notée à partir des notes du manager ; un CV est laissé à l'évaluation manuelle plutôt que de lui inventer un score. Le rapport peut être régénéré avec l'IA plus tard."
 
 ---
 
@@ -337,4 +341,4 @@ Points à mettre en avant face au jury :
 
 ---
 
-*Script de démo v1.0 — Yemeya Luc — Soutenance ISA 2026*
+*Script de démo v2.0 — Yemeya Luc — Soutenance ISA 2026*

@@ -38,3 +38,6 @@ docker/mysql-init/*.sql
 
 # Identifiants de test (contient des mots de passe)
 Comptes utilisateurs SIRH.txt
+
+# Secrets Docker Compose (mot de passe MySQL de production)
+/.env

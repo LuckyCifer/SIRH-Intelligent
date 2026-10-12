@@ -1,7 +1,7 @@
 # Checklist de soutenance — SIRH Intelligent
-## À vérifier le jour J avant la présentation
+## À vérifier avant et pendant la présentation
 
-**Auteur :** Yemeya Luc — ISA 2026  
+**Auteur :** Yemeya Luc — ISA 2026
 
 ---
 
@@ -10,158 +10,140 @@
 ### Documentation
 
 - [ ] `docs/RAPPORT_TECHNIQUE.md` — relu et corrigé
-- [ ] `docs/GUIDE_INSTALLATION.md` — testé sur un poste vierge
-- [ ] `docs/GUIDE_UTILISATEUR.md` — vérifié
+- [ ] `docs/BULLETIN_PAIE_PAS_A_PAS.md` — bulletin de référence maîtrisé (savoir refaire le calcul)
+- [ ] `docs/SECURITE_DROITS_ACCES.md` — matrice des droits connue
+- [ ] `docs/IA_PLAN_B.md` — fonctionnement hors ligne compris
 - [ ] `docs/SCRIPT_DEMO_SOUTENANCE.md` — répété au moins 2 fois
-- [ ] `README.md` — à jour avec les vraies informations
+- [ ] `README.md` à jour (dépôt GitHub : branche fusionnée dans `main`)
 
 ### Code et données
 
-- [ ] Toutes les migrations appliquées (`python manage.py migrate` sans erreur)
-- [ ] Fixture entreprise chargée (pk=1 ACERFI SARL présente)
-- [ ] Données de démonstration chargées (`fixtures/demo_data.py`)
-- [ ] Au moins 1 rapport IA déjà généré (pour éviter l'attente de 30s en démo)
-- [ ] `backend/.env` configuré avec les bonnes valeurs
-- [ ] `GROQ_API_KEY` valide et testée
+- [ ] Migrations appliquées (`python manage.py migrate` sans erreur)
+- [ ] Tests au vert :
+  ```powershell
+  cd backend
+  python manage.py test accounts entreprises rapport_ia conges paie presences
+  ```
+  → 99 tests, `OK`
+- [ ] `backend/.env` complet ; `GEMINI_API_KEY` testée (génération d'un rapport en ligne)
+- [ ] Au moins un rapport IA déjà généré **en ligne** et un **hors ligne** (plan B), pour comparer
+- [ ] Pointages et paie du mois présenté saisis (sinon le rapport signale à juste titre
+      « pointages incomplets » ou « paie non établie »)
 
 ### Build frontend
 
 ```bash
 cd frontend
-npm run build
+npm run lint     # 0 erreur
+npm run build    # build réussi
 ```
 
-- [ ] Build réussi (0 erreur, 0 avertissement critique)
-- [ ] Nombre de modules : environ 746
-
 ---
 
-## Le matin de la soutenance (2h avant)
+## Le matin de la soutenance (2 h avant)
 
-### Services
+### Services — au choix
 
-- [ ] MySQL démarré (vérifier dans les Services Windows ou XAMPP)
-- [ ] Backend Django lancé : `http://localhost:8000` répond
-- [ ] Frontend Vite lancé : `http://localhost:5173` s'affiche
-- [ ] Test de connexion avec `admin.rh` / `Demo2026!` → tableau de bord RH affiché
-
-### Test des fonctionnalités critiques
-
-- [ ] **Connexion JWT** : se connecter, se déconnecter, se reconnecter
-- [ ] **Tableau de bord RH** : indicateurs chargés, graphiques affichés
-- [ ] **Congés** : au moins 1 demande en statut "En attente" disponible
-- [ ] **Paie** : au moins 1 bulletin disponible avec le détail CNPS + IRPP
-- [ ] **Rapport IA** : 1 rapport déjà généré avec score > 0 disponible
-- [ ] **Notifications** : au moins 2-3 notifications non lues (pour la démo de la cloche)
-- [ ] **Annuaire** : liste des employés chargée
-- [ ] **Paramètres entreprise** : page chargée sans spinner infini
-- [ ] **Espace employé** : connexion avec `alice.mballa` → tableau de bord employé affiché
-- [ ] **Cloche notifications** : badge rouge visible dans la navbar
-
-### Réseau et affichage
-
-- [ ] Mode plein écran configuré (F11)
-- [ ] Résolution d'écran correcte (1920x1080 recommandé)
-- [ ] Console navigateur (F12) fermée
-- [ ] Zoom navigateur à 100%
-- [ ] Police lisible pour le jury (zoom à 110% si petit écran)
-
----
-
-## 30 minutes avant la soutenance
-
-### Préparation de l'environnement de démo
-
-- [ ] Navigateur ouvert sur `http://localhost:5173`
-- [ ] 2 terminaux ouverts : un pour le backend, un pour le frontend
-- [ ] Onglets navigateur préparés (optionnel) :
-  - Onglet 1 : `http://localhost:5173` (accueil public)
-  - Onglet 2 : prêt pour la connexion admin.rh
-- [ ] Script de démo imprimé ou sur second écran
-
-### Données de démo fraîches
+**Docker** (recommandé, une seule commande) :
 
 ```powershell
-# Optionnel : régénérer les données si nécessaire
-& "venv\Scripts\python.exe" manage.py shell --command="with open('fixtures/demo_data.py', encoding='utf-8') as f: exec(f.read())"
+docker compose up -d
 ```
+→ application sur `http://localhost:8080`
 
-- [ ] Connexion `admin.rh` / `Demo2026!` → OK
-- [ ] Connexion `alice.mballa` / `Demo2026!` → OK
-- [ ] Connexion `manager.it` / `Demo2026!` → OK
+**Ou en local** : MySQL démarré, `python manage.py runserver` (port 8000), `npm run dev`
+(port 5173).
+
+### Fonctionnalités critiques
+
+- [ ] **Connexion** : `admin.rh`, `paul.atangana`, `alice.mballa` (mot de passe `Demo2026!`)
+- [ ] **Tableau de bord RH** : indicateurs et graphiques chargés
+- [ ] **Congés** : une demande « En attente » disponible ; solde détaillé affiché (droit acquis l'année précédente)
+- [ ] **Paie** : un bulletin avec CNPS, IRPP, CAC, CFC, RAV, TDL ; aperçu PDF
+- [ ] **Rapport IA** : un rapport généré, score affiché
+- [ ] **Manager** : fiche d'un membre de l'équipe ouverte depuis « Mes employés »
+- [ ] **Employé** : vue restreinte (ses données uniquement)
+- [ ] **Notifications** : badge visible dans la barre du haut
+
+### Affichage
+
+- [ ] Plein écran (F11), zoom à 100 % (110 % si petit écran), console fermée
 
 ---
 
-## Pendant la démonstration
+## 30 minutes avant
 
-### Points de vérification en cours de démo
+- [ ] Navigateur ouvert sur l'application ; onglets prêts (accueil, connexion RH)
+- [ ] Script de démonstration sur un second écran ou imprimé
+- [ ] Si la salle n'a pas Internet : c'est l'occasion de montrer le **plan B** — la
+      génération du rapport mensuel bascule sur le calcul par règles en quelques secondes
 
-- [ ] Scène 1 (Accueil) : page publique chargée sans erreur
-- [ ] Scène 2 (Connexion) : cloche de notifications visible avec badge
-- [ ] Scène 4 (Congés) : validation d'une demande → notification générée
-- [ ] Scène 5 (Paie) : bulletins avec calcul CNPS + IRPP correct
-- [ ] Scène 6 (Rapport IA) : rapport existant affiché avec score RH
-- [ ] Scène 7 (Employé) : vue restreinte correcte
-- [ ] Scène 8 (Paramètres) : chargement sans erreur
+---
 
-### En cas de problème technique
+## En cas de problème technique
 
 | Problème | Solution rapide |
 |----------|----------------|
-| Backend ne répond pas | Redémarrer `python manage.py runserver` |
+| Backend ne répond pas | `docker compose restart backend` (ou relancer `runserver`) |
 | 401 Unauthorized | Se déconnecter et se reconnecter |
-| Rapport IA bloqué EN_COURS | Mentionner le daemon thread, montrer un rapport existant |
-| Spinner infini paramètres | Vérifier que la fixture entreprise est chargée |
-| Page blanche React | Vérifier que le frontend est bien lancé sur 5173 |
-| Erreur CORS | Vérifier CORS_ALLOWED_ORIGINS dans .env |
+| Pas d'Internet | Plan B : rapport calculé sans IA, signalé comme tel — le montrer comme une fonctionnalité |
+| Rapport IA long | Montrer un rapport déjà généré ; l'analyse tourne en arrière-plan |
+| Page blanche | Vérifier que le frontend tourne (port 8080 Docker ou 5173 local) |
+| Erreur CORS (mode local) | Vérifier `CORS_ALLOWED_ORIGINS` dans `.env` |
 
 ---
 
-## Checklist questions du jury
+## Questions probables du jury
 
-Questions préparées dans `SCRIPT_DEMO_SOUTENANCE.md` (section "Questions probables") :
-
-- [ ] Pourquoi Django et non Node.js ?
-- [ ] Pourquoi Groq et non OpenAI ?
-- [ ] Sécurité des données RH
-- [ ] Le système de paie est-il certifié ?
-- [ ] Déploiement en production
-- [ ] Pourquoi null=True sur les FK entreprise ?
-- [ ] Gestion des pannes Groq API
+- [ ] **Pourquoi Django + React ?** API REST découplée, ORM et migrations, écosystème mûr.
+- [ ] **Quelle IA et que se passe-t-il sans Internet ?** Gemini via le SDK officiel, secours
+      OpenRouter, puis plan B par règles explicables (`docs/IA_PLAN_B.md`).
+- [ ] **La paie est-elle conforme ?** Barèmes CNPS, IRPP, CFC, RAV, TDL vérifiés sur sources
+      officielles (DGI, MINFI) ; bulletin de référence testé ; mesures de la loi de finances
+      2024 suspendues par le MINFI, paramétrables (`docs/BULLETIN_PAIE_PAS_A_PAS.md`).
+- [ ] **Les congés respectent-ils le Code du travail ?** Art. 89 à 93 : 1,5 jour ouvrable par
+      mois, majorations âge / mères / ancienneté, jours fériés de la loi n° 73/5.
+- [ ] **Qui voit quoi ?** Matrice des droits ; un manager n'agit que sur son équipe.
+- [ ] **Protection des données personnelles ?** Loi n° 2024/017 en vigueur depuis le
+      23 juin 2026 : minimisation (annuaire sans CNI, NIU, CNPS).
+- [ ] **Plusieurs entreprises sur la même plateforme ?** Isolation centrale testée avec deux
+      entreprises complètes.
+- [ ] **Pourquoi un module « stagiaires » dans un SIRH ?** Le projet est issu de GSRIA, outil de
+      suivi des stagiaires d'ACERFI (centre de formation). Ce module est conservé et intégré :
+      les rapports hebdomadaires et leur analyse IA servent aussi aux employés ; côté manager,
+      les écrans parlent désormais de « Mon équipe ».
+- [ ] **Comment avez-vous testé ?** 99 tests automatisés + vérification des 78 pages par rôle.
+- [ ] **Déploiement en production ?** `docs/DEPLOIEMENT.md`.
+- [ ] **Pourquoi `null=True` sur les FK entreprise ?** Compatibilité avec les données
+      existantes ; l'isolation passe par l'employé, donc reste fiable même si le champ est vide.
 
 ---
 
-## Checklist documents à remettre au jury
+## Documents à remettre au jury
 
-- [ ] `docs/RAPPORT_TECHNIQUE.md` (imprimé ou envoyé par email)
-- [ ] `README.md` (imprimé ou envoyé par email)
-- [ ] Archive du code source (ZIP ou lien Git)
-- [ ] Présentation PowerPoint / Slides (si demandé)
+- [ ] Rapport de stage / rapport technique
+- [ ] Lien du dépôt Git (ou archive du code)
+- [ ] Présentation (si demandée)
 
 ---
 
 ## Après la soutenance
 
-- [ ] Sauvegarder une copie de la base de données : `mysqldump sirh_db > sirh_db_backup.sql`
+- [ ] Sauvegarder la base : `mysqldump sirh_db > sirh_db_backup.sql`
 - [ ] Archiver le code source
-- [ ] Mettre à jour le `README.md` avec la note obtenue (si applicable)
 
 ---
 
-## Résumé de l'état final du projet
+## État du projet
 
 | Indicateur | Valeur |
 |-----------|--------|
 | Modules fonctionnels | 18 |
-| Apps Django | 18 (dont 3 héritées GSRIA S1) |
-| Pages React | 40+ |
-| Migrations appliquées | 30+ |
-| Modules JavaScript compilés | 746 |
-| Erreurs de build | 0 |
-| Comptes de démo | 6 |
-| Modèles Django | 20+ |
-| Endpoints API | 80+ |
+| Tests automatisés | 99 |
+| Pages vérifiées par rôle | 78 |
+| Erreurs de lint frontend | 0 |
+| Conformité documentée | paie, congés, heures supplémentaires, données personnelles |
 
 ---
 
-*Checklist v1.0 — Yemeya Luc — Soutenance ISA 2026*
+*Checklist v2.0 — Yemeya Luc — Soutenance ISA 2026*

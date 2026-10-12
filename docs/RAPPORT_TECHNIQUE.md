@@ -5,7 +5,7 @@
 **Établissement :** ISA (Institut Supérieur d'Informatique Appliquée)  
 **Entreprise d'accueil :** ACERFI SARL — Douala, Cameroun  
 **Année :** 2026  
-**Stack principal :** Django 5.2 + React 18 + MySQL + Groq IA  
+**Stack principal :** Django 5.2 + React 19 + MySQL + IA Google Gemini  
 
 ---
 
@@ -32,10 +32,11 @@
 19. [Module Carrière](#19-module-carrière)
 20. [Module Notifications internes](#20-module-notifications-internes)
 21. [Module Rapport IA mensuel](#21-module-rapport-ia-mensuel)
-22. [Intégration IA — Groq API](#22-intégration-ia--groq-api)
+22. [Intégration IA — Gemini et plan B](#22-intégration-ia--gemini-et-plan-b)
 23. [Décisions d'architecture](#23-décisions-darchitecture)
 24. [Difficultés rencontrées et solutions](#24-difficultés-rencontrées-et-solutions)
 25. [Perspectives d'évolution](#25-perspectives-dévolution)
+26. [Qualité, tests et conformité](#26-qualité-tests-et-conformité)
 
 ---
 
@@ -50,9 +51,9 @@ Ce projet de fin d'études, réalisé dans le cadre de la certification ISA, vis
 ### 1.2 Objectifs fonctionnels
 
 - Centraliser toutes les données RH dans une base de données unique et sécurisée
-- Automatiser les calculs de paie selon la fiscalité camerounaise (CNPS + IRPP)
+- Automatiser les calculs de paie selon la fiscalité camerounaise (CNPS, IRPP, CAC, CFC, FNE, RAV, TDL)
 - Offrir un tableau de bord analytique en temps réel pour les responsables RH
-- Intégrer une IA générative (Groq API / LLaMA 3.3) pour l'analyse mensuelle de la santé RH
+- Intégrer une IA générative (Google Gemini) pour l'analyse mensuelle de la santé RH, avec un fonctionnement garanti sans Internet
 - Fournir une application accessible depuis n'importe quel navigateur, sans installation cliente
 
 ### 1.3 Périmètre du projet
@@ -75,26 +76,26 @@ Le SIRH couvre **18 modules fonctionnels** regroupés en quatre grandes catégor
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Navigateur Web                           │
-│  React 18 + Vite + AdminLTE 3.2 + Bootstrap 4 (localhost:5173) │
+│  React 19 + Vite + AdminLTE 3.2 + Bootstrap 4                   │
 └───────────────────────┬─────────────────────────────────────────┘
                         │ HTTP/REST + JSON + JWT Bearer
                         │ Axios (timeout 15s)
 ┌───────────────────────▼─────────────────────────────────────────┐
 │              Django 5.2 + Django REST Framework                 │
-│              (localhost:8000)                                   │
+│              (gunicorn derrière nginx sous Docker)              │
 │  ┌──────────┐  ┌──────────────┐  ┌──────────────────────────┐  │
 │  │  JWT     │  │  Middleware  │  │  ViewSets DRF + Mixins   │  │
-│  │  Auth    │  │  CORS, Entr. │  │  (EntrepriseFilterMixin) │  │
+│  │  Auth    │  │  CORS, Entr. │  │  (IsolationEntreprise)   │  │
 │  └──────────┘  └──────────────┘  └──────────────────────────┘  │
 └───────────────────────┬─────────────────────────────────────────┘
                         │ PyMySQL
 ┌───────────────────────▼─────────────────────────────────────────┐
-│              MySQL 8.x — base sirh_db                          │
+│              MySQL 8.4 / 9.x — base sirh_db                     │
 │              Charset : utf8mb4 / Collation : utf8mb4_unicode_ci │
 └─────────────────────────────────────────────────────────────────┘
                         │ API HTTP externe
 ┌───────────────────────▼─────────────────────────────────────────┐
-│              Groq API — llama-3.3-70b-versatile                 │
+│  Google Gemini (google-genai) → OpenRouter → plan B sans IA     │
 │              (appel asynchrone, daemon thread)                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -272,15 +273,16 @@ Entreprise (entreprises)
 
 BulletinPaie (paie)
   ├── FK → User (employe)
-  ├── cotisation_cnps_employe  (2.8% du brut)
-  ├── cotisation_cnps_employeur (7.7% du brut)
-  └── irpp  (tranches progressives camerounaises)
+  ├── cnps_employe, cnps_patronal_*  (4,2 % ; 4,2 % + 7 % + 1,75 %)
+  ├── irpp, cac, cfc_*, fne, rav, tdl
+  └── salaire_net, cout_total_employeur
 
 RapportIAMensuel (rapport_ia)
   ├── FK → Entreprise
-  ├── statut  (EN_ATTENTE / EN_COURS / TERMINE / ERREUR)
+  ├── statut  (EN_GENERATION / GENERE / ERREUR)
   ├── score_sante_rh  (0-100)
-  └── contenu_json  (réponse complète Groq)
+  ├── donnees_collectees  (indicateurs agrégés du mois)
+  └── contenu_rapport, alertes_ia, recommandations
 ```
 
 ---
@@ -293,14 +295,14 @@ L'authentification repose sur `djangorestframework-simplejwt` avec les paramètr
 
 | Paramètre | Valeur |
 |-----------|--------|
-| Type de token | Bearer JWT (RS256) |
+| Type de token | Bearer JWT (HS256, signé avec la `SECRET_KEY`) |
 | Durée access token | 60 minutes |
 | Durée refresh token | 7 jours |
 | Rotation des refresh tokens | Activée |
 | Endpoint login | `POST /api/auth/login/` |
 | Endpoint refresh | `POST /api/auth/refresh/` |
 
-Le token d'accès est stocké en mémoire (`authStore` Zustand). Le token de rafraîchissement est stocké dans `localStorage`. Axios intercepte automatiquement les erreurs 401 et tente un refresh silencieux.
+Les tokens d'accès et de rafraîchissement sont stockés dans `localStorage` ; le profil est conservé par `authStore` (Zustand). Axios intercepte les erreurs 401 et tente un rafraîchissement silencieux.
 
 ### 6.2 Contrôle d'accès (RBAC)
 
@@ -308,12 +310,15 @@ Quatre rôles sont définis dans `accounts.User.Role` :
 
 | Rôle | Description | Accès |
 |------|-------------|-------|
-| `EMPLOYE` | Employé standard | Ses propres données uniquement |
-| `MANAGER` | Responsable d'équipe | Données de son équipe |
-| `RH` | Responsable RH | Accès global en lecture/écriture |
-| `ADMIN` | Administrateur système | Accès total + Django admin |
+| `EMPLOYE` | Employé standard | Ses propres données ; agit par les démarches prévues (congé, pointage, progression) |
+| `MANAGER` | Responsable d'équipe | Son équipe uniquement (membres des départements qu'il dirige) |
+| `RH` | Responsable RH | Tout le personnel de son entreprise ; seul à gérer contrats, sanctions, documents |
+| `ADMIN` | Administrateur | Comme RH + administration Django ; le superutilisateur gère les entreprises |
 
-Les permissions DRF (`IsAdminRH`, `IsManagerOrRH`, `IsAuthenticated`) sont définies dans `accounts/permissions.py` et appliquées au niveau des ViewSets.
+Les permissions DRF (`IsRH`, `IsManagerOrRH`, `IsAuthenticated`) et les fonctions
+`membres_equipe()` / `peut_gerer()` sont définies dans `accounts/permissions.py`. Un manager
+ne peut ni se fixer ses propres objectifs ni valider son propre congé. La matrice complète
+est dans `docs/SECURITE_DROITS_ACCES.md` ; 17 tests la vérifient.
 
 ### 6.3 Sécurité des API
 
@@ -323,6 +328,14 @@ Les permissions DRF (`IsAdminRH`, `IsManagerOrRH`, `IsAuthenticated`) sont défi
 - **XSS** : le frontend React échappe automatiquement les données dans le JSX
 - **Secrets** : dans `.env` non versionné (`.gitignore`)
 - **Timeout axios** : 15 secondes côté client
+
+### 6.4 Protection des données personnelles
+
+La loi n° 2024/017 du 23 décembre 2024 relative à la protection des données à caractère
+personnel est applicable depuis le 23 juin 2026. Principe de minimisation appliqué :
+l'annuaire et les fiches imbriquées dans les autres écrans (`UserResumeSerializer`) ne
+contiennent que l'identité professionnelle ; CNI, NIU, numéro CNPS, état civil, adresse et
+compte Mobile Money restent réservés aux RH.
 
 ---
 
@@ -357,7 +370,7 @@ Les permissions DRF (`IsAdminRH`, `IsManagerOrRH`, `IsAuthenticated`) sont défi
 
 ### Architecture multi-tenant
 
-Toutes les données du SIRH sont segmentées par entreprise grâce à un champ `entreprise` FK (null=True) présent sur chacun des 11 modèles principaux. Ce design permet d'héberger plusieurs entreprises clientes sur la même instance.
+Plusieurs entreprises clientes sont hébergées sur la même instance ; chacune ne voit et ne vise que ses propres données. Chaque modèle métier est rattaché à son entreprise directement (champ `entreprise`) ou via l'employé, le stagiaire ou l'offre d'emploi.
 
 ### Modèle Entreprise
 
@@ -372,9 +385,23 @@ Toutes les données du SIRH sont segmentées par entreprise grâce à un champ `
 | `logo` | ImageField | Logo pour l'interface |
 | `date_expiration_abonnement` | DateField | Gestion des licences |
 
-### EntrepriseFilterMixin
+### Isolation entre entreprises
 
-`EntrepriseFilterMixin` est un mixin DRF appliqué à tous les ViewSets. Il surcharge `get_queryset()` pour filtrer automatiquement les données par `request.user.entreprise`, garantissant l'isolation des données entre entreprises.
+Source unique : `entreprises/isolation.py`.
+
+- `CHEMINS` associe chaque modèle à son chemin vers l'entreprise (de préférence via
+  l'employé, fiable même si le champ `entreprise` d'une ligne est vide).
+- `IsolationEntrepriseMixin`, placé en premier dans les bases des 28 vues concernées, filtre
+  dans `filter_queryset` (listes et `get_object`, donc détails, modifications et
+  suppressions), refuse dans `create`/`update` toute relation vers une autre entreprise, et
+  rattache les objets créés à l'entreprise de l'utilisateur.
+- Les actions personnalisées et statistiques appliquent `filtrer_par_entreprise()`.
+- Le rapport IA mensuel ne collecte que les données de l'entreprise concernée.
+
+L'ancien `EntrepriseFilterMixin` reposait sur `request.entreprise`, vide avec l'authentification
+JWT (le middleware s'exécute avant DRF), et n'était appliqué à aucune vue : il a été remplacé.
+Vérification : `python manage.py test entreprises` crée deux entreprises complètes et
+contrôle chaque module.
 
 ### Personnalisation dynamique
 
@@ -419,7 +446,13 @@ Workflow complet de demande de congé :
 EMPLOYE soumet → MANAGER/RH valide ou refuse → EMPLOYE notifié
 ```
 
-Calcul automatique des soldes de congés (en jours ouvrés). Intégration notification : `notifier_conge_soumis()` et `notifier_conge_valide()` sont appelées depuis `conges/views.py` dans un bloc `try/except` silencieux pour ne pas bloquer la vue en cas d'erreur de notification.
+Droits conformes au Code du travail (loi n° 92/007, art. 89 à 93) : 1,5 jour **ouvrable**
+par mois (lundi au samedi, hors fériés), 2,5 jours pour les moins de 18 ans, majorations des
+mères (+2 jours par enfant de moins de 6 ans) et d'ancienneté (+2 jours par 5 ans), droit de
+jouissance après un an. Un congé de l'année N s'impute sur le droit acquis en N-1
+(`conges/soldes.py`) ; un dépassement est refusé sauf dérogation motivée d'un RH, tracée sur
+la demande. Jours fériés : les dix jours de la loi n° 73/5 modifiée, fête civile d'un dimanche
+reportée au lundi, ajustements annuels (Aïd, ponts) dans l'administration. Intégration notification : `notifier_conge_soumis()` et `notifier_conge_valide()` sont appelées depuis `conges/views.py` dans un bloc `try/except` silencieux pour ne pas bloquer la vue en cas d'erreur de notification.
 
 ---
 
@@ -427,7 +460,7 @@ Calcul automatique des soldes de congés (en jours ouvrés). Intégration notifi
 
 **App Django :** `presences`
 
-Enregistrement des entrées/sorties avec calcul automatique des heures travaillées. Le Manager peut consulter les présences de son équipe. Indicateurs de ponctualité disponibles dans le tableau de bord RH.
+Enregistrement des entrées/sorties avec calcul automatique des heures travaillées. Le Manager peut consulter les présences de son équipe. Heures supplémentaires selon le décret n° 95/677/PM (art. 12 à 14) : au-delà de 40 heures par semaine, majorations de 20 % (heures 1 à 8), 30 % (9 à 16), 40 % (17 à 20 et dimanche), 50 % (nuit) ; taux horaire = salaire / 173 h 1/3.
 
 ---
 
@@ -445,21 +478,26 @@ Gestion des documents administratifs (attestations de travail, bulletins d'attes
 
 ### Calcul de paie — fiscalité camerounaise 2024
 
-Le calcul du bulletin de paie respecte la réglementation camerounaise en vigueur :
+Moteur : `paie/calculateur.py`. Trois assiettes distinctes : le brut taxable (IRPP, CFC,
+FNE, RAV), l'assiette CNPS (sans le transport, logement au réel) et le total versé.
 
-| Cotisation | Taux | Assiette |
+| Élément | Taux / règle | Assiette |
 |------------|------|----------|
-| CNPS employé | 2,8% | Salaire brut |
-| CNPS employeur | 7,7% | Salaire brut |
-| IRPP | Tranches progressives | Salaire imposable |
+| CNPS pension (salarié / employeur) | 4,2 % / 4,2 % | assiette CNPS plafonnée à 750 000 FCFA/mois |
+| CNPS prestations familiales | 7 % employeur | idem, plafonnée |
+| CNPS accidents du travail | 1,75 % (risque A) | assiette CNPS, sans plafond |
+| IRPP | barème 10 / 15 / 25 / 35 % (2, 3, 5 M FCFA/an) | brut taxable − 30 % − CNPS − 500 000/an |
+| CAC | 10 % de l'IRPP | — |
+| CFC | 1 % salarié / 1,5 % employeur | brut taxable, sans plafond |
+| FNE | 1 % employeur | brut taxable, sans plafond |
+| RAV | forfait 0 à 13 000 FCFA/mois | brut taxable |
+| TDL | forfait 250 à 2 500 FCFA/mois | salaire de base > 62 000 |
 
-**Tranches IRPP (taux annuels) :**
-- De 0 à 2 000 000 FCFA : 10%
-- De 2 000 001 à 3 000 000 FCFA : 15%
-- De 3 000 001 à 5 000 000 FCFA : 25%
-- Au-delà de 5 000 000 FCFA : 35%
-
-**Exonération mensuelle :** les revenus inférieurs à 166 666 FCFA/mois sont exonérés d'IRPP.
+Aucune retenue d'IRPP sous 62 000 FCFA/mois. Les mesures salariales de la loi de finances
+2024 (plafond de l'abattement de 30 %, logement imposé intégralement) ont été suspendues par
+le MINFI le 12 janvier 2024 : elles sont paramétrables (`PAIE_APPLIQUER_LF2024`). Un bulletin
+de référence est calculé ligne par ligne dans `docs/BULLETIN_PAIE_PAS_A_PAS.md` et vérifié
+par les tests.
 
 ### Workflow de génération
 
@@ -474,7 +512,7 @@ Le calcul du bulletin de paie respecte la réglementation camerounaise en vigueu
 
 **App Django :** `objectifs`
 
-Gestion des objectifs SMART avec évaluation de performance. Chaque objectif est suivi via un indicateur de progression (pourcentage). L'IA Groq analyse les évaluations pour produire des recommandations de développement individualisées.
+Gestion des objectifs SMART avec évaluation de performance. Chaque objectif est suivi via un indicateur de progression (pourcentage). L'IA (Gemini) analyse les évaluations pour produire des recommandations de développement individualisées ; sans IA, un score est calculé à partir des notes du manager.
 
 Le management command `verifier_alertes_rh` génère des notifications pour les objectifs en retard (`notifier_objectif_en_retard()`).
 
@@ -490,7 +528,7 @@ Pipeline de recrutement complet :
 Offre créée → Candidature reçue → Entretien planifié → Décision → Embauche
 ```
 
-L'IA Groq analyse les CV candidats de manière asynchrone via `threading.Thread(daemon=True)` pour extraire compétences, points forts et adéquation au poste — sans bloquer la réponse API.
+L'IA (Gemini) évalue de manière asynchrone (`threading.Thread(daemon=True)`) l'adéquation d'une candidature à l'offre, sans bloquer la réponse API. Limite actuelle : l'analyse s'appuie sur l'offre et les informations de la candidature ; le texte du fichier CV n'est pas encore extrait (piste d'évolution).
 
 ---
 
@@ -568,7 +606,7 @@ python manage.py verifier_alertes_rh
 
 ```
 1. POST /api/rapport-ia/rapports/generer/
-   → Crée RapportIAMensuel (statut=EN_COURS)
+   → Crée RapportIAMensuel (statut=EN_GENERATION)
    → Lance threading.Thread(target=generer_rapport_ia, daemon=True)
    → Retourne immédiatement {id, statut}
 
@@ -576,22 +614,24 @@ python manage.py verifier_alertes_rh
    → Polling frontend (setInterval 3s)
    → Retourne {statut, score_sante_rh}
 
-3. Quand statut=TERMINE :
+3. Quand statut=GENERE :
    GET /api/rapport-ia/rapports/{id}/
    → Retourne le rapport complet (JSON + Markdown)
 ```
 
 ### Score de santé RH
 
-Le score (0-100) est calculé selon un barème pondéré sur plusieurs indicateurs :
+Avec l'IA, le score est proposé par le modèle à partir des données agrégées du mois. Sans
+IA (plan B), il est calculé par une moyenne pondérée des composantes disponibles :
 
 | Indicateur | Poids |
 |------------|-------|
-| Taux d'absentéisme | 25% |
-| Taux d'atteinte des objectifs | 25% |
-| Taux de contrats actifs | 20% |
-| Taux de présence | 20% |
-| Taux de formation | 10% |
+| Présence (ou couverture des pointages si elle est sous 50 %) | 30 |
+| Objectifs de la période couvrant le mois | 25 |
+| Congés du mois (taux d'approbation) | 20 |
+| Formations du mois | 15 |
+| Paie établie (mois terminé) | 15 |
+| Discipline (sanctions du mois) | 10 |
 
 **Échelle d'interprétation :**
 - 85-100 : Excellente santé RH
@@ -602,15 +642,18 @@ Le score (0-100) est calculé selon un barème pondéré sur plusieurs indicateu
 
 ---
 
-## 22. Intégration IA — Groq API
+## 22. Intégration IA — Gemini et plan B
 
-### 22.1 Choix de Groq
+### 22.1 Fournisseurs
 
-Groq a été choisi pour sa latence très faible sur le modèle `llama-3.3-70b-versatile` (réponse en 1-3 secondes vs 10-20s pour d'autres providers). La clé API gratuite (tier Free) est suffisante pour les besoins du projet en développement.
+Tous les appels passent par un client unique, `ia/client.py` : Google Gemini
+(`gemini-flash-latest`, SDK officiel `google-genai` — l'ancien `google-generativeai` n'est plus
+maintenu), puis OpenRouter en secours. Changer de fournisseur ne touche que ce fichier.
+Chaque appel est limité à 60 secondes.
 
 ### 22.2 Architecture asynchrone
 
-L'appel à l'API Groq est effectué dans un **daemon thread** Python :
+L'appel est effectué dans un **daemon thread** Python :
 
 ```python
 thread = threading.Thread(
@@ -621,15 +664,25 @@ thread = threading.Thread(
 thread.start()
 ```
 
-L'option `daemon=True` garantit que si le processus Django s'arrête, les threads orphelins sont terminés automatiquement. Le frontend poll le statut toutes les 3 secondes jusqu'à `TERMINE` ou `ERREUR`.
+L'option `daemon=True` garantit que si le processus Django s'arrête, les threads orphelins
+sont terminés. Le frontend interroge le statut toutes les 3 secondes jusqu'à `GENERE` ou
+`ERREUR`.
 
-### 22.3 Fallback sans clé API
+### 22.3 Plan B sans IA
 
-Si `GROQ_API_KEY` est absent ou invalide, le service `calculer_score_sans_ia()` calcule un score de santé RH basé sur les métriques collectées, sans narrative générée par l'IA. Le rapport reste utilisable.
+Si aucun fournisseur ne répond (pas d'Internet, quota épuisé, clé absente, réponse
+illisible), le client lève `IAIndisponible`. Sans réseau, l'échec est immédiat. Chaque module
+produit alors un résultat calculé sans IA et signalé comme tel : rapport mensuel complet
+par règles (score, alertes, recommandations, tendance, contrôle de la qualité des données),
+évaluation notée à partir des notes du manager, CV laissé à l'évaluation manuelle sans score
+inventé. Détail : `docs/IA_PLAN_B.md` ; 12 tests.
 
 ### 22.4 Prompt système
 
-Le prompt système définit le rôle de l'IA (expert RH ACERFI Cameroun), le format de réponse attendu (JSON strict) et le barème d'interprétation. La réponse JSON est parsée et ses composants (score, résumé, alertes, recommandations, rapport Markdown) sont stockés dans les champs correspondants du modèle `RapportIAMensuel`.
+Le prompt système définit le rôle de l'IA (expert RH ACERFI Cameroun), le format de réponse
+attendu (JSON strict) et le barème d'interprétation. La réponse JSON est parsée et ses
+composants (score, résumé, alertes, recommandations, rapport Markdown) sont stockés dans le
+modèle `RapportIAMensuel`.
 
 ---
 
@@ -653,7 +706,7 @@ Le prompt système définit le rôle de l'IA (expert RH ACERFI Cameroun), le for
 ### 23.4 Champ entreprise null=True sur tous les modèles
 
 **Choix :** FK nullable sur tous les modèles  
-**Raison :** Garantit la rétrocompatibilité avec les données créées avant l'ajout du champ. Les migrations Django appliquées sur une base de données existante ne nécessitent pas de valeur par défaut, ce qui évite les erreurs de migration.
+**Raison :** Garantit la rétrocompatibilité avec les données créées avant l'ajout du champ. Les migrations Django appliquées sur une base de données existante ne nécessitent pas de valeur par défaut, ce qui évite les erreurs de migration. L'isolation ne dépend pas de ce champ : elle passe par l'employé.
 
 ### 23.5 Daemon thread pour l'IA
 
@@ -670,9 +723,9 @@ Le prompt système définit le rôle de l'IA (expert RH ACERFI Cameroun), le for
 
 **Solution :** Suppression de la dépendance à `request.entreprise` dans la vue. `MonEntrepriseView._get_entreprise(request)` lit directement `request.user.entreprise` (disponible après auth JWT DRF) avec un fallback sur `Entreprise.objects.first()` pour les données de démo.
 
-### 24.2 React 18 StrictMode — double appel useEffect
+### 24.2 React StrictMode — double appel useEffect
 
-**Problème :** React 18 en mode développement exécute chaque `useEffect` deux fois (montage → démontage → remontage) pour détecter les effets de bord non idempotents. Cela causait l'affichage en double des toasts d'erreur.
+**Problème :** React en mode développement exécute chaque `useEffect` deux fois (montage → démontage → remontage) pour détecter les effets de bord non idempotents. Cela causait l'affichage en double des toasts d'erreur.
 
 **Solution :** `Promise.allSettled()` pour les appels parallèles + identifiants uniques sur les toasts (`toast.error(..., { id: 'unique-id' })`), ce qui déduplique automatiquement les toasts avec le même ID.
 
@@ -706,13 +759,10 @@ Le prompt système définit le rôle de l'IA (expert RH ACERFI Cameroun), le for
 
 ### 25.1 Déploiement en production
 
-Le projet est actuellement en configuration développement (`DEBUG=True`, CORS limité à localhost). Pour un déploiement en production :
-
-- Configurer `gunicorn` + `nginx` pour le backend
-- Builder le frontend (`npm run build`) et servir les fichiers statiques via nginx
-- Configurer `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS` avec le domaine de production
-- Remplacer `PyMySQL` par `mysqlclient` pour de meilleures performances
-- Configurer SSL/TLS (Let's Encrypt)
+L'application est conteneurisée (Docker Compose : MySQL, Django sous gunicorn, nginx qui
+sert le frontend compilé et relaie l'API). Les étapes restantes pour une mise en production
+— HTTPS, durcissement des réglages Django, sauvegardes, supervision — sont décrites dans
+`docs/DEPLOIEMENT.md`.
 
 ### 25.2 Remplacer les daemon threads par Celery
 
@@ -732,7 +782,8 @@ Ajouter un calendrier interactif (FullCalendar) affichant les présences et abse
 
 ### 25.6 Exportation des rapports
 
-Générer des rapports PDF (via `WeasyPrint` ou `ReportLab`) pour les bulletins de paie, rapports IA et tableaux de bord — à destination de l'impression ou de l'envoi par email.
+Les bulletins de paie sont déjà générés en PDF (fpdf2) avec aperçu avant téléchargement.
+Reste à exporter en PDF les rapports IA et les tableaux de bord, et à les envoyer par email.
 
 ### 25.7 Authentification LDAP / SSO
 
@@ -740,10 +791,29 @@ Intégration avec un annuaire LDAP d'entreprise (Microsoft Active Directory) ou 
 
 ---
 
-## Conclusion
+## 26. Qualité, tests et conformité
 
-Ce projet démontre la faisabilité de développer un SIRH complet et fonctionnel en moins de 6 mois avec des technologies modernes. L'intégration de l'IA générative (Groq/LLaMA 3.3) apporte une valeur ajoutée concrète au-delà du CRUD traditionnel, en transformant les données brutes RH en insights actionnables. La plateforme est prête pour un déploiement pilote et une utilisation réelle chez ACERFI SARL.
+| Vérification | Résultat |
+|---|---|
+| Tests automatisés (`python manage.py test accounts entreprises rapport_ia conges paie presences`) | 99 tests au vert |
+| Paie | 26 tests, bulletin de référence calculé à la main |
+| Congés | 32 tests, dont le cas du guide du travailleur de l'OIT (18 + 4 + 2 = 24 jours) |
+| Sécurité et isolation | 17 + 7 tests |
+| Plan B de l'IA | 12 tests (coupure réseau, quota, clé absente, réponse illisible) |
+| Pages de l'application | 78 pages ouvertes avec les trois rôles dans Chrome, sans erreur |
+| Lint frontend | 0 erreur |
+| Analyse statique backend (pyflakes) | aucun nom non défini |
+
+Sources de conformité : fiche IRPP de la DGI, MINFI (retenues sur salaires), Code du travail
+(loi n° 92/007), décret n° 95/677/PM, loi n° 73/5 sur les fêtes légales, loi n° 2024/017 sur
+la protection des données personnelles.
 
 ---
 
-*Document généré le 2026-06-10 — Yemeya Luc, ISA*
+## Conclusion
+
+Ce projet démontre la faisabilité de développer un SIRH complet et fonctionnel en moins de 6 mois avec des technologies modernes. L'intégration de l'IA générative (Google Gemini) apporte une valeur ajoutée concrète au-delà du CRUD traditionnel, en transformant les données brutes RH en recommandations, tout en restant opérationnelle sans Internet grâce au plan B. La conformité aux textes camerounais (paie, congés, heures supplémentaires, données personnelles) est documentée et vérifiée par des tests. La plateforme est prête pour un déploiement pilote chez ACERFI SARL.
+
+---
+
+*Document mis à jour le 2026-10-12 — Yemeya Luc, ISA*

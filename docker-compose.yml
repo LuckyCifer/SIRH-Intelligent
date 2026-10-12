@@ -6,7 +6,8 @@ services:
     restart: unless-stopped
     environment:
       MYSQL_DATABASE: sirh_db
-      MYSQL_ROOT_PASSWORD: sirh_root
+      # Mot de passe lu dans le fichier .env à la racine (valeur par défaut pour le poste local)
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-sirh_root}
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     ports:
       - "3307:3306"   # 3306 est déjà utilisé par le MySQL local
@@ -15,7 +16,7 @@ services:
       # Export de la base locale, importé uniquement si le volume mysql_data est vide
       - ./docker/mysql-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-psirh_root"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -p$$MYSQL_ROOT_PASSWORD"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -31,7 +32,7 @@ services:
     environment:
       DB_NAME: sirh_db
       DB_USER: root
-      DB_PASSWORD: sirh_root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-sirh_root}
       DB_HOST: db
       DB_PORT: "3306"
       DEBUG: "False"

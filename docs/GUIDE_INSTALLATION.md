@@ -97,9 +97,14 @@ DB_PASSWORD=votre_mot_de_passe_mysql
 DB_HOST=localhost
 DB_PORT=3306
 
-# Groq IA (optionnel — le système fonctionne sans)
-GROQ_API_KEY=gsk_...votre_cle_groq...
-GROQ_MODEL=llama-3.3-70b-versatile
+# IA (facultatif — sans clé, le plan B calcule les rapports par règles)
+GEMINI_API_KEY=votre_cle_gemini
+GEMINI_MODEL=gemini-flash-latest
+OPENROUTER_API_KEY=            # secours facultatif
+
+# Paie / congés (voir docs/BULLETIN_PAIE_PAS_A_PAS.md)
+PAIE_APPLIQUER_LF2024=False
+CONGES_ANTICIPATION_AUTORISEE=False
 
 # JWT
 ACCESS_TOKEN_LIFETIME_MINUTES=60
@@ -110,8 +115,8 @@ CORS_ALLOWED_ORIGINS=http://localhost:5173
 ```
 
 > **Générer une SECRET_KEY :** `python -c "import secrets; print(secrets.token_urlsafe(50))"`  
-> **Obtenir une clé Groq gratuite :** https://console.groq.com (inscription rapide)  
-> **Sans GROQ_API_KEY :** le rapport IA fonctionne en mode dégradé (score calculé sans narrative)
+> **Obtenir une clé Gemini gratuite :** https://aistudio.google.com/apikey  
+> **Sans clé d'IA ou sans Internet :** les rapports sont produits par le plan B (score, alertes et recommandations calculés par règles, signalés comme tels — voir `docs/IA_PLAN_B.md`)
 
 ---
 
@@ -151,7 +156,9 @@ pip install -r requirements.txt
 | `PyMySQL` | Connecteur MySQL pur Python |
 | `python-dotenv` | Lecture du fichier .env |
 | `Pillow` | Gestion des images (photos, logos) |
-| `groq` | Client API Groq IA |
+| `google-genai` | SDK officiel Google Gemini |
+| `openai` | Client OpenRouter (IA de secours) |
+| `fpdf2`, `openpyxl` | Bulletins PDF, import / export Excel |
 
 ---
 
@@ -226,10 +233,11 @@ with open('fixtures/demo_data.py', encoding='utf-8') as f:
 | Rôle | Username | Mot de passe | Prénom |
 |------|----------|--------------|--------|
 | RH | `admin.rh` | `Demo2026!` | Administrateur |
-| Manager | `manager.it` | `Demo2026!` | Manager IT |
+| Manager | `manager.it` | `Demo2026!` | Manager du département IT |
 | Employé | `alice.mballa` | `Demo2026!` | Alice |
 | Employé | `paul.fopa` | `Demo2026!` | Paul |
-| Employé | `jean.nkomo` | `Demo2026!` | Jean |
+| Employé | `marie.talla` | `Demo2026!` | Marie |
+| Employé | `eric.essomba` | `Demo2026!` | Eric |
 | Employé | `marie.biya` | `Demo2026!` | Marie |
 
 **Données créées :** 6 départements, 10 postes, 6 contrats.
@@ -357,7 +365,7 @@ Vérifier que la fixture entreprise a été chargée (étape 6). Si le problème
 
 ### L'analyse IA reste en statut `EN_COURS`
 
-Vérifier que `GROQ_API_KEY` est correctement renseignée dans `.env`. Consulter les logs Django (`python manage.py runserver` affiche les erreurs en console).
+Vérifier `GEMINI_API_KEY` dans `.env` et consulter les logs Django. Sans Internet ou sans clé, le rapport n'est pas bloqué : il est produit par le plan B en quelques secondes.
 
 ---
 

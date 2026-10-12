@@ -5,7 +5,7 @@ Plateforme RH complète avec analyses IA. Développé par Yemeya Luc — ACERFI 
 ## Stack technique
 
 - **Backend** : Django 5.2 + DRF + PyMySQL + MySQL (`sirh_db`)
-- **Frontend** : React 18 + Vite + AdminLTE 3.2 + Bootstrap 4
+- **Frontend** : React 19 + Vite 8 + AdminLTE 3.2 + Bootstrap 4
 - **IA** : Gemini (gemini-flash-latest, SDK google-genai) + OpenRouter (secours) + plan B sans IA — async daemon thread via `ia/client.py`
 - **Auth** : JWT (djangorestframework-simplejwt) — Bearer token
 - **Charts** : Recharts (déjà installé, pas de nouvelle lib)
@@ -19,7 +19,7 @@ gsria/
 │   ├── fixtures/     demo_data.py, entreprise_defaut.json
 │   ├── venv/         Python 3.14
 │   └── <18 apps>/
-└── frontend/         React 18 + Vite
+└── frontend/         React 19 + Vite
     └── src/
         ├── api/      axios.js + un fichier par module
         ├── components/layout/  RHLayout, ManagerLayout, EmployeLayout
@@ -45,7 +45,7 @@ gsria/
 | 11 | `recrutements` | Offres d'emploi + Candidatures + Entretiens |
 | 12 | `formations` | Formations + Inscriptions + Compétences |
 | 13 | `sanctions` | Sanctions disciplinaires |
-| 14 | `paie` | Paie simplifiée (CNPS 2.8%/7.7%, IRPP tranches) |
+| 14 | `paie` | Paie camerounaise 2024 (CNPS, IRPP+CAC, CFC, FNE, RAV, TDL, heures sup.) |
 | 15 | `carriere` | Historique de carrière |
 | 16 | `rapport_ia` | Rapport IA mensuel (async + Gemini/OpenRouter, plan B sans IA) |
 | 17 | `notifications` | Notifications internes (7 types) |
@@ -88,6 +88,10 @@ ACCESS_TOKEN_LIFETIME_MINUTES=60
 REFRESH_TOKEN_LIFETIME_DAYS=7
 ```
 
+Production (détail : docs/DEPLOIEMENT.md) : `DEBUG=False` exige une vraie `SECRET_KEY` ;
+`HTTPS=True` active redirection HTTPS, cookies sécurisés, HSTS ; `CSRF_TRUSTED_ORIGINS` ;
+mot de passe MySQL Docker dans `.env` racine (`MYSQL_ROOT_PASSWORD`).
+
 ## Variables d'environnement (frontend `.env`)
 
 ```
@@ -125,7 +129,7 @@ npm run build
 | Rôle | Username | Mot de passe |
 |------|----------|--------------|
 | RH | `admin.rh` | `Demo2026!` |
-| Manager | `manager.it` | `Demo2026!` |
+| Manager | `paul.atangana` | `Demo2026!` |  (`manager.it` est désactivé)
 | Employé | `alice.mballa` | `Demo2026!` |
 | Employé | `paul.fopa` | `Demo2026!` |
 
@@ -140,7 +144,7 @@ dans le middleware. Dans les vues DRF, utiliser `request.user.entreprise`
 (pas `request.entreprise`) pour accéder à l'entreprise.
 
 ### Double toast React StrictMode
-React 18 StrictMode exécute les `useEffect` deux fois en développement.
+React StrictMode exécute les `useEffect` deux fois en développement.
 Fix : `Promise.allSettled` + `toast.error(..., { id: 'unique-id' })` pour dédupliquer.
 
 ### Imports axios

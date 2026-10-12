@@ -128,7 +128,7 @@ Visualiser les pointages de tous les employés. Filtrer par date, département o
 1. Cliquer sur **"Nouveau bulletin"**
 2. Sélectionner l'employé et le mois/année
 3. Vérifier le salaire brut (pré-rempli depuis le contrat)
-4. Le système calcule automatiquement : CNPS employé (2,8%), CNPS employeur (7,7%), IRPP (tranches progressives)
+4. Le système calcule automatiquement : CNPS salarié (4,2 %), charges CNPS patronales (4,2 % + 7 % + 1,75 %, plafond 750 000), IRPP progressif + CAC 10 %, CFC, FNE, RAV et TDL (détail : `docs/BULLETIN_PAIE_PAS_A_PAS.md`)
 5. Cliquer sur **"Générer"**
 
 #### Marquer un bulletin comme payé

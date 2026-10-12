@@ -1,6 +1,7 @@
 """
-GSRIA — Configuration Django 5.2
-Plateforme intelligente de gestion des stagiaires — ACERFI SARL
+SIRH — Configuration Django 5.2
+Système d'Information des Ressources Humaines intelligent — ACERFI SARL
+(issu du projet GSRIA de suivi des stagiaires, dont le module « stagiaires » est conservé)
 """
 
 import os
@@ -15,6 +16,24 @@ load_dotenv(BASE_DIR / '.env', override=True)
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-insecure")
 DEBUG = os.getenv("DEBUG", "True") == "True"
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+
+# ─── Production ──────────────────────────────────────────────
+# Refus de démarrer en production avec la clé de développement
+if not DEBUG and SECRET_KEY == "dev-secret-key-insecure":
+    from django.core.exceptions import ImproperlyConfigured
+    raise ImproperlyConfigured("SECRET_KEY doit être définie dans .env lorsque DEBUG=False.")
+
+# HTTPS=True quand le site est servi en HTTPS (TLS terminé par nginx ou un proxy amont,
+# qui transmet X-Forwarded-Proto) : active les protections signalées par check --deploy.
+HTTPS = os.getenv("HTTPS", "False") == "True"
+if HTTPS:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000"))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = os.getenv("SECURE_HSTS_INCLUDE_SUBDOMAINS", "False") == "True"
+    CSRF_TRUSTED_ORIGINS = [o for o in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if o]
 
 # ─── Applications ────────────────────────────────────────────
 INSTALLED_APPS = [
