@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from accounts.permissions import IsRH, IsManagerOrRH
 from .models import Sanction
 from .serializers import SanctionSerializer
+from entreprises.isolation import IsolationEntrepriseMixin, filtrer_par_entreprise
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────
@@ -80,7 +81,7 @@ def _notifier_rh_mise_a_pied(sanction):
 
 # ── ViewSet ────────────────────────────────────────────────────────────────
 
-class SanctionViewSet(viewsets.ModelViewSet):
+class SanctionViewSet(IsolationEntrepriseMixin, viewsets.ModelViewSet):
     serializer_class = SanctionSerializer
 
     def get_permissions(self):
@@ -232,7 +233,7 @@ class SanctionViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"])
     def stats(self, request):
         user     = request.user
-        qs       = Sanction.objects.exclude(statut="BROUILLON")
+        qs       = filtrer_par_entreprise(Sanction.objects.exclude(statut="BROUILLON"), user)
         if user.role == "MANAGER":
             qs = qs.filter(employe__departement__in=user.departements_diriges.all())
         mois_debut = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)

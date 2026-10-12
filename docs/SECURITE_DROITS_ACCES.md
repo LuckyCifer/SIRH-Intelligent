@@ -30,6 +30,18 @@ Chaque règle est vérifiée par un test automatique : `python manage.py test ac
 Un manager ne peut ni se fixer ses propres objectifs ni valider son propre congé :
 ces décisions reviennent à son supérieur ou aux RH.
 
+## Isolation entre entreprises
+
+La plateforme héberge plusieurs entreprises clientes. Chacune ne voit et ne vise que
+ses propres données : listes, fiches, statistiques, organigramme, rapports IA (y
+compris les données agrégées envoyées à l'IA). Une création ou modification qui vise
+un employé, une offre ou un département d'une autre entreprise est refusée. Seul
+l'administrateur de la plateforme crée les entreprises et voit l'ensemble.
+
+Vérifié par `python manage.py test entreprises` : deux entreprises complètes sont
+créées en base de test et le RH, le manager et l'employé de l'une interrogent chaque
+module de l'autre.
+
 ## Données personnelles : loi n° 2024/017 du 23 décembre 2024
 
 La loi camerounaise relative à la protection des données à caractère personnel est

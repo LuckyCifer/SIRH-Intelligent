@@ -49,6 +49,7 @@ from .serializers import (
 )
 from .permissions import IsAdminRH, IsRHOrAdmin, IsManagerOrRH
 from .filiere_data import FILIERE_DATA
+from entreprises.isolation import IsolationEntrepriseMixin
 
 
 class RegisterView(generics.CreateAPIView):
@@ -124,7 +125,7 @@ class ChangePasswordView(APIView):
         return Response({"message": "Mot de passe modifié avec succès."})
 
 
-class UserListView(generics.ListAPIView):
+class UserListView(IsolationEntrepriseMixin, generics.ListAPIView):
     """GET /api/accounts/users/ — Liste des utilisateurs (Admin seulement)"""
     queryset = User.objects.all().order_by("-date_joined")
     serializer_class = UserSerializer
@@ -141,7 +142,7 @@ class UserListView(generics.ListAPIView):
         return qs
 
 
-class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
+class UserDetailView(IsolationEntrepriseMixin, generics.RetrieveUpdateDestroyAPIView):
     """GET/PUT/DELETE /api/accounts/users/<id>/ — Détail utilisateur (Admin)"""
     queryset = User.objects.all()
     serializer_class = UserSerializer
@@ -212,7 +213,7 @@ class FilieresListView(APIView):
         return Response(FILIERE_DATA)
 
 
-class UserManagementViewSet(viewsets.ModelViewSet):
+class UserManagementViewSet(IsolationEntrepriseMixin, viewsets.ModelViewSet):
     """
     /api/gestion-comptes/ — CRUD comptes utilisateurs par le RH.
     Isolé par entreprise, soft-delete uniquement.

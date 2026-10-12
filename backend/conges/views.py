@@ -8,6 +8,7 @@ from .models import TypeConge, DemandeConge, SoldeConge
 from .serializers import TypeCongeSerializer, DemandeCongeSerializer, SoldeCongeSerializer
 from .calculateur_conges import CalculateurConges
 from .soldes import calculer_situation, synchroniser_solde_annuel
+from entreprises.isolation import IsolationEntrepriseMixin, filtrer_par_entreprise
 
 
 def _get_or_init_solde(employe, type_conge, annee):
@@ -42,7 +43,7 @@ class TypeCongeViewSet(viewsets.ModelViewSet):
         return qs
 
 
-class DemandeCongeViewSet(viewsets.ModelViewSet):
+class DemandeCongeViewSet(IsolationEntrepriseMixin, viewsets.ModelViewSet):
     serializer_class   = DemandeCongeSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -222,7 +223,7 @@ class DemandeCongeViewSet(viewsets.ModelViewSet):
             if employe_id:
                 from accounts.models import User as UserModel
                 try:
-                    employe = UserModel.objects.get(pk=employe_id)
+                    employe = filtrer_par_entreprise(UserModel.objects.all(), user).get(pk=employe_id)
                 except UserModel.DoesNotExist:
                     return Response({"error": "Employé introuvable."}, status=404)
             else:
@@ -275,7 +276,7 @@ class DemandeCongeViewSet(viewsets.ModelViewSet):
         solde.save()
 
 
-class SoldeCongeViewSet(viewsets.ModelViewSet):
+class SoldeCongeViewSet(IsolationEntrepriseMixin, viewsets.ModelViewSet):
     serializer_class   = SoldeCongeSerializer
     permission_classes = [permissions.IsAuthenticated]
     http_method_names  = ["get", "put", "patch", "head", "options"]  # Pas de POST/DELETE (géré auto)
@@ -293,7 +294,8 @@ class SoldeCongeViewSet(viewsets.ModelViewSet):
         if user.role in ("RH", "ADMIN"):
             employe_id = request.query_params.get("employe")
             cibles = (UserModel.objects.filter(pk=employe_id) if employe_id
-                      else UserModel.objects.filter(soldes_conge__annee=annee).distinct())
+                      else UserModel.objects.filter(soldes_conge__annee=annee,
+                                                    entreprise_id=user.entreprise_id).distinct())
         elif user.role == "MANAGER":
             cibles = UserModel.objects.filter(departement__in=user.departements_diriges.all())
         else:

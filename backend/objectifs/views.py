@@ -12,6 +12,7 @@ from .serializers import (
     EvaluationPerformanceSerializer,
 )
 from .services import analyser_evaluation_async
+from entreprises.isolation import IsolationEntrepriseMixin
 
 User = get_user_model()
 
@@ -51,7 +52,7 @@ def _verifier_gestion(user, employe):
         raise PermissionDenied("Cet employé ne fait pas partie de votre équipe.")
 
 
-class ObjectifViewSet(viewsets.ModelViewSet):
+class ObjectifViewSet(IsolationEntrepriseMixin, viewsets.ModelViewSet):
     serializer_class = ObjectifSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -121,7 +122,7 @@ class ObjectifViewSet(viewsets.ModelViewSet):
         return Response(ObjectifSerializer(objectif).data)
 
 
-class EvaluationPerformanceViewSet(viewsets.ModelViewSet):
+class EvaluationPerformanceViewSet(IsolationEntrepriseMixin, viewsets.ModelViewSet):
     serializer_class = EvaluationPerformanceSerializer
     permission_classes = [permissions.IsAuthenticated]
 

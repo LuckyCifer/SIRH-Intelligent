@@ -149,9 +149,16 @@ Toujours `import api from "./axios"` (pas `./api`).
 ### URLs DRF
 `@action` avec underscores → URLs avec tirets : `statut_generation` → `/statut-generation/`.
 
-### Multi-tenancy
-Champ `entreprise` FK (null=True, blank=True) sur tous les modèles.
-`EntrepriseFilterMixin` dans les ViewSets pour filtrer par entreprise.
+### Multi-tenancy (isolation entre entreprises)
+Source unique : `entreprises/isolation.py`.
+- `CHEMINS` : chemin de chaque modèle vers son entreprise (via l'employé de préférence).
+- `IsolationEntrepriseMixin` en PREMIER dans les bases de chaque vue : filtre dans
+  `filter_queryset` (listes + get_object), contrôle les relations dans `create`/`update`
+  (y compris un `employe` lu brut), rattache l'entreprise des objets créés.
+- Actions personnalisées / statistiques : appliquer `filtrer_par_entreprise(qs, user)`
+  explicitement (elles ne passent pas par filter_queryset).
+- Superutilisateur = administrateur de la plateforme (toutes les entreprises, crée les entreprises).
+- Tests : `python manage.py test entreprises` (deux entreprises complètes).
 
 ### Analyse IA async
 Utilise `threading.Thread(target=..., daemon=True)` — ne bloque pas la réponse API.

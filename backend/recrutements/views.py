@@ -10,6 +10,7 @@ from accounts.permissions import IsRH, IsManagerOrRH
 from .models import OffreEmploi, Candidature, Entretien
 from .serializers import OffreEmploiSerializer, CandidatureSerializer, EntretienSerializer
 from .services import analyser_cv_async
+from entreprises.isolation import IsolationEntrepriseMixin, filtrer_par_entreprise
 
 
 def _notifier_onboarding_rh(candidature, entreprise):
@@ -38,7 +39,7 @@ def _notifier_onboarding_rh(candidature, entreprise):
         pass
 
 
-class OffreEmploiViewSet(viewsets.ModelViewSet):
+class OffreEmploiViewSet(IsolationEntrepriseMixin, viewsets.ModelViewSet):
     serializer_class = OffreEmploiSerializer
 
     def get_permissions(self):
@@ -125,7 +126,7 @@ class OffreEmploiViewSet(viewsets.ModelViewSet):
         })
 
 
-class CandidatureViewSet(viewsets.ModelViewSet):
+class CandidatureViewSet(IsolationEntrepriseMixin, viewsets.ModelViewSet):
     serializer_class = CandidatureSerializer
     permission_classes = [IsManagerOrRH]
 
@@ -212,7 +213,9 @@ class CandidatureViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], url_path="onboardings-en-cours")
     def onboardings_en_cours(self, request):
         """GET /api/recrutements/candidatures/onboardings-en-cours/ — Embauches avec checklist incomplète."""
-        qs = Candidature.objects.filter(statut="ACCEPTEE").select_related("offre").order_by("-updated_at")
+        qs = filtrer_par_entreprise(
+            Candidature.objects.filter(statut="ACCEPTEE").select_related("offre"), request.user,
+        ).order_by("-updated_at")
         return Response(CandidatureSerializer(qs, many=True).data)
 
     @action(detail=True, methods=["post"], url_path="convertir-en-employe")
@@ -292,7 +295,7 @@ class CandidatureViewSet(viewsets.ModelViewSet):
         }, status=status.HTTP_201_CREATED)
 
 
-class EntretienViewSet(viewsets.ModelViewSet):
+class EntretienViewSet(IsolationEntrepriseMixin, viewsets.ModelViewSet):
     serializer_class = EntretienSerializer
     permission_classes = [IsManagerOrRH]
 

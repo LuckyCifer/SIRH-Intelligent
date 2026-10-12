@@ -5,9 +5,10 @@ from rest_framework.response import Response
 from accounts.permissions import IsRH
 from .models import EvenementCarriere
 from .serializers import EvenementCarriereSerializer
+from entreprises.isolation import IsolationEntrepriseMixin
 
 
-class EvenementCarriereViewSet(viewsets.ModelViewSet):
+class EvenementCarriereViewSet(IsolationEntrepriseMixin, viewsets.ModelViewSet):
     serializer_class = EvenementCarriereSerializer
     permission_classes = [permissions.IsAuthenticated]
 

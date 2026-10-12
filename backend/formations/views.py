@@ -9,6 +9,7 @@ from .serializers import (
     CategorieFormationSerializer, FormationSerializer,
     InscriptionFormationSerializer, CompetenceAcquiseSerializer,
 )
+from entreprises.isolation import IsolationEntrepriseMixin
 
 
 class CategorieFormationViewSet(viewsets.ModelViewSet):
@@ -21,7 +22,7 @@ class CategorieFormationViewSet(viewsets.ModelViewSet):
         return [permissions.IsAuthenticated()]
 
 
-class FormationViewSet(viewsets.ModelViewSet):
+class FormationViewSet(IsolationEntrepriseMixin, viewsets.ModelViewSet):
     serializer_class = FormationSerializer
 
     def get_permissions(self):
@@ -88,7 +89,7 @@ class FormationViewSet(viewsets.ModelViewSet):
         })
 
 
-class InscriptionFormationViewSet(viewsets.ModelViewSet):
+class InscriptionFormationViewSet(IsolationEntrepriseMixin, viewsets.ModelViewSet):
     serializer_class = InscriptionFormationSerializer
 
     def get_permissions(self):
@@ -161,7 +162,7 @@ class InscriptionFormationViewSet(viewsets.ModelViewSet):
         return Response(InscriptionFormationSerializer(inscription).data)
 
 
-class CompetenceAcquiseViewSet(viewsets.ModelViewSet):
+class CompetenceAcquiseViewSet(IsolationEntrepriseMixin, viewsets.ModelViewSet):
     serializer_class = CompetenceAcquiseSerializer
 
     def get_queryset(self):

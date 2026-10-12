@@ -6,6 +6,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import CategorieDocument, DocumentRH
 from .serializers import CategorieDocumentSerializer, DocumentRHSerializer
+from entreprises.isolation import IsolationEntrepriseMixin
 
 
 class CategorieDocumentViewSet(viewsets.ModelViewSet):
@@ -20,7 +21,7 @@ class CategorieDocumentViewSet(viewsets.ModelViewSet):
         return [permissions.IsAuthenticated()]
 
 
-class DocumentRHViewSet(viewsets.ModelViewSet):
+class DocumentRHViewSet(IsolationEntrepriseMixin, viewsets.ModelViewSet):
     serializer_class   = DocumentRHSerializer
     permission_classes = [permissions.IsAuthenticated]
 

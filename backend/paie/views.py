@@ -16,6 +16,7 @@ from .serializers import (
     VirementMobileSerializer,
 )
 from .pdf_generator import generer_bulletin_pdf
+from entreprises.isolation import IsolationEntrepriseMixin
 
 
 class ConfigurationPaieViewSet(viewsets.ModelViewSet):
@@ -34,7 +35,7 @@ class ElementPaieViewSet(viewsets.ModelViewSet):
         return [permissions.IsAuthenticated()]
 
 
-class BulletinPaieViewSet(viewsets.ModelViewSet):
+class BulletinPaieViewSet(IsolationEntrepriseMixin, viewsets.ModelViewSet):
     serializer_class = BulletinPaieSerializer
 
     def get_permissions(self):
@@ -268,7 +269,7 @@ class BulletinPaieViewSet(viewsets.ModelViewSet):
 # Virements Mobile Money
 # ─────────────────────────────────────────────────────────────────────────────
 
-class VirementMobileViewSet(viewsets.ModelViewSet):
+class VirementMobileViewSet(IsolationEntrepriseMixin, viewsets.ModelViewSet):
     serializer_class   = VirementMobileSerializer
     permission_classes = [IsRH]
     http_method_names  = ["get", "post", "head", "options"]

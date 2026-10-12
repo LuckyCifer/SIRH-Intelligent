@@ -7,12 +7,20 @@ from rest_framework.views import APIView
 from accounts.permissions import IsRH
 from .models import Entreprise
 from .serializers import EntrepriseSerializer, EntreprisePublicSerializer
+from entreprises.isolation import IsolationEntrepriseMixin
 
 
-class EntrepriseViewSet(viewsets.ModelViewSet):
+class EntrepriseViewSet(IsolationEntrepriseMixin, viewsets.ModelViewSet):
     queryset = Entreprise.objects.all()
     serializer_class = EntrepriseSerializer
     permission_classes = [IsRH]
+
+    def get_permissions(self):
+        # Créer ou supprimer une entreprise cliente : administrateur de la plateforme
+        if self.action in ("create", "destroy"):
+            from accounts.permissions import IsSuperUtilisateur
+            return [IsSuperUtilisateur()]
+        return super().get_permissions()
 
     @action(detail=True, methods=["get"], url_path="stats")
     def stats(self, request, pk=None):

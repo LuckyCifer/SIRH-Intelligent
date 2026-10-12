@@ -50,7 +50,7 @@ class RapportIAMensuel(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ["mois", "annee", "type_rapport", "departement", "employe"]
+        unique_together = ["entreprise", "mois", "annee", "type_rapport", "departement", "employe"]
         ordering = ["-annee", "-mois", "-created_at"]
         verbose_name = "Rapport IA mensuel"
         verbose_name_plural = "Rapports IA mensuels"

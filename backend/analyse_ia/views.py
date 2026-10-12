@@ -11,9 +11,10 @@ from .models import AnalyseIA
 from .serializers import AnalyseIASerializer
 from .services import analyser_rapport
 from rapports.models import RapportHebdomadaire
+from entreprises.isolation import IsolationEntrepriseMixin
 
 
-class AnalyseListView(generics.ListAPIView):
+class AnalyseListView(IsolationEntrepriseMixin, generics.ListAPIView):
     """Liste des analyses — encadreur / admin uniquement"""
     serializer_class   = AnalyseIASerializer
     permission_classes = [IsEncadreurOrAdmin]
@@ -26,11 +27,19 @@ class AnalyseListView(generics.ListAPIView):
         return qs
 
 
-class AnalyseDetailView(generics.RetrieveAPIView):
-    """Détail d'une analyse"""
-    queryset           = AnalyseIA.objects.all()
+class AnalyseDetailView(IsolationEntrepriseMixin, generics.RetrieveAPIView):
+    """Détail d'une analyse : la sienne, celles de ses stagiaires, ou toutes pour les RH."""
     serializer_class   = AnalyseIASerializer
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        qs = AnalyseIA.objects.select_related("rapport__stagiaire")
+        if user.is_stagiaire:
+            return qs.filter(rapport__stagiaire=user)
+        if user.is_encadreur:
+            return qs.filter(rapport__stagiaire__periodes_stage__encadreur=user).distinct()
+        return qs
 
 
 @api_view(["POST"])

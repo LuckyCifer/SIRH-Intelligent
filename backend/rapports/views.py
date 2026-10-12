@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 from accounts.permissions import IsEncadreurOrAdmin
 from .models import RapportHebdomadaire
 from .serializers import RapportHebdomadaireSerializer
+from entreprises.isolation import IsolationEntrepriseMixin
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,7 @@ def _analyse_en_thread(rapport_pk: int) -> None:
         close_old_connections()
 
 
-class RapportListCreateView(generics.ListCreateAPIView):
+class RapportListCreateView(IsolationEntrepriseMixin, generics.ListCreateAPIView):
     serializer_class   = RapportHebdomadaireSerializer
     permission_classes = [IsAuthenticated]
 
@@ -55,7 +56,7 @@ class RapportListCreateView(generics.ListCreateAPIView):
             serializer.save()
 
 
-class RapportDetailView(generics.RetrieveUpdateDestroyAPIView):
+class RapportDetailView(IsolationEntrepriseMixin, generics.RetrieveUpdateDestroyAPIView):
     serializer_class   = RapportHebdomadaireSerializer
     permission_classes = [IsAuthenticated]
 

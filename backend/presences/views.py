@@ -5,6 +5,7 @@ from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
 from .models import Pointage, ConfigPresence
 from .serializers import PointageSerializer, ConfigPresenceSerializer
+from entreprises.isolation import IsolationEntrepriseMixin
 
 
 def _today_local():
@@ -58,7 +59,7 @@ def _recalculer_hs_si_besoin(pointage):
             pass
 
 
-class PointageViewSet(viewsets.ModelViewSet):
+class PointageViewSet(IsolationEntrepriseMixin, viewsets.ModelViewSet):
     def get_permissions(self):
         # L'employé pointe via pointer-arrivee / pointer-depart ; la saisie manuelle est RH
         if self.action in ("create", "update", "partial_update", "destroy"):

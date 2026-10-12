@@ -12,6 +12,7 @@ from .validators import (
     valider_duree_cdd, valider_periode_essai, valider_non_concurrence,
     calculer_preavis, _duree_mois,
 )
+from entreprises.isolation import IsolationEntrepriseMixin, filtrer_par_entreprise
 
 
 def _post_process_contrat(contrat):
@@ -101,7 +102,7 @@ def _notifier_fin_essai_proche(contrat):
         pass
 
 
-class ContratViewSet(viewsets.ModelViewSet):
+class ContratViewSet(IsolationEntrepriseMixin, viewsets.ModelViewSet):
     queryset         = Contrat.objects.select_related("employe", "poste__departement").all()
     serializer_class = ContratSerializer
 
@@ -164,6 +165,7 @@ class ContratViewSet(viewsets.ModelViewSet):
             date_fin__lte=limite30,
             date_fin__gte=today,
         ).select_related("employe", "poste__departement").order_by("date_fin")
+        qs = self.filter_queryset(qs)   # limité à l'entreprise de l'utilisateur
         data = ContratSerializer(qs, many=True).data
         # Enrichir avec le niveau d'urgence
         for item, contrat in zip(data, qs):

@@ -4,9 +4,10 @@ from rest_framework.response import Response
 from accounts.permissions import IsRH
 from .models import Departement, Poste
 from .serializers import DepartementSerializer, DepartementListSerializer, PosteSerializer
+from entreprises.isolation import IsolationEntrepriseMixin, filtrer_par_entreprise
 
 
-class DepartementViewSet(viewsets.ModelViewSet):
+class DepartementViewSet(IsolationEntrepriseMixin, viewsets.ModelViewSet):
     queryset           = Departement.objects.all()
     permission_classes = [permissions.IsAuthenticated]
 
@@ -35,7 +36,8 @@ class DepartementViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"])
     def organigramme(self, request):
         data = []
-        for dept in Departement.objects.filter(actif=True).prefetch_related("postes"):
+        depts = filtrer_par_entreprise(Departement.objects.filter(actif=True), request.user)
+        for dept in depts.prefetch_related("postes"):
             data.append({
                 "id":          dept.id,
                 "nom":         dept.nom,
@@ -50,7 +52,7 @@ class DepartementViewSet(viewsets.ModelViewSet):
         return Response(data)
 
 
-class PosteViewSet(viewsets.ModelViewSet):
+class PosteViewSet(IsolationEntrepriseMixin, viewsets.ModelViewSet):
     queryset           = Poste.objects.select_related("departement").all()
     serializer_class   = PosteSerializer
     permission_classes = [permissions.IsAuthenticated]

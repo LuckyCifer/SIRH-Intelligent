@@ -59,12 +59,13 @@ def _mois_bornes(mois, annee):
     return debut, fin
 
 
-def collecter_donnees_rh(mois, annee, departement=None, employe=None):
+def collecter_donnees_rh(mois, annee, departement=None, employe=None, entreprise=None):
+    """Données agrégées d'UNE entreprise (jamais celles des autres clientes de la plateforme)."""
     from accounts.models import User
 
     debut, fin = _mois_bornes(mois, annee)
 
-    employes_qs = User.objects.filter(role="EMPLOYE", is_active=True)
+    employes_qs = User.objects.filter(role="EMPLOYE", is_active=True, entreprise=entreprise)
     if departement:
         employes_qs = employes_qs.filter(departement=departement)
     if employe:
@@ -137,7 +138,7 @@ def collecter_donnees_rh(mois, annee, departement=None, employe=None):
     # 4. Formations
     try:
         from formations.models import Formation, InscriptionFormation
-        fq = Formation.objects.all()
+        fq = Formation.objects.filter(entreprise=entreprise)
         iq = InscriptionFormation.objects.filter(employe__in=employes_qs)
         presents = iq.filter(statut="PRESENT").count()
         data["formations"] = {
@@ -155,9 +156,10 @@ def collecter_donnees_rh(mois, annee, departement=None, employe=None):
     try:
         from recrutements.models import OffreEmploi, Candidature
         data["recrutements"] = {
-            "postes_ouverts": OffreEmploi.objects.filter(statut="PUBLIEE").count(),
-            "total_candidatures": Candidature.objects.count(),
+            "postes_ouverts": OffreEmploi.objects.filter(statut="PUBLIEE", entreprise=entreprise).count(),
+            "total_candidatures": Candidature.objects.filter(offre__entreprise=entreprise).count(),
             "en_cours": Candidature.objects.filter(
+                offre__entreprise=entreprise,
                 statut__in=["RECUE", "EN_COURS", "ENTRETIEN_RH", "ENTRETIEN_TECH"]
             ).count(),
         }
@@ -247,6 +249,7 @@ def generer_rapport_ia(rapport_id: int) -> None:
             annee=rapport.annee,
             departement=rapport.departement,
             employe=rapport.employe,
+            entreprise=rapport.entreprise,
         )
         rapport.donnees_collectees = donnees
 

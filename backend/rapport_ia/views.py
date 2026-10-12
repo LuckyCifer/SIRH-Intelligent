@@ -7,9 +7,10 @@ from accounts.permissions import IsAdminRH
 from .models import RapportIAMensuel
 from .serializers import RapportIAMensuelSerializer, RapportIAListSerializer
 from .services import lancer_generation_async
+from entreprises.isolation import IsolationEntrepriseMixin, filtrer_par_entreprise
 
 
-class RapportIAMensuelViewSet(viewsets.ReadOnlyModelViewSet):
+class RapportIAMensuelViewSet(IsolationEntrepriseMixin, viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAdminRH]
 
     def get_queryset(self):
@@ -47,12 +48,22 @@ class RapportIAMensuelViewSet(viewsets.ReadOnlyModelViewSet):
         except (ValueError, TypeError):
             return Response({"detail": "mois et annee doivent être des entiers."}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Département / employé ciblés : de la même entreprise uniquement
+        from entreprises.isolation import meme_entreprise
+        from accounts.models import User
+        from departements.models import Departement
+        for modele, pk in ((Departement, dept_id), (User, emp_id)):
+            if pk and not meme_entreprise(request.user, modele.objects.filter(pk=pk).first()):
+                return Response({"detail": "Cible appartenant à une autre entreprise."},
+                                status=status.HTTP_400_BAD_REQUEST)
+
         defaults = {
             "statut": RapportIAMensuel.Statut.EN_GENERATION,
             "message_erreur": "",
             "genere_par": request.user,
         }
         rapport, created = RapportIAMensuel.objects.get_or_create(
+            entreprise=request.user.entreprise,
             mois=mois,
             annee=annee,
             type_rapport=type_rapport,
@@ -87,17 +98,17 @@ class RapportIAMensuelViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="dernier-rapport")
     def dernier_rapport(self, request):
-        qs = RapportIAMensuel.objects.filter(
+        qs = filtrer_par_entreprise(RapportIAMensuel.objects.filter(
             type_rapport=RapportIAMensuel.TypeRapport.GLOBAL,
             statut=RapportIAMensuel.Statut.GENERE,
-        ).order_by("-annee", "-mois").first()
+        ), request.user).order_by("-annee", "-mois").first()
         if not qs:
             return Response(None)
         return Response(RapportIAMensuelSerializer(qs).data)
 
     @action(detail=False, methods=["get"])
     def historique(self, request):
-        qs = self.get_queryset().filter(statut=RapportIAMensuel.Statut.GENERE)
+        qs = self.filter_queryset(self.get_queryset()).filter(statut=RapportIAMensuel.Statut.GENERE)
         page = self.paginate_queryset(qs)
         if page is not None:
             return self.get_paginated_response(RapportIAListSerializer(page, many=True).data)
