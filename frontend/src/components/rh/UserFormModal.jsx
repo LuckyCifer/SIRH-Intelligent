@@ -16,7 +16,7 @@ const LEGAL_FIELDS = {
   date_dernier_avancement: '', prochain_avancement: '',
   situation_matrimoniale: 'CELIBATAIRE',
   nb_enfants_a_charge: 0, nb_enfants_moins_6_ans: 0,
-  nationalite: 'Camerounaise', date_naissance: '',
+  nationalite: 'Camerounaise', date_naissance: '', sexe: '',
   lieu_naissance: '', adresse: '',
   personne_contact_urgence: '', contact_urgence_tel: '',
 }
@@ -102,6 +102,7 @@ export default function UserFormModal({ isOpen, onClose, onSuccess, userId = nul
           nb_enfants_moins_6_ans:  u.nb_enfants_moins_6_ans  ?? 0,
           nationalite:              u.nationalite              || 'Camerounaise',
           date_naissance:           u.date_naissance           || '',
+          sexe:                     u.sexe                     || '',
           lieu_naissance:           u.lieu_naissance           || '',
           adresse:                  u.adresse                  || '',
           personne_contact_urgence: u.personne_contact_urgence || '',
@@ -503,6 +504,16 @@ export default function UserFormModal({ isOpen, onClose, onSuccess, userId = nul
                         <input type="number" min="0" className="form-control form-control-sm"
                           value={form.nb_enfants_a_charge}
                           onChange={e => set('nb_enfants_a_charge', parseInt(e.target.value) || 0)} />
+                      </div>
+                      <div className="col-md-4 form-group">
+                        <label style={{ fontSize: 12 }}>{t('accounts.sex')}</label>
+                        <select className="form-control form-control-sm" value={form.sexe}
+                          title={t('accounts.sex_hint')}
+                          onChange={e => set('sexe', e.target.value)}>
+                          <option value="">{t('accounts.sex_unknown')}</option>
+                          <option value="F">{t('accounts.sex_female')}</option>
+                          <option value="M">{t('accounts.sex_male')}</option>
+                        </select>
                       </div>
                       <div className="col-md-4 form-group">
                         <label style={{ fontSize: 12 }}>{t('accounts.children_under_6')}</label>

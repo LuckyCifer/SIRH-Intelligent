@@ -8,53 +8,9 @@ import CalendrierAbsences from '../../../components/ui/CalendrierAbsences'
 import { getDemandes, getTypesConge, getStatsConges, getSoldeDetaille } from '../../../api/conges'
 import { useApercu } from '../../../components/ui/useApercu'
 import { chargerTout } from '../../../api/listes'
+import { useJoursFeries } from '../../../components/ui/useJoursFeries'
 
-// ── Jours fériés camerounais (affichage référence) ───────────────────────
-
-function getEasterYear(year) {
-  const a = year % 19, b = Math.floor(year / 100), c = year % 100
-  const d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25)
-  const g = Math.floor((b - f + 1) / 3)
-  const h = (19 * a + b - d - g + 15) % 30
-  const i = Math.floor(c / 4), k = c % 4
-  const l = (32 + 2 * e + 2 * i - h - k) % 7
-  const m = Math.floor((a + 11 * h + 22 * l) / 451)
-  const month = Math.floor((h + l - 7 * m + 114) / 31)
-  const day   = ((h + l - 7 * m + 114) % 31) + 1
-  return new Date(year, month - 1, day)
-}
-
-const AID = {
-  2026: ['2026-03-20', '2026-05-27'],
-  2027: ['2027-03-09', '2027-05-16'],
-  2028: ['2028-03-28', '2028-05-04'],
-}
-
-function getFeriesAnnee(year) {
-  const addDays = (d, n) => new Date(d.getTime() + n * 86400000)
-  const toIso   = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
-  const fixed   = [[1,1],[11,2],[1,5],[20,5],[15,8],[1,10],[25,12]]
-    .map(([day,month]) => `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`)
-  const easter  = getEasterYear(year)
-  const mobile  = [addDays(easter,-2), addDays(easter,1), addDays(easter,39), addDays(easter,50)]
-    .filter(d => d.getFullYear() === year)
-    .map(toIso)
-  return [...new Set([...fixed, ...mobile, ...(AID[year] || [])])].sort()
-}
-
-const NOMS_FERIES = {
-  '01-01': "Jour de l'An",
-  '02-11': 'Fête de la Jeunesse',
-  '05-01': 'Fête du Travail',
-  '05-20': 'Fête Nationale',
-  '08-15': 'Assomption',
-  '10-01': "Fête de l'Unité Nationale",
-  '12-25': 'Noël',
-}
-
-function nomFerie(iso) {
-  return NOMS_FERIES[iso.slice(5)] || 'Jour férié (mobile)'
-}
+// ── Jours fériés : calendrier légal fourni par le backend (useJoursFeries) ──
 
 // ── Modal solde légal ────────────────────────────────────────────────────
 
@@ -101,6 +57,11 @@ function SoldeModal({ employe, onClose }) {
 
                 {/* Calcul solde */}
                 <h6 className="text-primary font-weight-bold mb-2">{t('conges_extra.annual_right_calc', { year: data.annee })}</h6>
+                {data.periode_reference && (
+                  <p className="text-muted mb-2" style={{ fontSize: 12 }}>
+                    {t('conges_extra.reference_period', { year: data.periode_reference })}
+                  </p>
+                )}
                 <table className="table table-sm table-bordered mb-3" style={{ fontSize: 13 }}>
                   <tbody>
                     <tr>
@@ -226,6 +187,7 @@ export default function GestionConges() {
 
   const [soldeModalEmploye, setSoldeModalEmploye] = useState(null)
   const [showFeries,        setShowFeries]        = useState(false)
+  const feries = useJoursFeries(annee)
 
   useEffect(() => {
     async function load() {
@@ -541,13 +503,13 @@ export default function GestionConges() {
           </div>
           <div className="card-body p-0">
             <div className="row no-gutters">
-              {getFeriesAnnee(annee).map(iso => (
+              {[...feries.keys()].sort().map(iso => (
                 <div key={iso} className="col-md-4 col-lg-3">
                   <div className="d-flex align-items-center px-3 py-2 border-bottom">
                     <span className="badge badge-warning mr-2" style={{ fontSize: 12, minWidth: 90 }}>
                       {new Date(iso + 'T00:00:00').toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
                     </span>
-                    <span style={{ fontSize: 12 }}>{nomFerie(iso)}</span>
+                    <span style={{ fontSize: 12 }}>{feries.get(iso)}</span>
                   </div>
                 </div>
               ))}

@@ -7,6 +7,7 @@ from accounts.permissions import IsRH, IsManagerOrRH
 from .models import TypeConge, DemandeConge, SoldeConge
 from .serializers import TypeCongeSerializer, DemandeCongeSerializer, SoldeCongeSerializer
 from .calculateur_conges import CalculateurConges
+from .soldes import calculer_situation, synchroniser_solde_annuel
 
 
 def _get_or_init_solde(employe, type_conge, annee):
@@ -105,7 +106,28 @@ class DemandeCongeViewSet(viewsets.ModelViewSet):
                     ]
                 })
 
-        demande = serializer.save(employe=employe)
+        # Solde disponible (art. 89/92) : blocage par défaut, dérogation RH motivée
+        extra = {}
+        if type_conge and type_conge.deductible_conge_annuel:
+            date_debut = serializer.validated_data["date_debut"]
+            nb_jours = CalculateurConges().calculer_jours_ouvrables(
+                date_debut, serializer.validated_data["date_fin"])
+            situation = calculer_situation(employe, date_debut.year)
+            if nb_jours > situation["jours_disponibles"]:
+                derogation = str(self.request.data.get("derogation_solde", "")).lower() in ("1", "true", "oui")
+                motif = (self.request.data.get("motif_derogation") or "").strip()
+                if not (derogation and motif and user.role in ("RH", "ADMIN")):
+                    raise ValidationError({
+                        "non_field_errors": [
+                            f"Solde insuffisant : {nb_jours} jour(s) demandé(s), "
+                            f"{situation['jours_disponibles']} disponible(s) "
+                            f"(droit acquis en {situation['periode_reference']}). "
+                            f"Un dépassement nécessite une dérogation motivée d'un responsable RH."
+                        ]
+                    })
+                extra = {"derogation_solde": True, "motif_derogation": motif, "derogation_par": user}
+
+        demande = serializer.save(employe=employe, **extra)
 
         try:
             from notifications.services import notifier_conge_soumis
@@ -113,11 +135,13 @@ class DemandeCongeViewSet(viewsets.ModelViewSet):
         except Exception:
             pass
 
-        # Incrémenter jours_en_attente
         annee = demande.date_debut.year
-        solde = _get_or_init_solde(employe, demande.type_conge, annee)
-        solde.jours_en_attente = float(solde.jours_en_attente) + demande.nb_jours
-        solde.save()
+        if demande.type_conge.deductible_conge_annuel:
+            synchroniser_solde_annuel(employe, annee)
+        else:
+            solde = _get_or_init_solde(employe, demande.type_conge, annee)
+            solde.jours_en_attente = float(solde.jours_en_attente) + demande.nb_jours
+            solde.save()
 
     @action(detail=True, methods=["post"], permission_classes=[IsManagerOrRH])
     def approuver(self, request, pk=None):
@@ -177,10 +201,10 @@ class DemandeCongeViewSet(viewsets.ModelViewSet):
     def solde_detaille(self, request):
         """
         Retourne le solde légal détaillé (Art. 89-93) pour un employé.
-        GET /conges/demandes/solde-detaille/?employe=<id>&annee=<year>&nb_enfants=<n>
+        GET /conges/demandes/solde-detaille/?employe=<id>&annee=<year>  (année de départ en congé)
         """
         annee      = int(request.query_params.get("annee", timezone.now().year))
-        nb_enfants = int(request.query_params.get("nb_enfants", 0))
+        # Majoration des mères : déduite de la fiche employé (sexe, enfants de moins de 6 ans)
 
         user = request.user
         if user.role in ("RH", "ADMIN"):
@@ -197,7 +221,7 @@ class DemandeCongeViewSet(viewsets.ModelViewSet):
             employe = user
 
         calc         = CalculateurConges()
-        droit        = calc.calculer_solde_annuel(employe, annee, nb_enfants=nb_enfants)
+        situation    = synchroniser_solde_annuel(employe, annee)
         eligibilite  = calc.verifier_droit_conge(employe)
 
         try:
@@ -205,21 +229,6 @@ class DemandeCongeViewSet(viewsets.ModelViewSet):
         except Exception:
             allocation = 0
 
-        # Jours consommés sur les types déductibles du congé annuel
-        demandes_qs = DemandeConge.objects.filter(
-            employe=employe,
-            date_debut__year=annee,
-        )
-        try:
-            demandes_deductibles = demandes_qs.filter(type_conge__deductible_conge_annuel=True)
-        except Exception:
-            demandes_deductibles = demandes_qs
-
-        jours_pris       = sum(d.nb_jours for d in demandes_deductibles.filter(statut="APPROUVE"))
-        jours_en_attente = sum(d.nb_jours for d in demandes_deductibles.filter(statut="EN_ATTENTE"))
-        jours_restants   = droit["total_jours_droit"] - jours_pris - jours_en_attente
-
-        # Jours fériés de l'année courante (pour affichage)
         feries_annee = sorted(calc.get_jours_feries(annee))
 
         return Response({
@@ -228,17 +237,25 @@ class DemandeCongeViewSet(viewsets.ModelViewSet):
                 "id":  employe.pk,
                 "nom": employe.get_full_name() or employe.username,
             },
-            "eligibilite":     eligibilite,
-            "droit_calcule":   droit,
-            "allocation_estimee": allocation,
-            "jours_pris":        jours_pris,
-            "jours_en_attente":  jours_en_attente,
-            "jours_restants":    jours_restants,
-            "jours_feries":      [str(d) for d in feries_annee],
+            "eligibilite":            eligibilite,
+            # Droit acquis sur la période de référence terminée (année précédente)
+            "periode_reference":      situation["periode_reference"],
+            "droit_calcule":          situation["droit"],
+            "droit_en_cours":         situation["droit_en_cours"],
+            "anticipation_autorisee": situation["anticipation_autorisee"],
+            "jours_acquis":           situation["jours_acquis"],
+            "allocation_estimee":     allocation,
+            "jours_pris":             situation["jours_pris"],
+            "jours_en_attente":       situation["jours_en_attente"],
+            "jours_restants":         situation["jours_disponibles"],
+            "jours_feries":           [str(d) for d in feries_annee],
         })
 
     def _mettre_a_jour_solde(self, demande, action_type):
         annee = demande.date_debut.year
+        if demande.type_conge.deductible_conge_annuel:
+            synchroniser_solde_annuel(demande.employe, annee)
+            return
         solde = _get_or_init_solde(demande.employe, demande.type_conge, annee)
         if action_type == "approuver":
             solde.jours_pris         = float(solde.jours_pris) + demande.nb_jours
@@ -252,6 +269,23 @@ class SoldeCongeViewSet(viewsets.ModelViewSet):
     serializer_class   = SoldeCongeSerializer
     permission_classes = [permissions.IsAuthenticated]
     http_method_names  = ["get", "put", "patch", "head", "options"]  # Pas de POST/DELETE (géré auto)
+
+    def list(self, request, *args, **kwargs):
+        # Le solde annuel est recalculé à la lecture : même source que l'écran détaillé
+        from accounts.models import User as UserModel
+        user  = request.user
+        annee = int(request.query_params.get("annee", timezone.now().year))
+        if user.role in ("RH", "ADMIN"):
+            employe_id = request.query_params.get("employe")
+            cibles = (UserModel.objects.filter(pk=employe_id) if employe_id
+                      else UserModel.objects.filter(soldes_conge__annee=annee).distinct())
+        elif user.role == "MANAGER":
+            cibles = UserModel.objects.filter(departement__in=user.departements_diriges.all())
+        else:
+            cibles = [user]
+        for employe in cibles:
+            synchroniser_solde_annuel(employe, annee)
+        return super().list(request, *args, **kwargs)
 
     def get_queryset(self):
         user  = self.request.user

@@ -23,6 +23,8 @@ class DemandeCongeSerializer(serializers.ModelSerializer):
             # Champs calculés automatiquement
             "allocation_conge", "date_retour_prevue", "jours_ouvrable_pauses",
             "majoration_enfants", "majoration_anciennete",
+            # Dérogation : renseignée uniquement par la vue, après contrôle du rôle RH
+            "derogation_solde", "motif_derogation", "derogation_par",
         ]
 
     def get_employe_detail(self, obj):

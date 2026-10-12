@@ -37,18 +37,26 @@ class CalculateurConges:
     # Art. 93 — allocation de congé
     FRACTION_ALLOCATION = Decimal("1") / Decimal("16")
 
-    # Jours fériés fixes camerounais (jour, mois)
-    FERIES_FIXES = [
-        (1,  1),   # Jour de l'An
-        (11, 2),   # Fête de la Jeunesse
-        (1,  5),   # Fête du Travail
-        (20, 5),   # Fête Nationale
-        (15, 8),   # Assomption
-        (1,  10),  # Fête de l'Unité Nationale
-        (25, 12),  # Noël
+    # ── Jours fériés légaux — loi n° 73/5 du 7 décembre 1973 modifiée (loi n° 76/8) ──
+    # Fêtes civiles (art. 2) : reportées au lundi si elles tombent un dimanche
+    FERIES_CIVILS = [
+        (1,  1,  "Jour de l'An"),
+        (11, 2,  "Fête de la Jeunesse"),
+        (1,  5,  "Fête du Travail"),
+        (20, 5,  "Fête nationale"),
     ]
-
-    # Dates approximatives des Aïds (Aïd el-Fitr, Aïd el-Adha)
+    # Fêtes religieuses à date fixe
+    FERIES_RELIGIEUX_FIXES = [
+        (15, 8,  "Assomption"),
+        (25, 12, "Noël"),
+    ]
+    # Fêtes religieuses mobiles liées à Pâques : (décalage en jours, nom)
+    FERIES_PAQUES = [
+        (-2, "Vendredi saint"),
+        (39, "Ascension"),
+    ]
+    # Aïd el-Fitr et Aïd el-Adha (Tabaski) : dates indicatives, fixées chaque année par
+    # les autorités → corrigeables sans code via le modèle JourFerieAjuste (admin Django)
     AID_DATES = {
         2024: [date(2024, 4, 10), date(2024, 6, 16)],
         2025: [date(2025, 3, 30), date(2025, 6,  6)],
@@ -58,6 +66,8 @@ class CalculateurConges:
         2029: [date(2029, 3, 18), date(2029, 4, 23)],
         2030: [date(2030, 3,  7), date(2030, 4, 12)],
     }
+    NOMS_AID = ["Aïd el-Fitr", "Aïd el-Adha (Tabaski)"]
+    JOURS_SEMAINE = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
 
     # ── Jours fériés ────────────────────────────────────────────────────────
 
@@ -79,31 +89,63 @@ class CalculateurConges:
         jour = ((h + l - 7 * m + 114) % 31) + 1
         return date(annee, mois, jour)
 
+    def _ajustements(self, annee):
+        """Jours ajoutés (ponts, Aïd corrigés) ou retirés via l'admin. {} sans base de données."""
+        try:
+            from .models import JourFerieAjuste
+            return {j.date: j for j in JourFerieAjuste.objects.filter(date__year=annee)}
+        except Exception:
+            return {}
+
+    def _feries_par_date(self, annee):
+        """{date: nom} — calendrier légal de l'année, ajustements de l'admin compris."""
+        feries = {}
+        for jour, mois, nom in self.FERIES_CIVILS:
+            d = date(annee, mois, jour)
+            feries[d] = nom
+            if d.weekday() == 6:                          # dimanche → chômé le lundi
+                feries[d + timedelta(days=1)] = f"{nom} (report du dimanche)"
+        for jour, mois, nom in self.FERIES_RELIGIEUX_FIXES:
+            feries[date(annee, mois, jour)] = nom
+        paques = self._paques(annee)
+        for decalage, nom in self.FERIES_PAQUES:
+            feries[paques + timedelta(days=decalage)] = nom
+        for i, d in enumerate(sorted(self.AID_DATES.get(annee, []))):
+            feries[d] = self.NOMS_AID[i] if i < len(self.NOMS_AID) else "Aïd"
+        for d, ajustement in self._ajustements(annee).items():
+            if ajustement.chome:
+                feries[d] = ajustement.nom
+            else:
+                feries.pop(d, None)
+        return feries
+
     def get_jours_feries(self, annee):
         """Retourne un set de date pour tous les jours fériés de l'année."""
-        feries = set()
+        return set(self._feries_par_date(annee))
 
-        for jour, mois in self.FERIES_FIXES:
-            feries.add(date(annee, mois, jour))
+    def get_jours_feries_avec_noms(self, annee):
+        """Liste triée : [{date, nom, jour_semaine, est_mobile}]."""
+        fixes = {date(annee, m, j) for j, m, _ in self.FERIES_CIVILS + self.FERIES_RELIGIEUX_FIXES}
+        return [
+            {
+                "date":         str(d),
+                "nom":          nom,
+                "jour_semaine": self.JOURS_SEMAINE[d.weekday()],
+                "est_mobile":   d not in fixes,
+            }
+            for d, nom in sorted(self._feries_par_date(annee).items())
+        ]
 
-        # Jours mobiles liés à Pâques
-        paques = self._paques(annee)
-        feries.add(paques - timedelta(days=2))   # Vendredi Saint
-        feries.add(paques + timedelta(days=1))   # Lundi de Pâques
-        feries.add(paques + timedelta(days=39))  # Ascension (Jeudi)
-        feries.add(paques + timedelta(days=50))  # Lundi de Pentecôte
-
-        # Aïds
-        for d in self.AID_DATES.get(annee, []):
-            feries.add(d)
-
-        return feries
+    def est_jour_ferie(self, date_check):
+        """{'est_ferie': bool, 'nom': str}"""
+        nom = self._feries_par_date(date_check.year).get(date_check, "")
+        return {"est_ferie": bool(nom), "nom": nom}
 
     def get_jours_feries_periode(self, date_debut, date_fin):
         """Retourne le set de fériés couvrant toute la période."""
-        feries = self.get_jours_feries(date_debut.year)
-        if date_fin.year != date_debut.year:
-            feries |= self.get_jours_feries(date_fin.year)
+        feries = set()
+        for annee in range(date_debut.year, date_fin.year + 1):
+            feries |= self.get_jours_feries(annee)
         return feries
 
     # ── Calculs jours ouvrables ─────────────────────────────────────────────
@@ -151,16 +193,19 @@ class CalculateurConges:
 
     # ── Solde légal annuel ──────────────────────────────────────────────────
 
-    def calculer_solde_annuel(self, employe, annee, nb_enfants=0, aujourd_hui=None):
+    def calculer_solde_annuel(self, employe, annee, nb_enfants=None, aujourd_hui=None):
         """
         Calcule le droit au congé annuel (art. 89-90) pour un employé.
-        nb_enfants : enfants de moins de 6 ans d'une MÈRE salariée (art. 90 al. 2) ;
-        à laisser à 0 pour les autres salariés.
+        nb_enfants : enfants de moins de 6 ans d'une MÈRE salariée (art. 90 al. 2).
+        Par défaut : fiche employé (sexe = F → nb_enfants_moins_6_ans), sinon 0.
         Returns:
             dict: jours_base, majoration_enfants, majoration_anciennete,
                   total_jours_droit, mois_travailles, anciennete_annees, taux_mensuel
         """
         aujourd_hui = aujourd_hui or date.today()
+        if nb_enfants is None:
+            nb_enfants = (getattr(employe, "nb_enfants_moins_6_ans", 0) or 0
+                          if getattr(employe, "sexe", "") == "F" else 0)
         date_embauche = self._get_date_embauche(employe)
         mois_travailles = self._calculer_mois_travailles(date_embauche, annee, aujourd_hui)
 

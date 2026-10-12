@@ -121,6 +121,10 @@ class User(AbstractUser):
     # ── Coordonnées & état civil ──
     nationalite              = models.CharField(max_length=50, default="Camerounaise", blank=True)
     date_naissance           = models.DateField(null=True, blank=True)
+    sexe                     = models.CharField(
+        max_length=1, blank=True, choices=[("M", "Masculin"), ("F", "Féminin")],
+        help_text="Sert à la majoration de congé des mères salariées (art. 90 Code du travail)",
+    )
     lieu_naissance           = models.CharField(max_length=100, blank=True)
     adresse                  = models.TextField(blank=True)
     personne_contact_urgence = models.CharField(max_length=200, blank=True)

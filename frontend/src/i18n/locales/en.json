@@ -408,6 +408,11 @@
     "delete_error": "Delete error."
   },
   "accounts": {
+    "sex": "Sex",
+    "sex_unknown": "Not specified",
+    "sex_female": "Female",
+    "sex_male": "Male",
+    "sex_hint": "Used for the mothers' leave increase (art. 90)",
     "title": "Account Management",
     "new_user": "New User",
     "edit_user": "Edit User",
@@ -706,6 +711,7 @@
     "valider_tooltip": "Validate"
   },
   "conges_extra": {
+    "reference_period": "Entitlement earned in {{year}} (completed reference period)",
     "leave_balance": "Legal Balance",
     "legal_balance_title": "Legal Balance — {{name}}",
     "eligible": "Eligible",

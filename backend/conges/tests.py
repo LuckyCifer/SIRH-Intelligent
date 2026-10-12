@@ -1,16 +1,18 @@
 """
 Tests du CalculateurConges — Code du travail camerounais (loi n° 92/007), art. 89 à 93.
 
-Tests unitaires purs (SimpleTestCase) : aucune base de données n'est créée ;
-la date d'embauche est fournie par mock et la date du jour est fixée.
+Calculs : tests unitaires purs (SimpleTestCase), date d'embauche fournie par mock et
+date du jour fixée. Contrôle du solde : tests d'API (TestCase, base de test temporaire).
 Lancer :  python manage.py test conges
 """
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from types import SimpleNamespace
 from unittest import mock
 
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, TestCase
+from django.utils import timezone
+from rest_framework.test import APIClient
 
 from .calculateur_conges import CalculateurConges
 
@@ -131,20 +133,77 @@ class JoursOuvrablesTests(SimpleTestCase):
 
 
 class JoursFeriesTests(SimpleTestCase):
+    """Loi n° 73/5 du 7 décembre 1973 modifiée : 4 fêtes civiles + fêtes religieuses."""
     calc = CalculateurConges()
 
-    def test_paques_et_fetes_mobiles_2026(self):
+    def test_calendrier_2026_dix_jours_legaux(self):
         self.assertEqual(self.calc._paques(2026), date(2026, 4, 5))
-        feries = self.calc.get_jours_feries(2026)
-        self.assertIn(date(2026, 4, 3), feries)    # Vendredi saint
-        self.assertIn(date(2026, 5, 14), feries)   # Ascension
+        self.assertEqual(self.calc.get_jours_feries(2026), {
+            date(2026, 1, 1),    # Jour de l'An
+            date(2026, 2, 11),   # Fête de la Jeunesse
+            date(2026, 3, 20),   # Aïd el-Fitr
+            date(2026, 4, 3),    # Vendredi saint
+            date(2026, 5, 1),    # Fête du Travail
+            date(2026, 5, 14),   # Ascension
+            date(2026, 5, 20),   # Fête nationale
+            date(2026, 5, 27),   # Aïd el-Adha (Tabaski)
+            date(2026, 8, 15),   # Assomption
+            date(2026, 12, 25),  # Noël
+        })
 
-    def test_fetes_fixes(self):
+    def test_jours_non_feries_au_cameroun(self):
         feries = self.calc.get_jours_feries(2026)
-        for d in (date(2026, 1, 1), date(2026, 2, 11), date(2026, 5, 1),
-                  date(2026, 5, 20), date(2026, 8, 15), date(2026, 12, 25)):
-            with self.subTest(jour=d):
-                self.assertIn(d, feries)
+        for d, nom in ((date(2026, 4, 6), "lundi de Pâques"), (date(2026, 5, 25), "lundi de Pentecôte"),
+                       (date(2026, 10, 1), "1er octobre")):
+            with self.subTest(jour=nom):
+                self.assertNotIn(d, feries)
+
+    def test_fete_civile_un_dimanche_reportee_au_lundi(self):
+        # 20 mai 2029 = dimanche → le lundi 21 mai est chômé
+        self.assertEqual(date(2029, 5, 20).weekday(), 6)
+        self.assertEqual(self.calc.est_jour_ferie(date(2029, 5, 21))["nom"],
+                         "Fête nationale (report du dimanche)")
+
+    def test_fete_religieuse_un_dimanche_non_reportee(self):
+        # Noël 2022 = dimanche : pas de report (seules les fêtes civiles le sont)
+        self.assertNotIn(date(2022, 12, 26), self.calc.get_jours_feries(2022))
+
+    def test_ajustements_admin_ajout_et_retrait(self):
+        # Aïd el-Fitr 2026 constaté le 21 mars au lieu du 20, et un « pont » décrété le 21 mai
+        ajustements = {
+            date(2026, 3, 20): SimpleNamespace(chome=False, nom="Aïd el-Fitr (date indicative)"),
+            date(2026, 3, 21): SimpleNamespace(chome=True, nom="Aïd el-Fitr"),
+            date(2026, 5, 21): SimpleNamespace(chome=True, nom="Pont — Fête nationale"),
+        }
+        with mock.patch.object(CalculateurConges, "_ajustements", return_value=ajustements):
+            feries = CalculateurConges().get_jours_feries(2026)
+        self.assertNotIn(date(2026, 3, 20), feries)
+        self.assertIn(date(2026, 3, 21), feries)
+        self.assertIn(date(2026, 5, 21), feries)
+
+
+class MeresSalarieesTests(SimpleTestCase):
+    """Art. 90 al. 2 et 3 : majorations déduites de la fiche employé."""
+
+    def _droit(self, **fiche):
+        employe = SimpleNamespace(date_naissance=None, **fiche)
+        with mock.patch.object(CalculateurConges, "_get_date_embauche", return_value=date(2017, 1, 1)):
+            return CalculateurConges().calculer_solde_annuel(employe, 2025, aujourd_hui=AU_15_JANVIER_2026)
+
+    def test_cas_oit_mere_deux_enfants_de_moins_de_6_ans_8_ans_anciennete(self):
+        # Guide du travailleur (OIT) : 6 enfants dont 2 de moins de 6 ans, 8 ans → 18 + 4 + 2 = 24
+        d = self._droit(sexe="F", nb_enfants_moins_6_ans=2)
+        self.assertEqual(d["anciennete_annees"], 8)
+        self.assertEqual((d["jours_base"], d["majoration_enfants"], d["majoration_anciennete"]), (18, 4, 2))
+        self.assertEqual(d["total_jours_droit"], 24)
+
+    def test_pere_pas_de_majoration_enfants(self):
+        d = self._droit(sexe="M", nb_enfants_moins_6_ans=2)
+        self.assertEqual(d["majoration_enfants"], 0)
+        self.assertEqual(d["total_jours_droit"], 20)
+
+    def test_sexe_non_renseigne_pas_de_majoration(self):
+        self.assertEqual(self._droit(sexe="", nb_enfants_moins_6_ans=2)["majoration_enfants"], 0)
 
 
 class AllocationTests(SimpleTestCase):
@@ -152,3 +211,89 @@ class AllocationTests(SimpleTestCase):
     def test_fraction_1_16_vaut_trois_quarts_de_mois(self):
         # Art. 93 : 12 mois à 200 000 → 2 400 000 / 16 = 150 000 = 0,75 mois (18 j / 24 j ouvrables)
         self.assertEqual(Decimal("2400000") * CalculateurConges.FRACTION_ALLOCATION, Decimal("150000"))
+
+
+class ControleSoldeApiTests(TestCase):
+    """
+    Demande de congé annuel : le solde disponible est le droit acquis sur la période de
+    référence terminée (2025 → 18 j pour un départ en 2026), moins les jours pris ou en
+    attente. Dépassement bloqué, sauf dérogation motivée d'un RH (tracée sur la demande).
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        from accounts.models import User
+        from .models import TypeConge
+
+        cls.annuel = TypeConge.objects.create(
+            nom="Congé annuel", code="ANNUEL", jours_par_an=18,
+            code_legal=TypeConge.CodeLegal.ANNUEL, deductible_conge_annuel=True,
+        )
+        embauche = timezone.make_aware(datetime(2022, 1, 1))   # 3 ans au 1er janvier 2025 : pas de majoration
+        cls.employe = User.objects.create_user("employe.test", password="x", role="EMPLOYE",
+                                               first_name="Awa", last_name="TEST")
+        cls.rh = User.objects.create_user("rh.test", password="x", role="RH")
+        User.objects.filter(pk__in=[cls.employe.pk, cls.rh.pk]).update(date_joined=embauche)
+        cls.employe.refresh_from_db()
+
+    def _client(self, user):
+        client = APIClient()
+        client.force_authenticate(user)
+        return client
+
+    def _demander(self, user, debut, fin, **extra):
+        data = {"type_conge": self.annuel.pk, "date_debut": debut, "date_fin": fin,
+                "motif": "Congé annuel", "employe": self.employe.pk, **extra}
+        return self._client(user).post("/api/conges/demandes/", data, format="json")
+
+    def _solde(self):
+        return self._client(self.employe).get("/api/conges/demandes/solde-detaille/?annee=2026").data
+
+    def test_demande_dans_le_solde_acceptee_et_soldes_coherents(self):
+        r = self._demander(self.employe, "2026-11-02", "2026-11-12")   # 10 jours ouvrables
+        self.assertEqual(r.status_code, 201, r.data)
+        solde = self._solde()
+        self.assertEqual(solde["periode_reference"], 2025)
+        self.assertEqual(solde["droit_calcule"]["total_jours_droit"], 18)
+        self.assertEqual((solde["jours_en_attente"], solde["jours_restants"]), (10, 8))
+        # La table des soldes affiche les mêmes chiffres que l'écran détaillé
+        lignes = self._client(self.employe).get("/api/conges/soldes/?annee=2026").data
+        lignes = lignes.get("results", lignes)
+        annuel = next(l for l in lignes if l["type_conge"] == self.annuel.pk)
+        self.assertEqual((float(annuel["jours_acquis"]), float(annuel["jours_en_attente"])), (18, 10))
+        self.assertEqual(annuel["solde_restant"], 8)
+
+    def test_depassement_refuse(self):
+        r = self._demander(self.employe, "2026-11-02", "2026-11-23")   # 19 jours > 18
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("Solde insuffisant", str(r.data))
+
+    def test_jours_en_attente_comptent(self):
+        self.assertEqual(self._demander(self.employe, "2026-11-02", "2026-11-12").status_code, 201)
+        r = self._demander(self.employe, "2026-12-01", "2026-12-11")   # 10 jours, il en reste 8
+        self.assertEqual(r.status_code, 400)
+
+    def test_approbation_met_a_jour_le_solde(self):
+        r = self._demander(self.employe, "2026-11-02", "2026-11-12")
+        self._client(self.rh).post(f"/api/conges/demandes/{r.data['id']}/approuver/", {}, format="json")
+        solde = self._solde()
+        self.assertEqual((solde["jours_pris"], solde["jours_en_attente"], solde["jours_restants"]), (10, 0, 8))
+
+    def test_derogation_rh_motivee_acceptee_et_tracee(self):
+        r = self._demander(self.rh, "2026-11-02", "2026-11-23",
+                           derogation_solde=True, motif_derogation="Accord de la direction (deuil)")
+        self.assertEqual(r.status_code, 201, r.data)
+        from .models import DemandeConge
+        d = DemandeConge.objects.get(pk=r.data["id"])
+        self.assertTrue(d.derogation_solde)
+        self.assertEqual(d.derogation_par, self.rh)
+        self.assertEqual(d.motif_derogation, "Accord de la direction (deuil)")
+
+    def test_derogation_sans_motif_refusee(self):
+        r = self._demander(self.rh, "2026-11-02", "2026-11-23", derogation_solde=True)
+        self.assertEqual(r.status_code, 400)
+
+    def test_employe_ne_peut_pas_s_accorder_une_derogation(self):
+        r = self._demander(self.employe, "2026-11-02", "2026-11-23",
+                           derogation_solde=True, motif_derogation="Je le veux")
+        self.assertEqual(r.status_code, 400)

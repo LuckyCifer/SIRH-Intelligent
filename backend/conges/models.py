@@ -94,6 +94,13 @@ class DemandeConge(models.Model):
     allocation_conge      = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     date_retour_prevue    = models.DateField(null=True, blank=True)
     jours_ouvrable_pauses = models.IntegerField(default=0, help_text="Jours fériés tombant en semaine pendant le congé")
+    # Dépassement du solde accordé par un RH (blocage par défaut)
+    derogation_solde = models.BooleanField(default=False)
+    motif_derogation = models.TextField(blank=True)
+    derogation_par   = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="derogations_conge_accordees",
+    )
     majoration_enfants    = models.IntegerField(default=0)
     majoration_anciennete = models.IntegerField(default=0)
     notifie_valideur      = models.BooleanField(default=False)
@@ -154,3 +161,24 @@ class SoldeConge(models.Model):
     @property
     def solde_restant(self):
         return float(self.jours_acquis) - float(self.jours_pris) - float(self.jours_en_attente)
+
+
+class JourFerieAjuste(models.Model):
+    """
+    Ajustement annuel du calendrier légal, saisi par les RH dans l'admin Django :
+    date réelle d'un Aïd, jour de « pont » décrété (loi n° 76/8), ou jour à retirer.
+    """
+    date  = models.DateField(unique=True)
+    nom   = models.CharField(max_length=100)
+    chome = models.BooleanField(
+        default=True,
+        help_text="Coché : jour férié ajouté. Décoché : retire ce jour du calendrier par défaut.",
+    )
+
+    class Meta:
+        ordering = ["date"]
+        verbose_name = "Jour férié (ajustement)"
+        verbose_name_plural = "Jours fériés (ajustements)"
+
+    def __str__(self):
+        return f"{self.date} — {self.nom}{'' if self.chome else ' (retiré)'}"

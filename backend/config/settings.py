@@ -141,6 +141,11 @@ OPENROUTER_MODEL   = os.getenv("OPENROUTER_MODEL", "google/gemma-4-26b-a4b-it:fr
 # 12/01/2024. À activer uniquement sur confirmation d'une circulaire DGI.
 PAIE_APPLIQUER_LF2024 = os.getenv("PAIE_APPLIQUER_LF2024", "False") == "True"
 
+# ─── Congés ───────────────────────────────────────────────────
+# Anticipation : autoriser à puiser dans le droit de l'année en cours (accord employeur
+# ou convention plus favorable). Par défaut, seul le droit de la période terminée compte.
+CONGES_ANTICIPATION_AUTORISEE = os.getenv("CONGES_ANTICIPATION_AUTORISEE", "False") == "True"
+
 # ─── Mobile Money ─────────────────────────────────────────────
 # MTN MoMo Disbursement (https://momodeveloper.mtn.com)
 MTN_MOMO_SUBSCRIPTION_KEY = os.getenv("MTN_MOMO_SUBSCRIPTION_KEY", "")

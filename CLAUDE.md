@@ -175,6 +175,13 @@ Note : Les constantes TAUX_CNPS_EMPLOYE=0.028 et TAUX_CNPS_EMPLOYEUR=0.077 dans
 1,5 jour OUVRABLE/mois (lundi → samedi, hors fériés) ; 2,5 j/mois si < 18 ans ;
 mères : +2 j/enfant < 6 ans (+1 j seulement si congé ≤ 6 j) ; ancienneté +2 j par 5 ans ;
 jouissance après 12 mois ; allocation 1/16. Tests : `python manage.py test conges`.
+Mères : majoration automatique si fiche employé sexe = F (nb_enfants_moins_6_ans).
+Solde (conges/soldes.py, source unique) : congé de l'année N imputé sur le droit acquis en N-1
+  − pris − en attente ; dépassement refusé sauf dérogation RH motivée (derogation_solde/par/motif) ;
+  CONGES_ANTICIPATION_AUTORISEE=True ajoute le droit en cours.
+Jours fériés (loi 73/5 modifiée) : source unique CalculateurConges, 10 jours/an, fête civile
+  un dimanche reportée au lundi ; ajustements annuels (Aïd, ponts) via admin « JourFerieAjuste ».
+  Frontend : hook useJoursFeries (endpoint /presences/jours-feries/<annee>/).
 
 ### Rapports
 Le modèle de l'app `rapports` s'appelle `RapportHebdomadaire`

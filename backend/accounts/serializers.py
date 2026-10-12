@@ -30,7 +30,7 @@ class UserSerializer(serializers.ModelSerializer):
             # situation familiale
             "situation_matrimoniale", "nb_enfants_a_charge", "nb_enfants_moins_6_ans",
             # état civil / coordonnées
-            "nationalite", "date_naissance", "lieu_naissance",
+            "nationalite", "date_naissance", "sexe", "lieu_naissance",
             "adresse", "personne_contact_urgence", "contact_urgence_tel",
             # Mobile Money
             "numero_mobile", "operateur_mobile",
@@ -114,7 +114,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
             "categorie_pro", "echelon", "coefficient",
             "date_dernier_avancement", "prochain_avancement",
             "situation_matrimoniale", "nb_enfants_a_charge", "nb_enfants_moins_6_ans",
-            "nationalite", "date_naissance", "lieu_naissance",
+            "nationalite", "date_naissance", "sexe", "lieu_naissance",
             "adresse", "personne_contact_urgence", "contact_urgence_tel",
         ]
 
@@ -154,7 +154,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             "categorie_pro", "echelon", "coefficient",
             "date_dernier_avancement", "prochain_avancement",
             "situation_matrimoniale", "nb_enfants_a_charge", "nb_enfants_moins_6_ans",
-            "nationalite", "date_naissance", "lieu_naissance",
+            "nationalite", "date_naissance", "sexe", "lieu_naissance",
             "adresse", "personne_contact_urgence", "contact_urgence_tel",
         ]
 

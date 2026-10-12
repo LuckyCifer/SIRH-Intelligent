@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import TypeConge, DemandeConge, SoldeConge
+from .models import TypeConge, DemandeConge, SoldeConge, JourFerieAjuste
 
 
 @admin.register(TypeConge)
@@ -22,3 +22,10 @@ class SoldeCongeAdmin(admin.ModelAdmin):
     list_display  = ["employe", "type_conge", "annee", "jours_acquis", "jours_pris", "jours_en_attente"]
     list_filter   = ["annee", "type_conge"]
     search_fields = ["employe__username"]
+
+
+@admin.register(JourFerieAjuste)
+class JourFerieAjusteAdmin(admin.ModelAdmin):
+    list_display = ["date", "nom", "chome"]
+    list_filter  = ["chome"]
+    date_hierarchy = "date"

@@ -30,116 +30,20 @@ class CalculateurHeuresSupplementaires:
     DUREE_LEGALE_SEMAINE    = Decimal("40")   # heures/semaine (Code du travail, art. 80)
     HEURES_MENSUELLES       = Decimal("520") / Decimal("3")   # 173 h 1/3 (décret, art. 14)
 
-    # ── Jours fériés fixes (Loi n°73/5 du 7 décembre 1973) ─────────────────
-    FERIES_FIXES = [
-        (1,  1,  "Jour de l'An"),
-        (11, 2,  "Fête de la Jeunesse"),
-        (1,  5,  "Fête du Travail"),
-        (20, 5,  "Fête Nationale"),
-        (15, 8,  "Assomption"),
-        (1,  10, "Fête de l'Unité Nationale"),
-        (25, 12, "Noël"),
-    ]
+    # ── Jours fériés : source unique = conges.calculateur_conges ────────────
 
-    # Dates approximatives des Aïds (Aïd el-Fitr, Aïd el-Adha)
-    AID_DATES = {
-        2024: [date(2024, 4, 10), date(2024, 6, 16)],
-        2025: [date(2025, 3, 30), date(2025, 6,  6)],
-        2026: [date(2026, 3, 20), date(2026, 5, 27)],
-        2027: [date(2027, 3,  9), date(2027, 5, 16)],
-        2028: [date(2028, 3, 28), date(2028, 5,  4)],
-        2029: [date(2029, 3, 18), date(2029, 4, 23)],
-        2030: [date(2030, 3,  7), date(2030, 4, 12)],
-    }
-
-    JOURS_SEMAINE = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
-
-    # ── Algorithme de Pâques (Butcher) ──────────────────────────────────────
-
-    def _paques(self, annee):
-        a = annee % 19
-        b = annee // 100
-        c = annee % 100
-        d = b // 4
-        e = b % 4
-        f = (b + 8) // 25
-        g = (b - f + 1) // 3
-        h = (19 * a + b - d - g + 15) % 30
-        i = c // 4
-        k = c % 4
-        l = (32 + 2 * e + 2 * i - h - k) % 7
-        m = (a + 11 * h + 22 * l) // 451
-        mois = (h + l - 7 * m + 114) // 31
-        jour = ((h + l - 7 * m + 114) % 31) + 1
-        return date(annee, mois, jour)
-
-    # ── Calendrier des jours fériés ─────────────────────────────────────────
+    def _calendrier(self):
+        from conges.calculateur_conges import CalculateurConges
+        return CalculateurConges()
 
     def get_jours_feries(self, annee):
-        """Retourne un set de date pour tous les jours fériés de l'année."""
-        feries = set()
-        for jour, mois, _ in self.FERIES_FIXES:
-            feries.add(date(annee, mois, jour))
-        paques = self._paques(annee)
-        feries.add(paques - timedelta(days=2))   # Vendredi Saint
-        feries.add(paques + timedelta(days=1))   # Lundi de Pâques
-        feries.add(paques + timedelta(days=39))  # Ascension
-        feries.add(paques + timedelta(days=50))  # Lundi de Pentecôte
-        for d in self.AID_DATES.get(annee, []):
-            feries.add(d)
-        return feries
+        return self._calendrier().get_jours_feries(annee)
 
     def get_jours_feries_avec_noms(self, annee):
-        """Retourne la liste triée des jours fériés avec nom et jour de semaine."""
-        result = []
-
-        for jour, mois, nom in self.FERIES_FIXES:
-            d = date(annee, mois, jour)
-            result.append({
-                "date":         str(d),
-                "nom":          nom,
-                "jour_semaine": self.JOURS_SEMAINE[d.weekday()],
-                "est_mobile":   False,
-            })
-
-        paques  = self._paques(annee)
-        mobiles = [
-            (paques - timedelta(days=2),  "Vendredi Saint"),
-            (paques + timedelta(days=1),  "Lundi de Pâques"),
-            (paques + timedelta(days=39), "Ascension"),
-            (paques + timedelta(days=50), "Lundi de Pentecôte"),
-        ]
-        for d, nom in mobiles:
-            result.append({
-                "date":         str(d),
-                "nom":          nom,
-                "jour_semaine": self.JOURS_SEMAINE[d.weekday()],
-                "est_mobile":   True,
-            })
-
-        aids = sorted(self.AID_DATES.get(annee, []))
-        noms_aids = ["Aïd el-Fitr", "Aïd el-Adha"]
-        for i, d in enumerate(aids):
-            result.append({
-                "date":         str(d),
-                "nom":          noms_aids[i] if i < len(noms_aids) else "Aïd",
-                "jour_semaine": self.JOURS_SEMAINE[d.weekday()],
-                "est_mobile":   True,
-            })
-
-        result.sort(key=lambda x: x["date"])
-        return result
+        return self._calendrier().get_jours_feries_avec_noms(annee)
 
     def est_jour_ferie(self, date_check):
-        """
-        Vérifie si une date est un jour férié officiel.
-        Retourne : {'est_ferie': bool, 'nom': str}
-        """
-        feries     = self.get_jours_feries(date_check.year)
-        avec_noms  = self.get_jours_feries_avec_noms(date_check.year)
-        est_ferie  = date_check in feries
-        nom        = next((f["nom"] for f in avec_noms if f["date"] == str(date_check)), "")
-        return {"est_ferie": est_ferie, "nom": nom}
+        return self._calendrier().est_jour_ferie(date_check)
 
     # ── Taux horaire de base ─────────────────────────────────────────────────
 

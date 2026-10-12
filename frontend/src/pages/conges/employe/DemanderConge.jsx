@@ -5,70 +5,19 @@ import { useTranslation } from 'react-i18next'
 import EmployeLayout from '../../../components/layout/EmployeLayout'
 import Spinner from '../../../components/Spinner'
 import { getTypesConge, getMesSoldes, creerDemande, getSoldeDetaille } from '../../../api/conges'
+import { useJoursFeries } from '../../../components/ui/useJoursFeries'
 
-// ── Jours fériés camerounais ─────────────────────────────────────────────
-
-function getEaster(year) {
-  const a = year % 19, b = Math.floor(year / 100), c = year % 100
-  const d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25)
-  const g = Math.floor((b - f + 1) / 3)
-  const h = (19 * a + b - d - g + 15) % 30
-  const i = Math.floor(c / 4), k = c % 4
-  const l = (32 + 2 * e + 2 * i - h - k) % 7
-  const m = Math.floor((a + 11 * h + 22 * l) / 451)
-  const month = Math.floor((h + l - 7 * m + 114) / 31)
-  const day   = ((h + l - 7 * m + 114) % 31) + 1
-  return new Date(year, month - 1, day)
-}
-
-const AID_DATES = {
-  2024: ['2024-04-10', '2024-06-16'],
-  2025: ['2025-03-30', '2025-06-06'],
-  2026: ['2026-03-20', '2026-05-27'],
-  2027: ['2027-03-09', '2027-05-16'],
-  2028: ['2028-03-28', '2028-05-04'],
-  2029: ['2029-03-18', '2029-04-23'],
-  2030: ['2030-03-07', '2030-04-12'],
-}
+// ── Jours fériés : calendrier légal fourni par le backend (useJoursFeries) ──
 
 function toIso(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-function addDays(d, n) {
-  return new Date(d.getTime() + n * 86400000)
-}
-
-function getJoursFeries(year) {
-  const s = new Set()
-  // Fixed
-  ;[[1,1],[11,2],[1,5],[20,5],[15,8],[1,10],[25,12]].forEach(([day, month]) => {
-    s.add(`${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`)
-  })
-  // Easter-derived
-  const easter = getEaster(year)
-  ;[addDays(easter, -2), addDays(easter, 1), addDays(easter, 39), addDays(easter, 50)].forEach(d => {
-    if (d.getFullYear() === year) s.add(toIso(d))
-  })
-  // Aïds
-  ;(AID_DATES[year] || []).forEach(d => s.add(d))
-  return s
-}
-
-function getAllFeries(yearStart, yearEnd) {
-  const s = new Set()
-  for (let y = yearStart; y <= yearEnd; y++) {
-    getJoursFeries(y).forEach(d => s.add(d))
-  }
-  return s
-}
-
-function calculerJoursOuvrables(debut, fin) {
+function calculerJoursOuvrables(debut, fin, feries) {
   if (!debut || !fin) return 0
   const d = new Date(debut + 'T00:00:00')
   const f = new Date(fin + 'T00:00:00')
   if (f < d) return 0
-  const feries = getAllFeries(d.getFullYear(), f.getFullYear())
   let count = 0
   const cur = new Date(d)
   while (cur <= f) {
@@ -80,10 +29,9 @@ function calculerJoursOuvrables(debut, fin) {
   return count
 }
 
-function calculerDateRetour(fin) {
+function calculerDateRetour(fin, feries) {
   if (!fin) return null
   const f = new Date(fin + 'T00:00:00')
-  const feries = getAllFeries(f.getFullYear(), f.getFullYear() + 1)
   const r = new Date(f.getTime() + 86400000)
   while (r.getDay() === 0 || r.getDay() === 6 || feries.has(toIso(r))) {
     r.setDate(r.getDate() + 1)
@@ -91,11 +39,10 @@ function calculerDateRetour(fin) {
   return toIso(r)
 }
 
-function getFeriesEntreDates(debut, fin) {
+function getFeriesEntreDates(debut, fin, feries) {
   if (!debut || !fin) return []
   const d = new Date(debut + 'T00:00:00')
   const f = new Date(fin + 'T00:00:00')
-  const feries = getAllFeries(d.getFullYear(), f.getFullYear())
   const result = []
   const cur = new Date(d)
   while (cur <= f) {
@@ -124,19 +71,10 @@ export default function DemanderConge() {
   const navigate = useNavigate()
   const annee    = new Date().getFullYear()
 
-  const NOMS_FERIES = {
-    '01-01': t('conges_extra.holiday_new_year'),
-    '02-11': t('conges_extra.holiday_youth'),
-    '05-01': t('conges_extra.holiday_labour'),
-    '05-20': t('conges_extra.holiday_national'),
-    '08-15': t('conges_extra.holiday_assumption'),
-    '10-01': t('conges_extra.holiday_unity'),
-    '12-25': t('conges_extra.holiday_christmas'),
-  }
+  const feries = useJoursFeries(annee, annee + 1)
 
   function nomFerie(iso) {
-    const suffix = iso.slice(5) // MM-DD
-    return NOMS_FERIES[suffix] || t('conges_extra.holiday_mobile')
+    return feries.get(iso) || t('conges_extra.holiday_mobile')
   }
 
   const [types,       setTypes]       = useState([])
@@ -171,9 +109,9 @@ export default function DemanderConge() {
     }
   }, [form.type_conge, types, annee])
 
-  const nbJours = calculerJoursOuvrables(form.date_debut, form.date_fin)
-  const dateRetour = calculerDateRetour(form.date_fin)
-  const feriesEntreDates = getFeriesEntreDates(form.date_debut, form.date_fin)
+  const nbJours = calculerJoursOuvrables(form.date_debut, form.date_fin, feries)
+  const dateRetour = calculerDateRetour(form.date_fin, feries)
+  const feriesEntreDates = getFeriesEntreDates(form.date_debut, form.date_fin, feries)
 
   const typeSelectionne = types.find(tp => String(tp.id) === String(form.type_conge))
 
@@ -420,6 +358,13 @@ export default function DemanderConge() {
               <div className="card-body p-2">
                 <table className="table table-sm table-borderless mb-0" style={{ fontSize: 12 }}>
                   <tbody>
+                    {soldeDetail.periode_reference && (
+                      <tr>
+                        <td colSpan={2} className="text-muted" style={{ fontSize: 11 }}>
+                          {t('conges_extra.reference_period', { year: soldeDetail.periode_reference })}
+                        </td>
+                      </tr>
+                    )}
                     <tr>
                       <td className="text-muted">{t('conges_extra.months_worked')}</td>
                       <td className="text-right font-weight-bold">
@@ -521,7 +466,7 @@ export default function DemanderConge() {
             </div>
             <div className="card-body p-0">
               <ul className="list-group list-group-flush" style={{ fontSize: 11 }}>
-                {[...getJoursFeries(new Date().getFullYear())].sort().map(iso => (
+                {[...feries.keys()].filter(iso => iso.startsWith(String(annee))).sort().map(iso => (
                   <li key={iso} className="list-group-item py-1 d-flex justify-content-between">
                     <span>{fmtDate(iso)}</span>
                     <span className="text-muted">{nomFerie(iso)}</span>

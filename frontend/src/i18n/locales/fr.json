@@ -416,6 +416,11 @@
     "delete_error": "Erreur lors de la suppression."
   },
   "accounts": {
+    "sex": "Sexe",
+    "sex_unknown": "Non renseigné",
+    "sex_female": "Féminin",
+    "sex_male": "Masculin",
+    "sex_hint": "Sert à la majoration de congé des mères (art. 90)",
     "title": "Gestion des comptes",
     "new_user": "Nouvel utilisateur",
     "edit_user": "Modifier l'utilisateur",
@@ -1564,6 +1569,7 @@
     "theme_required": "Le thème du projet est obligatoire."
   },
   "conges_extra": {
+    "reference_period": "Droit acquis en {{year}} (période de référence terminée)",
     "leave_balance": "Solde légal",
     "legal_balance_title": "Solde légal — {{name}}",
     "eligible": "Éligible",
