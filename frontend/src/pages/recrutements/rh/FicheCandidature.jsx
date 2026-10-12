@@ -317,20 +317,23 @@ export default function FicheCandidature() {
                   <div className="row mb-3">
                     <div className="col-md-4 text-center">
                       <div style={{ fontSize: "2.5rem", fontWeight: 700, color: "var(--acerfi-blue)" }}>
-                        {analyse.score_correspondance}<small style={{ fontSize: "1rem" }}>/100</small>
+                        {analyse.score_correspondance ?? "—"}
+                        {analyse.score_correspondance != null && <small style={{ fontSize: "1rem" }}>/100</small>}
                       </div>
                       <div style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>{t("recrutements.match_score")}</div>
                     </div>
                     <div className="col-md-4 text-center">
                       <div style={{ fontSize: "1.2rem", fontWeight: 600, color: "var(--text-primary)" }}>
-                        {analyse.niveau_estime}
+                        {analyse.niveau_estime || "—"}
                       </div>
                       <div style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>{t("recrutements.estimated_level")}</div>
                     </div>
                     <div className="col-md-4 text-center">
                       <span className={`badge badge-${RECO_BADGE[analyse.recommandation] || "secondary"}`}
                         style={{ fontSize: "0.95rem", padding: "6px 12px" }}>
-                        {analyse.recommandation?.replace("_", " ")}
+                        {analyse.recommandation === "A_EXAMINER"
+                          ? t("recrutements.reco_to_review")
+                          : analyse.recommandation?.replace("_", " ")}
                       </span>
                       <div style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginTop: 2 }}>
                         {t("recrutements.recommendation")}
@@ -340,6 +343,11 @@ export default function FicheCandidature() {
                   {analyse.synthese && (
                     <div className="alert alert-info" style={{ fontSize: "0.88rem" }}>
                       <i className="fas fa-info-circle mr-1" />{analyse.synthese}
+                      {analyse.source && (
+                        <div className="mt-1" style={{ fontSize: "0.78rem", opacity: 0.8 }}>
+                          {t("recrutements.analysis_source")} : {analyse.source}
+                        </div>
+                      )}
                     </div>
                   )}
                   <div className="row">

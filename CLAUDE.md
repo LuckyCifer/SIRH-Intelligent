@@ -168,6 +168,9 @@ Source unique : `entreprises/isolation.py`.
 Utilise `threading.Thread(target=..., daemon=True)` — ne bloque pas la réponse API.
 Client centralisé : `ia/client.py` (SDK officiel `google-genai`) → `appeler_ia()` tente Gemini
 (2 essais) puis la cascade OpenRouter ; délai 60 s par appel ; sans réseau, échec immédiat.
+CV : `recrutements/cv.py` extrait le texte localement (pypdf, python-docx) et le pseudonymise avant
+envoi à l'IA (loi 2024/017) ; plan B = correspondance des compétences ; CV scanné signalé.
+CV fictifs de démo : `fixtures/cv_demo.py` (candidatures sans fichier uniquement).
 Plan B : `IAIndisponible` → chaque module produit un résultat calculé sans IA, étiqueté
 (`motif_plan_b`) — détail : docs/IA_PLAN_B.md, tests : `python manage.py test rapport_ia`.
 

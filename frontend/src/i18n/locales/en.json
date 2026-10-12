@@ -1049,6 +1049,8 @@
     "participants_count": "Participants ({{count}})"
   },
   "recrutements": {
+    "analysis_source": "Analysis source",
+    "reco_to_review": "To review",
     "title": "Recruitment",
     "offers": "Job Offers",
     "new_offer": "New offer",

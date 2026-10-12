@@ -23,7 +23,7 @@ l'échec est détecté immédiatement : aucune cascade de tentatives inutiles.
 |---|---|---|
 | Rapport RH mensuel | Score de santé RH pondéré (voir ci-dessous), alertes et recommandations par règles explicites, tendance par rapport au mois précédent, tableau des indicateurs | bandeau « Analyse IA indisponible : motif », source « calcul sans IA » |
 | Évaluation de performance | Score /100 = moyenne des six notes du manager, niveau, points forts (notes ≥ 4) et axes de développement (notes ≤ 2) | synthèse « Analyse IA indisponible » |
-| Analyse de CV | Aucun score inventé : le CV est à évaluer manuellement | « Analyse IA indisponible — évaluer manuellement » |
+| Analyse de CV | Score de correspondance des compétences de l'offre retrouvées dans le CV (texte extrait localement), compétences manquantes, recommandation sans rejet automatique ; CV scanné signalé | « Analyse IA indisponible », source « calcul sans IA » |
 | Analyse des rapports hebdomadaires | Le rapport reste soumis et consultable ; l'analyse est relancée plus tard | journal applicatif |
 
 ### Score de santé RH sans IA
@@ -57,7 +57,8 @@ présenté tel quel, puis régénéré avec l'IA dès que le service est de nouv
 ## Vérification
 
 `python manage.py test rapport_ia` simule une coupure réseau, des quotas épuisés, des
-clés absentes et une réponse illisible, sans aucun appel réseau réel (12 tests).
+clés absentes et une réponse illisible, sans aucun appel réseau réel (11 tests) ;
+`python manage.py test recrutements` couvre l'analyse des CV et son plan B (15 tests).
 
 ## Pour la soutenance
 

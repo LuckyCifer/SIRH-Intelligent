@@ -58,7 +58,7 @@
 | 7 | Documents | Documents RH avec aperçu avant téléchargement |
 | 8 | Paie | Bulletins CNPS, IRPP, CAC, CFC, FNE, RAV, TDL (fiscalité camerounaise 2024) |
 | 9 | Objectifs | Objectifs SMART et évaluations de performance |
-| 10 | Recrutements | Pipeline complet + analyse IA des CV |
+| 10 | Recrutements | Pipeline complet + analyse IA des CV pseudonymisés (lecture PDF / Word) |
 | 11 | Formations | Catalogue, inscriptions, compétences |
 | 12 | Sanctions | Sanctions disciplinaires (pouvoir disciplinaire : RH) |
 | 13 | Carrière | Historique des évolutions de poste |
@@ -157,10 +157,10 @@ Le script plus léger `fixtures/demo_data.py` crée `admin.rh` (RH) et `manager.
 
 ```powershell
 cd backend
-python manage.py test accounts entreprises rapport_ia conges paie presences
+python manage.py test accounts entreprises rapport_ia conges paie presences recrutements
 ```
 
-99 tests automatisés, dont :
+113 tests automatisés, dont :
 
 | Domaine | Tests | Ce qui est vérifié |
 |---|---:|---|
@@ -169,7 +169,8 @@ python manage.py test accounts entreprises rapport_ia conges paie presences
 | Présences | 5 | majorations des heures supplémentaires |
 | Sécurité | 17 | droits par rôle, données personnelles (loi n° 2024/017) |
 | Isolation | 7 | une entreprise ne voit jamais les données d'une autre |
-| Plan B IA | 12 | rapports sans Internet, sans clé ou en quota épuisé |
+| Plan B IA | 11 | rapports sans Internet, sans clé ou en quota épuisé |
+| Recrutement | 15 | lecture des CV (PDF, Word, scanné), pseudonymisation, plan B |
 
 Frontend : `npm run lint` sans erreur ; les 78 pages des trois rôles ont été vérifiées
 dans Chrome (aucune erreur JavaScript ni appel API en échec).

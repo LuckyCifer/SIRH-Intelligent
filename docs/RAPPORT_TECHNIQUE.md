@@ -528,7 +528,24 @@ Pipeline de recrutement complet :
 Offre créée → Candidature reçue → Entretien planifié → Décision → Embauche
 ```
 
-L'IA (Gemini) évalue de manière asynchrone (`threading.Thread(daemon=True)`) l'adéquation d'une candidature à l'offre, sans bloquer la réponse API. Limite actuelle : l'analyse s'appuie sur l'offre et les informations de la candidature ; le texte du fichier CV n'est pas encore extrait (piste d'évolution).
+**Analyse des CV** (`recrutements/cv.py`, `recrutements/services.py`), en arrière-plan :
+
+1. **Extraction locale du texte** du CV — PDF texte (pypdf), Word .docx (python-docx), .txt.
+   Un PDF scanné (image seule) ou un format non pris en charge est signalé : le RH demande
+   une version texte au candidat, et rien n'est envoyé à l'IA.
+2. **Pseudonymisation** avant tout envoi : nom, adresse, téléphone, email, liens, date de
+   naissance, situation familiale et pièces d'identité sont retirés ; seuls les compétences,
+   l'expérience et la formation sont transmises à l'IA. La loi n° 2024/017 soumet le
+   transfert de données personnelles hors du Cameroun à l'autorisation préalable de l'APDP :
+   les données d'identité du candidat ne quittent donc pas le serveur de l'entreprise.
+3. **Analyse par l'IA** du CV pseudonymisé au regard de l'offre (score, points forts,
+   manques, niveau, recommandation) ; la réponse du modèle est normalisée.
+4. **Plan B sans IA** : score de correspondance des compétences exigées par l'offre
+   retrouvées dans le CV (« 4 compétences sur 6 »), calculé localement ; jamais de rejet
+   automatique sans IA ni regard humain.
+
+15 tests (`python manage.py test recrutements`) génèrent de vrais CV fictifs (PDF, Word,
+scanné) et vérifient qu'aucune donnée d'identité n'apparaît dans ce qui est envoyé à l'IA.
 
 ---
 

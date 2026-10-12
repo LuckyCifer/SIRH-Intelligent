@@ -109,7 +109,7 @@ class RapportMensuelPlanBTests(TestCase):
         self.assertIn("inexploitable", rapport.resume_executif)
 
 
-class EvaluationEtCvPlanBTests(SimpleTestCase):
+class EvaluationPlanBTests(SimpleTestCase):
 
     def test_evaluation_score_calcule_depuis_les_notes(self):
         from objectifs.services import analyse_sans_ia
@@ -121,20 +121,6 @@ class EvaluationEtCvPlanBTests(SimpleTestCase):
         self.assertIn("Compétences techniques", data["points_forts"])
         self.assertEqual(data["axes_developpement"], ["Travail en équipe"])
         self.assertEqual(data["source"], "calcul sans IA")
-
-    def test_cv_sans_score_invente(self):
-        from recrutements import services
-        candidature = SimpleNamespace(
-            offre=SimpleNamespace(titre="Comptable", type_contrat="CDI", niveau_experience="JUNIOR",
-                                  description="x", competences_requises="x"),
-            nom_complet="A. Candidat", source="")
-        with mock.patch("recrutements.models.Candidature.objects") as objets, \
-                mock.patch.object(services, "appeler_ia", side_effect=IAIndisponible("Aucune clé d'API")):
-            objets.select_related.return_value.get.return_value = candidature
-            services._run_analyse(1)
-        champs = objets.filter.return_value.update.call_args.kwargs
-        self.assertIsNone(champs["score_cv_ia"])
-        self.assertIn("évaluer manuellement", champs["analyse_cv_ia"])
 
 
 class ScoreSansIATests(SimpleTestCase):

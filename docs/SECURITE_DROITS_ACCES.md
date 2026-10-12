@@ -60,6 +60,11 @@ Application du principe de **minimisation** :
   compte Mobile Money) reste réservé aux RH, qui en ont besoin pour la paie, la CNPS
   et les déclarations fiscales.
 
+- Les CV des candidats sont **pseudonymisés** avant tout envoi à l'IA (identité,
+  coordonnées et état civil retirés) : la loi soumet le transfert de données personnelles
+  hors du Cameroun à l'autorisation de l'APDP ; seules les compétences et l'expérience
+  partent vers le service d'IA (`recrutements/cv.py`).
+
 Implémentation : `UserResumeSerializer` (`backend/accounts/serializers.py`),
 `membres_equipe` et `peut_gerer` (`backend/accounts/permissions.py`).
 

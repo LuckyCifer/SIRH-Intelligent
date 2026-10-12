@@ -725,6 +725,8 @@
     "valider_tooltip": "Valider"
   },
   "recrutements": {
+    "analysis_source": "Source de l'analyse",
+    "reco_to_review": "À examiner",
     "page_title": "Offres d'emploi",
     "new_offer": "Nouvelle offre",
     "all": "Toutes",

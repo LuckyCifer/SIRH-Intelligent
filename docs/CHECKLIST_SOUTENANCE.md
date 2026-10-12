@@ -22,9 +22,9 @@
 - [ ] Tests au vert :
   ```powershell
   cd backend
-  python manage.py test accounts entreprises rapport_ia conges paie presences
+  python manage.py test accounts entreprises rapport_ia conges paie presences recrutements
   ```
-  → 99 tests, `OK`
+  → 113 tests, `OK`
 - [ ] `backend/.env` complet ; `GEMINI_API_KEY` testée (génération d'un rapport en ligne)
 - [ ] Au moins un rapport IA déjà généré **en ligne** et un **hors ligne** (plan B), pour comparer
 - [ ] Pointages et paie du mois présenté saisis (sinon le rapport signale à juste titre
@@ -112,7 +112,11 @@ docker compose up -d
       suivi des stagiaires d'ACERFI (centre de formation). Ce module est conservé et intégré :
       les rapports hebdomadaires et leur analyse IA servent aussi aux employés ; côté manager,
       les écrans parlent désormais de « Mon équipe ».
-- [ ] **Comment avez-vous testé ?** 99 tests automatisés + vérification des 78 pages par rôle.
+- [ ] **L'IA lit-elle vraiment les CV ? Et la vie privée des candidats ?** Oui : texte extrait
+      localement (PDF, Word), pseudonymisé avant envoi (loi n° 2024/017, transfert hors du
+      Cameroun soumis à l'APDP) ; sans IA, score de correspondance des compétences ; CV
+      scanné signalé. Démonstration : fiche d'une candidature → « Analyser le CV ».
+- [ ] **Comment avez-vous testé ?** 113 tests automatisés + vérification des 78 pages par rôle.
 - [ ] **Déploiement en production ?** `docs/DEPLOIEMENT.md`.
 - [ ] **Pourquoi `null=True` sur les FK entreprise ?** Compatibilité avec les données
       existantes ; l'isolation passe par l'employé, donc reste fiable même si le champ est vide.
@@ -139,7 +143,7 @@ docker compose up -d
 | Indicateur | Valeur |
 |-----------|--------|
 | Modules fonctionnels | 18 |
-| Tests automatisés | 99 |
+| Tests automatisés | 113 |
 | Pages vérifiées par rôle | 78 |
 | Erreurs de lint frontend | 0 |
 | Conformité documentée | paie, congés, heures supplémentaires, données personnelles |
