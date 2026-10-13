@@ -45,3 +45,4 @@ Comptes utilisateurs SIRH.txt
 # Rapport de stage (document personnel, hors dépôt public)
 /Rapport_stage_*.docx
 ~$*.docx
+/Prompt_presentation_soutenance.md

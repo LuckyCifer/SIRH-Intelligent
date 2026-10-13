@@ -3,7 +3,7 @@
 
 **Auteur :** Yemeya Luc  
 **Établissement :** ISA (Institut Supérieur d'Informatique Appliquée)  
-**Entreprise d'accueil :** ACERFI SARL — Douala, Cameroun  
+**Entreprise d'accueil :** ACERFI SARL — Yaoundé, Cameroun  
 **Année :** 2026  
 **Stack principal :** Django 5.2 + React 19 + MySQL + IA Google Gemini  
 
@@ -44,7 +44,7 @@
 
 ### 1.1 Contexte
 
-ACERFI SARL est un centre de formation numérique basé à Douala, Cameroun, spécialisé dans les métiers du développement web, de la cybersécurité, du cloud computing et de l'intelligence artificielle. Avec une équipe en croissance, la gestion des ressources humaines reposait sur des outils disparates (feuilles Excel, courriels, fichiers PDF) — un processus chronophage et source d'erreurs.
+ACERFI SARL est un centre de formation numérique basé à Yaoundé, Cameroun, spécialisé dans les métiers du développement web, de la cybersécurité, du cloud computing et de l'intelligence artificielle. Avec une équipe en croissance, la gestion des ressources humaines reposait sur des outils disparates (feuilles Excel, courriels, fichiers PDF) — un processus chronophage et source d'erreurs.
 
 Ce projet de fin d'études, réalisé dans le cadre de la certification ISA, vise à concevoir et développer un **Système d'Information des Ressources Humaines intelligent** (SIRH) couvrant l'intégralité du cycle de vie d'un employé, de son recrutement à sa sortie de l'entreprise.
 
@@ -667,6 +667,9 @@ Tous les appels passent par un client unique, `ia/client.py` : Google Gemini
 (`gemini-flash-latest`, SDK officiel `google-genai` — l'ancien `google-generativeai` n'est plus
 maintenu), puis OpenRouter en secours. Changer de fournisseur ne touche que ce fichier.
 Chaque appel est limité à 60 secondes.
+
+Le prototype du stage utilisait Groq (`llama-3.3-70b-versatile`) ; la désactivation de ce
+modèle ayant été annoncée pour juillet 2026, le moteur principal est passé à Gemini.
 
 ### 22.2 Architecture asynchrone
 

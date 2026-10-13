@@ -5,7 +5,7 @@
 
 **Auteur :** Yemeya Luc  
 **Email :** lucyemeya1@gmail.com  
-**Entreprise :** ACERFI SARL, Douala, Cameroun
+**Entreprise :** ACERFI SARL, Yaoundé, Cameroun
 
 ---
 

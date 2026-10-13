@@ -3,7 +3,7 @@
 
 **Durée totale :** 15 minutes  
 **Présentateur :** Yemeya Luc  
-**Date :** Juin 2026  
+**Date :** Novembre 2026  
 
 ---
 
@@ -64,11 +64,11 @@ npm run dev
 
 **Script :**
 
-> "Je vais commencer par vous présenter la page d'accueil publique de la plateforme. Cette page est accessible sans authentification et présente les 12 modules fonctionnels du SIRH."
+> "Je vais commencer par vous présenter la page d'accueil publique de la plateforme. Cette page est accessible sans authentification et présente les 19 modules fonctionnels du SIRH."
 
 *Pointer les fonctionnalités dans la grille.*
 
-> "La plateforme a été développée pour ACERFI SARL, un centre de formation numérique à Douala. Elle couvre l'intégralité du cycle de vie d'un employé, de son recrutement à sa sortie."
+> "La plateforme a été développée pour ACERFI SARL, un centre de formation numérique basé à Yaoundé. Elle couvre l'intégralité du cycle de vie d'un employé, de son recrutement à sa sortie."
 
 *Montrer le bouton "Se connecter".*
 
@@ -277,7 +277,7 @@ npm run dev
 
 > "Ces couleurs sont chargées dynamiquement au login et appliquées via des variables CSS — aucune duplication de code."
 
-> "Voilà pour la démonstration. La plateforme est opérationnelle avec 18 modules, 746 modules JavaScript compilés, 0 erreur de build."
+> "Voilà pour la démonstration. La plateforme est opérationnelle : 113 tests automatisés au vert et 78 pages vérifiées pour les trois rôles."
 
 ---
 
@@ -289,7 +289,7 @@ Points à mettre en avant face au jury :
 2. **Innovation IA** : Gemini transforme les données en recommandations ; un plan B garantit le service sans Internet
 3. **Architecture propre** : séparation frontend/backend, JWT stateless, multi-tenancy
 4. **Fiscalité locale** : paie conforme à la réglementation camerounaise 2024
-5. **Rigueur** : 99 tests automatisés, conformité légale documentée (paie, congés, données personnelles), application conteneurisée
+5. **Rigueur** : 113 tests automatisés, conformité légale documentée (paie, congés, données personnelles), application conteneurisée
 
 ---
 
@@ -301,7 +301,7 @@ Points à mettre en avant face au jury :
 
 **Q : Pourquoi Gemini ?**
 
-> "Gemini offre une offre gratuite suffisante et de bonnes performances en français. Tous les appels passent par un client unique : changer de fournisseur ne touche qu'un fichier. OpenRouter sert de secours, et un plan B sans IA garantit que le rapport est produit même sans Internet."
+> "Le prototype utilisait Groq, mais la désactivation du modèle utilisé avait été annoncée pour juillet 2026. Gemini offre une offre gratuite suffisante et de bonnes performances en français. Tous les appels passent par un client unique : changer de fournisseur ne touche qu'un fichier. OpenRouter sert de secours, et un plan B sans IA garantit que le rapport est produit même sans Internet."
 
 **Q : Comment gérez-vous la sécurité des données RH ?**
 
@@ -321,7 +321,7 @@ Points à mettre en avant face au jury :
 
 **Q : Que se passe-t-il si l'IA ne répond pas ?**
 
-> "Délai maximal de 60 secondes par appel, Gemini puis OpenRouter. Sans réseau, la bascule est immédiate vers le plan B : score, alertes et recommandations par règles, avec la mention « Analyse IA indisponible ». Une évaluation est notée à partir des notes du manager ; un CV est laissé à l'évaluation manuelle plutôt que de lui inventer un score. Le rapport peut être régénéré avec l'IA plus tard."
+> "Délai maximal de 60 secondes par appel, Gemini puis OpenRouter. Sans réseau, la bascule est immédiate vers le plan B : score, alertes et recommandations par règles, avec la mention « Analyse IA indisponible ». Une évaluation est notée à partir des notes du manager ; un CV reçoit un score de correspondance des compétences, calculé localement, et un CV scanné est signalé plutôt que noté à tort. Le rapport peut être régénéré avec l'IA plus tard."
 
 ---
 
