@@ -41,3 +41,7 @@ Comptes utilisateurs SIRH.txt
 
 # Secrets Docker Compose (mot de passe MySQL de production)
 /.env
+
+# Rapport de stage (document personnel, hors dépôt public)
+/Rapport_stage_*.docx
+~$*.docx
