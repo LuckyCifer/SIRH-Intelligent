@@ -318,7 +318,7 @@ Quatre rôles sont définis dans `accounts.User.Role` :
 Les permissions DRF (`IsRH`, `IsManagerOrRH`, `IsAuthenticated`) et les fonctions
 `membres_equipe()` / `peut_gerer()` sont définies dans `accounts/permissions.py`. Un manager
 ne peut ni se fixer ses propres objectifs ni valider son propre congé. La matrice complète
-est dans `docs/SECURITE_DROITS_ACCES.md` ; 17 tests la vérifient.
+est dans `docs/SECURITE_DROITS_ACCES.md` ; 18 tests la vérifient.
 
 ### 6.3 Sécurité des API
 
@@ -360,7 +360,7 @@ compte Mobile Money restent réservés aux RH.
 | POST | `/api/auth/refresh/` | Renouveler le token d'accès |
 | GET/PATCH | `/api/accounts/me/` | Profil de l'utilisateur connecté |
 | GET | `/api/accounts/users/` | Liste des utilisateurs (RH/Admin) |
-| POST | `/api/accounts/register/` | Créer un compte employé |
+| POST | `/api/accounts/register/` | Créer un compte (administrateur de la plateforme uniquement) |
 
 ---
 

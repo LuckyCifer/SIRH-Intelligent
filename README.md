@@ -160,14 +160,14 @@ cd backend
 python manage.py test accounts entreprises rapport_ia conges paie presences recrutements
 ```
 
-113 tests automatisés, dont :
+114 tests automatisés, dont :
 
 | Domaine | Tests | Ce qui est vérifié |
 |---|---:|---|
 | Paie | 26 | barèmes CNPS, IRPP, CAC, CFC, FNE, RAV, TDL ; bulletin de référence calculé à la main |
 | Congés | 32 | droits légaux, jours ouvrables et fériés, solde contrôlé, dérogation RH |
 | Présences | 5 | majorations des heures supplémentaires |
-| Sécurité | 17 | droits par rôle, données personnelles (loi n° 2024/017) |
+| Sécurité | 18 | droits par rôle, création de comptes, données personnelles (loi n° 2024/017) |
 | Isolation | 7 | une entreprise ne voit jamais les données d'une autre |
 | Plan B IA | 11 | rapports sans Internet, sans clé ou en quota épuisé |
 | Recrutement | 15 | lecture des CV (PDF, Word, scanné), pseudonymisation, plan B |

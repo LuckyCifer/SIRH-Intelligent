@@ -24,7 +24,7 @@
   cd backend
   python manage.py test accounts entreprises rapport_ia conges paie presences recrutements
   ```
-  → 113 tests, `OK`
+  → 114 tests, `OK`
 - [ ] `backend/.env` complet ; `GEMINI_API_KEY` testée (génération d'un rapport en ligne)
 - [ ] Au moins un rapport IA déjà généré **en ligne** et un **hors ligne** (plan B), pour comparer
 - [ ] Pointages et paie du mois présenté saisis (sinon le rapport signale à juste titre
@@ -116,7 +116,7 @@ docker compose up -d
       localement (PDF, Word), pseudonymisé avant envoi (loi n° 2024/017, transfert hors du
       Cameroun soumis à l'APDP) ; sans IA, score de correspondance des compétences ; CV
       scanné signalé. Démonstration : fiche d'une candidature → « Analyser le CV ».
-- [ ] **Comment avez-vous testé ?** 113 tests automatisés + vérification des 78 pages par rôle.
+- [ ] **Comment avez-vous testé ?** 114 tests automatisés + vérification des 78 pages par rôle.
 - [ ] **Déploiement en production ?** `docs/DEPLOIEMENT.md`.
 - [ ] **Pourquoi `null=True` sur les FK entreprise ?** Compatibilité avec les données
       existantes ; l'isolation passe par l'employé, donc reste fiable même si le champ est vide.
@@ -143,7 +143,7 @@ docker compose up -d
 | Indicateur | Valeur |
 |-----------|--------|
 | Modules fonctionnels | 18 |
-| Tests automatisés | 113 |
+| Tests automatisés | 114 |
 | Pages vérifiées par rôle | 78 |
 | Erreurs de lint frontend | 0 |
 | Conformité documentée | paie, congés, heures supplémentaires, données personnelles |

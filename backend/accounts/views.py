@@ -47,16 +47,21 @@ from .serializers import (
     UserUpdateSerializer,
     PasswordChangeByRHSerializer,
 )
-from .permissions import IsAdminRH, IsRHOrAdmin, IsManagerOrRH
+from .permissions import IsAdminRH, IsRHOrAdmin, IsManagerOrRH, IsSuperUtilisateur
 from .filiere_data import FILIERE_DATA
 from entreprises.isolation import IsolationEntrepriseMixin
 
 
 class RegisterView(generics.CreateAPIView):
-    """POST /api/accounts/register/ — Inscription (public pour les tests, restreindre en prod)"""
+    """POST /api/accounts/register/ — Création libre d'un compte (rôle au choix).
+
+    Réservée à l'administrateur de la plateforme : ouverte à tous, elle permettait de
+    se créer un compte RH. Les RH créent les comptes de leur entreprise via
+    /api/accounts/gestion-comptes/ (rattachement automatique à l'entreprise).
+    """
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsSuperUtilisateur]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

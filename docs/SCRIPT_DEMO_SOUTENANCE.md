@@ -277,7 +277,7 @@ npm run dev
 
 > "Ces couleurs sont chargées dynamiquement au login et appliquées via des variables CSS — aucune duplication de code."
 
-> "Voilà pour la démonstration. La plateforme est opérationnelle : 113 tests automatisés au vert et 78 pages vérifiées pour les trois rôles."
+> "Voilà pour la démonstration. La plateforme est opérationnelle : 114 tests automatisés au vert et 78 pages vérifiées pour les trois rôles."
 
 ---
 
@@ -289,7 +289,7 @@ Points à mettre en avant face au jury :
 2. **Innovation IA** : Gemini transforme les données en recommandations ; un plan B garantit le service sans Internet
 3. **Architecture propre** : séparation frontend/backend, JWT stateless, multi-tenancy
 4. **Fiscalité locale** : paie conforme à la réglementation camerounaise 2024
-5. **Rigueur** : 113 tests automatisés, conformité légale documentée (paie, congés, données personnelles), application conteneurisée
+5. **Rigueur** : 114 tests automatisés, conformité légale documentée (paie, congés, données personnelles), application conteneurisée
 
 ---
 
@@ -305,7 +305,7 @@ Points à mettre en avant face au jury :
 
 **Q : Comment gérez-vous la sécurité des données RH ?**
 
-> "JWT de 60 minutes ; droits par rôle — un manager n'agit que sur son équipe ; isolation stricte entre entreprises, testée avec deux entreprises complètes ; minimisation des données personnelles selon la loi n° 2024/017 en vigueur depuis le 23 juin 2026 : l'annuaire ne montre ni CNI, ni NIU, ni numéro CNPS. 17 tests de sécurité et 7 d'isolation le vérifient."
+> "JWT de 60 minutes ; droits par rôle — un manager n'agit que sur son équipe ; isolation stricte entre entreprises, testée avec deux entreprises complètes ; minimisation des données personnelles selon la loi n° 2024/017 en vigueur depuis le 23 juin 2026 : l'annuaire ne montre ni CNI, ni NIU, ni numéro CNPS. 18 tests de sécurité et 7 d'isolation le vérifient."
 
 **Q : Le système de paie est-il certifié ?**
 

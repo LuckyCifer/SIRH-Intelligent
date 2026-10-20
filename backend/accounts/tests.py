@@ -183,6 +183,21 @@ class SecuriteTests(TestCase):
         r = self.client_de(self.membre).get(f"/api/rapports/{rapport.pk}/")
         self.assertEqual(r.status_code, 404)
 
+    # ── Création de comptes ─────────────────────────────────────────────────
+
+    def test_inscription_libre_reservee_a_l_administrateur(self):
+        donnees = {"username": "intrus", "email": "intrus@exemple.cm", "first_name": "I",
+                   "last_name": "NTRUS", "password": "Motdepasse2026!",
+                   "password2": "Motdepasse2026!", "role": "RH"}
+        self.assertEqual(APIClient().post("/api/accounts/register/", donnees).status_code, 401)
+        for user in (self.rh, self.manager, self.membre):
+            self.assertEqual(
+                self.client_de(user).post("/api/accounts/register/", donnees).status_code, 403)
+        self.assertFalse(User.objects.filter(username="intrus").exists())
+        admin = User.objects.create_superuser("admin.plateforme", password="x")
+        r = self.client_de(admin).post("/api/accounts/register/", donnees)
+        self.assertEqual(r.status_code, 201, r.data)
+
     # ── Fiche employé côté manager (page « Mes employés ») ───────────────────
 
     def test_manager_ouvre_la_fiche_d_un_membre_de_son_equipe(self):

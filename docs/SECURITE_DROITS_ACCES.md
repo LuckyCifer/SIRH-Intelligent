@@ -5,7 +5,7 @@ personnel, le **manager** (N+1) encadre son équipe, l'**employé** consulte ses
 données et agit par des démarches prévues (demander un congé, pointer…).
 
 Chaque règle est vérifiée par un test automatique : `python manage.py test accounts`
-(16 tests de sécurité).
+(18 tests de sécurité).
 
 ## Matrice des droits
 
@@ -29,6 +29,10 @@ Chaque règle est vérifiée par un test automatique : `python manage.py test ac
 « Son équipe » = les employés actifs des départements dont le manager est responsable.
 Un manager ne peut ni se fixer ses propres objectifs ni valider son propre congé :
 ces décisions reviennent à son supérieur ou aux RH.
+
+La création libre d'un compte (avec choix du rôle) est réservée à l'administrateur de la
+plateforme. Les RH créent les comptes de leur entreprise depuis la gestion des comptes :
+ils y sont rattachés automatiquement, et un RH ne peut pas modifier son propre rôle.
 
 ## Isolation entre entreprises
 
